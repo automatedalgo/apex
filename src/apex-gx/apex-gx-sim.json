@@ -1,0 +1,20 @@
+{
+    "logging": {
+        "level": "info"
+    },
+
+    "port": 5050,
+
+    "auth": { },
+
+    "exchanges" : [
+        {
+            "type": "binance"
+            //"api_key_file" : "${HOME}/.secrets/binance_api_key.json"
+
+            // If "raw_capture_dir" is provided, raw exchange messages will be
+            // written to this folder.
+            // "raw_capture_dir" : "${MDHOME}/raw_captures"
+        }
+    ]
+}

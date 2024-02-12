@@ -1,0 +1,31 @@
+{
+    "run_mode": "paper",
+
+    "services": {
+        "persist": {
+            "path": "${HOME}/apex/data/fdb/persist"
+        },
+
+        "ref_data": {
+            "assets_csv": "${HOME}/apex/data/MDHOME/ref/assets/assets-latest.csv"
+        },
+
+        // List of all gateways, inc. exchanges provided.
+        "gateways": [
+            {
+                "host": "127.0.0.1",
+                "port": "5050",
+                "provides": "binance"
+            }
+        ]
+    },
+
+    "strategy": {
+        "code": "DEMO01",
+        // List of the spot coinpairs to quote on
+        "universe": [
+            "BTCBUSD"
+            // "ETHBUSD"
+        ]
+    }
+}

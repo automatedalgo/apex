@@ -1,0 +1,182 @@
+/* Copyright 2024 Automated Algo (www.automatedalgo.com)
+
+This file is part of Automated Algo's "Apex" project.
+
+Apex is free software: you can redistribute it and/or modify it under the terms
+of the GNU Lesser General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+Apex is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with Apex. If not, see <https://www.gnu.org/licenses/>.
+*/
+
+
+
+// Comment
+syntax = "proto3";
+package apex.pb;
+
+enum Side {
+    side_none = 0;
+    side_buy = 1;
+    side_sell = 2;
+}
+
+// Note: this should be identical to the C++ enum
+enum Exchange {
+  exchange_none = 0;
+  exchange_binance = 1;
+  exchange_binance_usdfut = 2;
+  exchange_binance_coinfut = 3;
+}
+
+enum RunMode {
+     runmode_none = 0;
+     runmode_sim = 1;
+     runmode_live = 2;
+}
+
+
+enum OrderState {
+    orderstate_none = 0;
+    orderstate_init = 1;
+    orderstate_submitted = 2;
+    orderstate_live = 3;
+    orderstate_closed = 4;
+}
+
+enum CloseReason {
+    closereason_none = 0;
+    closereason_expired = 1;
+    closereason_rejected = 2;
+    closereason_canceled = 3;
+    closereason_filled = 4;
+}
+
+
+enum OrderType {
+    ordertype_none = 0;
+    ordertype_limit = 1;
+    ordertype_market = 2;
+}
+
+
+message LogonRequest {
+}
+
+message LogonReply {
+    string error = 1;
+}
+
+message OmLogonRequest {
+    RunMode run_mode = 1;
+    string strategy_id = 2;
+}
+
+message OmLogonReply {
+    string error = 1;
+}
+
+
+message SubscribeTicks {
+    string symbol = 1;
+    Exchange exchange = 2;
+}
+
+message SubscribeWallet {
+    Exchange exchange = 1;
+}
+
+message WalletUpdate {
+    Exchange exchange = 1;
+    string symbol = 2;
+    double position = 3;
+}
+
+message TickTrade {
+    Exchange exchange = 1;
+    string symbol = 2;
+    double price = 3;
+    double size = 4;
+    Side side = 5;
+}
+
+message TickTop {
+    Exchange exchange = 1;
+    string symbol = 2;
+    double ask_price = 3;
+    double ask_qty = 4;
+    double bid_price = 5;
+    double bid_qty = 6;
+    uint64 rt = 7;  // receive time
+}
+
+message NewOrder {
+    Exchange exchange = 1;
+    string symbol = 2;
+
+    double price = 3;
+    double size = 4;
+
+    Side side = 5;
+
+    // TODO: change these to ints
+    uint32 tif = 6;
+    OrderType type = 7;
+
+    string order_id = 8;
+}
+
+// maybe this should just be an int, so that
+// I can place the MsgType in there.
+enum OrderUpdateReason {
+    UNSOLICITED = 0;
+    NEW_ORDER_ACK = 1;
+    CANCEL_ORDER_ACK = 2;
+}
+
+message OrderExecution {
+    string order_id = 1;
+    uint32 order_state = 2;
+    uint32 close_reason = 3;
+    string ext_order_id = 4;
+    OrderUpdateReason reason = 5;
+}
+
+
+message CancelOrder {
+    Exchange exchange = 1;
+    string symbol = 2;
+    string order_id = 3;
+    string ext_order_id=4;
+}
+
+message CancelOrderReply {
+    string order_id = 1;
+    uint32 order_state = 2;
+    uint32 close_reason = 3;
+    string ext_order_id = 4;
+}
+
+
+message Error {
+    uint32 orig_request_type = 1;
+    string code = 2;
+    string text = 3;
+}
+
+
+message OrderFill {
+    Exchange exchange = 1;
+    string symbol = 2;
+    string order_id = 3;
+    double price = 4;
+    double size = 5;
+    bool fully_filled = 6;
+    uint64 recv_time = 7;
+}
