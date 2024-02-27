@@ -963,13 +963,16 @@ void BinanceSession::http_request(
     std::string error;
 
     if (curl) {
+      curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
+      curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
       curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
       curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
       curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, binance::write_callback);
       curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result);
-      // curl_easy_setopt(BinaCPP::curl, CURLOPT_ENCODING, "gzip");
 
-      if (type == HttpRequestType::post || type == HttpRequestType::del) {
+      if (type == HttpRequestType::put ||
+          type == HttpRequestType::post ||
+          type == HttpRequestType::del) {
         if (type == HttpRequestType::del)
           curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
 
