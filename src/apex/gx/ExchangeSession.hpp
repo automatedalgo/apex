@@ -36,8 +36,6 @@ class SslContext;
 class TickTrade;
 class TickTop;
 
-enum class HttpRequestType { post, put, get, del };
-
 class Symbol
 {
 public:

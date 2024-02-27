@@ -32,6 +32,8 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
+enum class HttpRequestType { post, put, get, del };
+
 enum class RunMode {
   paper = 1,     // paper trading
   live = 2,      // live trading
