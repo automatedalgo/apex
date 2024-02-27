@@ -54,4 +54,7 @@ std::string hostname();
 /** Return username */
 [[maybe_unused]] std::string username();
 
+/** Process pid */
+int getpid();
+
 } // namespace apex

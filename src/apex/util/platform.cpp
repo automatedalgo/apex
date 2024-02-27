@@ -113,4 +113,13 @@ end:
 }
 
 
+int getpid() {
+#ifndef _WIN32
+  return ::getpid();
+#else
+  return ::_getpid();
+#endif
+}
+
+
 } // namespace apex
