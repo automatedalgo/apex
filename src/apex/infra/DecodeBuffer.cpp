@@ -24,12 +24,6 @@ namespace apex
 {
 
 
-DecodeBuffer::read_pointer::read_pointer(char* p, size_t avail)
-  : _ptr(p), _avail(avail)
-{
-}
-
-
 DecodeBuffer::DecodeBuffer(size_t initial_size, size_t max_size)
   : _mem(initial_size), _max_size(max_size), _bytes_avail(0)
 {

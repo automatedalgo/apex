@@ -30,7 +30,7 @@ class DecodeBuffer
 {
 public:
   struct read_pointer {
-    read_pointer(char*, size_t);
+    read_pointer(char* p , size_t avail) : _ptr(p), _avail(avail) {}
 
     char operator[](size_t i) const { return _ptr[i]; }
 
@@ -59,7 +59,7 @@ public:
 
   DecodeBuffer(size_t initial_size, size_t max_size);
 
-  /** amount of actual data present */
+  /** size of data present in the buffer ready to be processed */
   size_t avail() const { return _bytes_avail; }
 
   /** current space for new data */
