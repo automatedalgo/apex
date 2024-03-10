@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -eu
+set -e   # no -u, because we process $1
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
