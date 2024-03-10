@@ -44,10 +44,14 @@ public:
 
   void consume_next_event() override
   {
+    // this assert ensures that the backtest event loop only asks for
+    // an event if one is infact due
     assert(std::empty(m_timers) == false);
+
     auto iter = m_timers.begin();
 
-    // invoke the callback function
+    // invoke the callback function, which can return a time-interval to reset
+    // the timer
     std::chrono::milliseconds reset_interval = iter->second();
 
     // TODO: in a multimap, is this the correct thing to do?
