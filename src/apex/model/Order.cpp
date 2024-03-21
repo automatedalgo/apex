@@ -26,6 +26,18 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
+const char * to_string(OrderState s) {
+  switch (s) {
+    case OrderState::none : return "none";
+    case OrderState::init : return "init";
+    case OrderState::sent : return "sent";
+    case OrderState::live : return "live";
+    case OrderState::closed : return "closed";
+    default:
+      return "";
+  }
+}
+
 const char * to_string(Side s) {
   switch (s) {
     case Side::none : return "none";

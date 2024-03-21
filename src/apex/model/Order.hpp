@@ -61,8 +61,15 @@ enum class OrderCancelState : unsigned int {
 };
 
 
-enum class OrderState : unsigned int { none = 0, init, sent, live, closed };
+enum class OrderState : unsigned int {
+  none = 0,
+  init,
+  sent,
+  live,
+  closed
+};
 
+const char * to_string(OrderState);
 
 struct OrderEvent {
 
@@ -217,9 +224,12 @@ public:
 
   OrderState state() const { return _order_state; }
 
-
   std::chrono::microseconds duration_since_sent() const;
   std::chrono::microseconds duration_live() const;
+
+  Time sent_time() const { return _sent_time; }
+  Time live_time() const { return _live_time; }
+
 
   // Elapse time since initial cancel request sent
   std::chrono::milliseconds duration_canceling() const
