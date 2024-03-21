@@ -45,12 +45,22 @@ struct MdStreamParams
 class Book
 {
 public:
-  double best_bid_price = nan;
-  double best_ask_price = nan;
+
+  struct Level {
+    double price = nan;
+    double qty = nan;
+  };
 
   [[nodiscard]] bool is_valid() const {
-    return !std::isnan(best_bid_price) && !std::isnan(best_ask_price) ;
+    // TODO: also check vector size
+    return !std::isnan(_bids[0].price) && !std::isnan(_asks[0].price);
   }
+ 
+  void apply(TickBookSnapshot5&);
+
+private:
+  std::vector<Level> _bids;
+  std::vector<Level> _asks;
 };
 
 
@@ -59,9 +69,14 @@ class MarketData
 
 public:
   struct EventType {
+
+    EventType() = default;
+    explicit EventType(int flags) : value(flags) {}
+
     enum Flag {
       trade = 0x01,
-      top = 0x02
+      top = 0x02,
+      full_book = 0x04
     };
 
     int value;
@@ -74,19 +89,41 @@ public:
 public:
   MarketData();
 
-  [[nodiscard]] const TickTrade& last() const { return _last; }
-  Book& book() { return _book; }
-
   void apply(TickTrade&);
   void apply(TickTop&);
+  void apply(TickBookSnapshot5&);
+
   void subscribe_events(std::function<void(EventType)>);
 
   [[nodiscard]] bool has_last() const { return _last.is_valid(); }
-  [[nodiscard]] bool has_bid_ask() const { return _book.is_valid(); }
 
+  [[nodiscard]] bool is_crossed() const { return _l1_bid.price >= _l1_ask.price; }
+
+  [[nodiscard]] double bid() const { return _l1_bid.price; }
+
+  [[nodiscard]] double ask() const { return _l1_ask.price; };
+
+  [[nodiscard]] double mid() const;
+
+  [[nodiscard]] const TickTrade& last() const { return _last; }
+
+
+  [[nodiscard]] double is_good() const {
+    return (bid() != 0.0) &&
+           (ask() != 0.0) &&
+           (!is_crossed()) &&
+           has_last();
+  }
+
+  [[nodiscard]] bool has_bid_ask() const { return (bid() != 0.0) &&
+                                                  (ask() != 0.0) &&
+                                                  (!is_crossed()); }
 private:
   TickTrade _last;
   Book _book;
+  Book::Level _l1_bid;
+  Book::Level _l1_ask;
+
   std::vector<std::function<void(EventType)>> _events_listeners;
 };
 

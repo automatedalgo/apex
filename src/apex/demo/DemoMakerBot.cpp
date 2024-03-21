@@ -118,7 +118,7 @@ void DemoMakerBot::manage_live_orders()
   // cancel was determined when the order was first created, and was stored in
   // the OrderExtraInfo structure associated with the order.
   for (auto& order : _order_cache.live_orders()) {
-    auto bid = market().book().best_bid_price;
+    auto bid = market().bid();
     auto auto_cancel_price =
       ((OrderExtraInfo*)order->user_data())->cancel_price;
 
@@ -169,7 +169,7 @@ void DemoMakerBot::manage_order_initiation()
   }
 
   // choose the order price
-  const auto ref_price = market().book().best_bid_price;
+  const auto ref_price = market().bid();
 
   const double raw_price =
     ref_price * (1.0 - (order_price_distance_pct / 100.0));

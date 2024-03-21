@@ -22,8 +22,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-MarketData::MarketData() {
-}
+MarketData::MarketData() = default;
 
 std::ostream& operator<<(std::ostream& os, MdStream& st)
 {
@@ -61,14 +60,58 @@ void MarketData::apply(TickTrade& t)
 }
 
 
-void MarketData::apply(TickTop& t)
+void MarketData::apply(TickTop& tick)
 {
-  _book.best_ask_price = t.ask_price;
-  _book.best_bid_price = t.bid_price;
+  _l1_bid.price = tick.bid_price;
+  _l1_bid.qty = tick.bid_qty;
+  _l1_ask.price = tick.ask_price;
+  _l1_ask.qty = tick.ask_qty;
+
   EventType mask = {};
   mask.value = EventType::top;
   for (auto& item : _events_listeners)
     item(mask);
+}
+
+
+void Book::apply(TickBookSnapshot5& tick)
+{
+  unsigned N = TickBookSnapshot5::N;
+
+  if (_bids.size() != N) {
+    _bids = std::vector<Level>(N, {0,0});
+    _asks = std::vector<Level>(N, {0,0});
+  }
+
+  for (std::size_t i = 0; i < 5; i++) {
+    _bids[i].price = tick.levels[i].bid_price;
+    _bids[i].qty = tick.levels[i].bid_qty;
+    _asks[i].price = tick.levels[i].ask_price;
+    _asks[i].qty = tick.levels[i].ask_qty;
+  }
+}
+
+
+void MarketData::apply(TickBookSnapshot5& tick)
+{
+  _book.apply(tick);
+
+  _l1_bid.price = tick.levels[0].bid_price;
+  _l1_bid.qty = tick.levels[0].bid_qty;
+  _l1_ask.price = tick.levels[0].ask_price;
+  _l1_ask.qty = tick.levels[0].ask_qty;
+
+  EventType mask(EventType::top | EventType::full_book);
+  for (auto& item : _events_listeners)
+    item(mask);
+}
+
+[[nodiscard]] double MarketData::mid() const
+{
+  if (bid() == 0.0 || ask() == 0.0)
+    return 0.0;
+  else
+    return (bid()+ask())/2.0;
 }
 
 } // namespace apex
