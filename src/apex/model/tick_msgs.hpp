@@ -20,6 +20,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/model/Order.hpp>
 #include <apex/util/Time.hpp>
 
+#include <array>
 #include <cmath>
 #include <limits>
 
@@ -43,12 +44,37 @@ struct TickTrade {
 
 // Represent a change to both sides of Level1 market data.
 struct TickTop {
-  double ask_price = nan;
-  double ask_qty = 0;
   double bid_price = nan;
   double bid_qty = 0;
+  double ask_price = nan;
+  double ask_qty = 0;
 };
 
+
+struct TickBookLevel
+{
+  double bid_price;
+  double bid_qty;
+  double ask_price;
+  double ask_qty;
+};
+
+
+struct TickBookSnapshot5
+{
+  static constexpr int N = 5;
+
+  Time xt = {};
+  Time et = {};
+  std::array<TickBookLevel, N> levels;
+};
+
+struct TickBookSnapshot25
+{
+  Time xt = {};
+  Time et = {};
+  std::array<TickBookLevel, 25> levels;
+};
 
 // logging utilities
 std::ostream& operator<<(std::ostream&, const TickTrade&);
