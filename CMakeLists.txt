@@ -155,5 +155,6 @@ add_subdirectory(src/tick-collector)
 add_subdirectory(src/apex)
 add_subdirectory(src/examples)
 add_subdirectory(src/tests)
+add_subdirectory(src/tools)
 
 #include(cmake/MakeDebPackages.cmake)
