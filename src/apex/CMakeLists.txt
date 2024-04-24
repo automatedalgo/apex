@@ -152,7 +152,8 @@ if (BUILD_STATIC_LIBS)
             uv
             curl
             protobuf3
-            OpenSSL::SSL)
+            OpenSSL::SSL
+            ZLIB::ZLIB)
 
     #add_dependencies(apexcore_static apexcore_json_static)
 
@@ -195,10 +196,7 @@ if (BUILD_SHARED_LIBS)
             curl
             protobuf3
             OpenSSL::SSL
-            ZLIB::ZLIB
-	    )
-    #apexcore_json_shared)
-    #add_dependencies(apexcore_shared apexcore_json_shared)
+            ZLIB::ZLIB)
 
     list(APPEND TO_INSTALL apexcore_shared)
 endif ()
