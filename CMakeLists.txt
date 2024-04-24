@@ -67,11 +67,10 @@ if (CMAKE_HOST_UNIX)
     #  endif()
 endif ()
 
-##
-## Try to find libssl
-##
-find_package(OpenSSL REQUIRED)
+# Find dependencies
 
+find_package(OpenSSL REQUIRED)
+find_package(ZLIB REQUIRED)
 
 ##
 ## Try to find libuv
@@ -96,12 +95,14 @@ set(HAVE_LIBCURL ON)
 
 message(STATUS "OpenSSL_INCLUDE_DIR:      " ${OPENSSL_INCLUDE_DIR})
 message(STATUS "OpenSSL_LIBRARIES:        " ${OPENSSL_LIBRARIES})
+message(STATUS "ZLIB_INCLUDE_DIRS:        " ${ZLIB_INCLUDE_DIRS})
+message(STATUS "ZLIB_LIBRARIES:           " ${ZLIB_LIBRARIES})
 message(STATUS "LIBUV_INCLUDE_DIRS:       " ${LIBUV_INCLUDE_DIRS})
 message(STATUS "LIBUV_LIBRARIES:          " ${LIBUV_LIBRARIES})
 message(STATUS "LIBCURL_INCLUDE_DIR:      " ${LIBCURL_INCLUDE_DIRS})
 message(STATUS "LIBCURL_LIBRARY:          " ${LIBCURL_LIBRARIES})
-message(STATUS "LIBPROTOBUF3_INCLUDE_DIR:      " ${LIBPROTOBUF3_INCLUDE_DIRS})
-message(STATUS "LIBPROTOBUF3_LIBRARY:          " ${LIBPROTOBUF3_LIBRARIES})
+message(STATUS "LIBPROTOBUF3_INCLUDE_DIR: " ${LIBPROTOBUF3_INCLUDE_DIRS})
+message(STATUS "LIBPROTOBUF3_LIBRARY:     " ${LIBPROTOBUF3_LIBRARIES})
 
 # configure a header file to pass some of the CMake settings
 # to the source code

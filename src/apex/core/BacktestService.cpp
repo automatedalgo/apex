@@ -439,25 +439,27 @@ BacktestService::BacktestService(Services* services, apex::Time replay_from,
 }
 
 
-BacktestService::~BacktestService()
-{
-}
+BacktestService::~BacktestService() = default;
 
 
 void BacktestService::create_tick_replayer(const Instrument& instrument,
                                            MarketData* mktdata,
                                            MdStream stream_type)
 {
-  std::string base_directory = _services->paths_config().tickdata / "bin1";
+
+  std::string tick_format = "tardis";
+  std::string base_directory = _services->paths_config().tickdata / "tardis";
 
   std::pair<Instrument, MdStream> key{instrument, stream_type};
 
-  auto sp = std::make_unique<TickReplayer>(base_directory, instrument, mktdata,
-                                           stream_type, _from, _upto, _dates);
+  auto sp = std::make_unique<TickReplayer>(base_directory,
+                                           tick_format,
+                                           instrument, mktdata, stream_type,
+                                           _from, _upto, _dates);
 
   auto file_count = sp->file_count();
   if (!file_count) {
-    THROW("no tick-data files found for stream"
+    THROW("no tick-data files found for stream "
           << instrument << "/" << stream_type
           << " for dates "
           << _dates.front().strftime("%Y/%m/%d") << " - "
@@ -481,6 +483,10 @@ void BacktestService::subscribe_canned_data(const Instrument& instrument,
   if (stream_params.mask == 0) {
     THROW("no market-data streams configured when subscribing to " << instrument);
   }
+
+  // To resolve the market data subscribe, we need information that tells us
+  // which set of tick-files to use, and which decoder to use.  This information
+  // will come from the application
 
   if (stream_params.mask & static_cast<int>(MdStream::AggTrades))
     create_tick_replayer(instrument, mktdata, MdStream::AggTrades);

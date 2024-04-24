@@ -101,6 +101,10 @@ list(APPEND LIB_APEX_SRC_FILES
         "backtest/TickFileReader.cpp"
         "backtest/TickFileWriter.hpp"
         "backtest/TickFileWriter.cpp"
+        "backtest/TardisCsvParsers.hpp"
+        "backtest/TardisCsvParsers.cpp"
+        "backtest/TardisFileReader.hpp"
+        "backtest/TardisFileReader.cpp"
         "backtest/TickbinMsgs.hpp"
         "backtest/TickbinMsgs.cpp"
         "core/Errors.hpp"
@@ -190,7 +194,9 @@ if (BUILD_SHARED_LIBS)
             uv
             curl
             protobuf3
-            OpenSSL::SSL)
+            OpenSSL::SSL
+            ZLIB::ZLIB
+	    )
     #apexcore_json_shared)
     #add_dependencies(apexcore_shared apexcore_json_shared)
 
