@@ -81,6 +81,8 @@ public:
   }
 
 
+  size_t order_count() const { return _pending_orders.size() + _live_orders.size(); }
+
 private:
   std::set<std::shared_ptr<apex::Order>> _pending_orders;
   std::set<std::shared_ptr<apex::Order>> _live_orders;
@@ -133,6 +135,7 @@ public:
   virtual void on_order_closed(Order&) {}
   virtual void on_order_fill(Order&) {}
 
+  size_t order_count() const { return _order_cache.order_count(); }
   Position& position() { return _position; }
   [[nodiscard]] const Position& position() const { return _position; }
 
@@ -168,11 +171,13 @@ public:
 
   EventLoop& event_loop();
 
+  const std::string& bot_typename() const {return _bot_typename; }
 protected:
   std::string ccy_value(const char* field, double size, double price);
 
   Services* _services;
   Strategy * _strategy;
+  std::string _bot_typename;
   Instrument _instrument;
   std::string _ticker;
   MarketData* _mkt = nullptr;

@@ -41,11 +41,10 @@ Bot::Bot(const std::string& bot_typename, Strategy* strategy,
          Instrument instrument)
   : _services(strategy->services()),
     _strategy(strategy),
+    _bot_typename(bot_typename),
     _instrument(std::move(instrument))
 {
-  // TODO: provide config to allow control over what ticker() to use, eg, could
-  // just use symbol, which is fine if we are on a single exchange.
-  bool include_bot_typename = true;
+  bool include_bot_typename = !bot_typename.empty();
 
   _ticker = _instrument.id();
   if (include_bot_typename)
@@ -263,11 +262,14 @@ std::shared_ptr<Order> Bot::create_order(
         case OrderState::init:
           break;
         case OrderState::sent:
-          return this->on_order_submitted(*ev.order);
+          this->on_order_submitted(*ev.order);
+          break;
         case OrderState::live:
-          return this->on_order_live(*ev.order);
+          this->on_order_live(*ev.order);
+          break;
         case OrderState::closed:
-          return this->on_order_closed(*ev.order);
+          this->on_order_closed(*ev.order);
+          break;
       }
     }
   });
@@ -307,10 +309,7 @@ double Bot::min_order_size(double price) const
 
 bool Bot::market_data_ok() const
 {
-  if (_mkt && _mkt->has_last() &&
-      (_mkt->book().best_ask_price != 0.0) &&
-      (_mkt->book().best_bid_price != 0.0) &&
-      (_mkt->book().best_bid_price < _mkt->book().best_ask_price))
+  if (_mkt && _mkt->is_good())
     return true;
 
   return false;
