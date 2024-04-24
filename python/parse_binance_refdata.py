@@ -26,7 +26,7 @@ log_warn_once_msgs = set()
 def log_warn_once(msg):
     if msg not in log_warn_once_msgs:
         log_warn_once_msgs.add(msg)
-        logging.warn(msg)
+        logging.warning(msg)
 
 
 def parse_binance_spot_exchange_info(fn):
