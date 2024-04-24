@@ -155,8 +155,6 @@ if (BUILD_STATIC_LIBS)
             OpenSSL::SSL
             ZLIB::ZLIB)
 
-    #add_dependencies(apexcore_static apexcore_json_static)
-
     list(APPEND TO_INSTALL apexcore_static)
 endif ()
 
