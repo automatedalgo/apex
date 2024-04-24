@@ -383,7 +383,7 @@ BinanceSession::BinanceSession(BaseExchangeSession::EventCallbacks callbacks,
   if (run_mode == RunMode::live)
   {
     if (secrets_file.empty()) {
-      throw std::runtime_error("API key file not provided, but is required for live run-mode");
+      throw std::runtime_error("Binance API key file not provided, but is required for live run-mode");
     }
     else {
       auto obj = json::parse(slurp(secrets_file.native().c_str()));
