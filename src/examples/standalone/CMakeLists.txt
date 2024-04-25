@@ -31,3 +31,4 @@ endmacro()
 
 Compile_Program(standalone_algo)
 Compile_Program(standalone_algo_backtest)
+Compile_Program(apex-demo-single-order)
