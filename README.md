@@ -40,7 +40,8 @@ guide](docs/installation.md), which covers how to setup a Linux box to support
 C++ development, and then follow the instructions to build the Apex code.
 
 Once the code is build you should then follow the [quick
-start](docs/quick_start.md) tutorial, which s
+start](docs/quick_start.md) tutorial, which shows how to start a simple program
+that can perform order send and cancel.
 
 ## Caution!
 
