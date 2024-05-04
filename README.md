@@ -35,13 +35,12 @@ code can be ported, in principle, to support Windows.
 
 ## How to get started
 
+To get started with Apex, you can begin by following the [installation
+guide](docs/installation.md), which covers how to setup a Linux box to support
+C++ development, and then follow the instructions to build the Apex code.
 
-To get started with Apex, you can begin by following the installation guide,
-which covers how to setup a Linux box to support C++ development, and then
-follow the instructions to build the Apex code.
-
-Once built there are a couple of basic demos that show how market data can be
-consumed and orders generated.
+Once the code is build you should then follow the [quick
+start](docs/quick_start.md) tutorial, which s
 
 ## Caution!
 
