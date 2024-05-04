@@ -44,10 +44,16 @@ RefDataService::RefDataService(Services* services, Config config)
   : _services(services)
 {
   auto default_path = _services->paths_config().refdata;
-  default_path = default_path / "assets" / "assets-latest.csv";
+  default_path = default_path / "instruments" / "instruments.csv";
 
-  auto filename = config.get_string("assets_csv", default_path.string());
-  load_assets(filename);
+  auto filename = config.get_string("instruments_csv", default_path.string());
+  try {
+    load_assets(filename);
+  }
+  catch (std::exception& e) {
+    LOG_ERROR("failed to initialse instrument ref-data: " << e.what());
+    throw;
+  }
 }
 
 Asset& RefDataService::find_or_create_asset(const std::string& venue,

@@ -26,9 +26,9 @@ python3 parse_binance_refdata.py
 # install into shared location
 
 echo installing files into ${APEX_HOME}
-path=${APEX_HOME}/data/refdata/assets/$(date +%Y%m%d)/assets-$(date +%Y%m%d).csv
+path=${APEX_HOME}/data/refdata/instruments/$(date +%Y%m%d)/instruments-$(date +%Y%m%d).csv
 
 
 mkdir -p $(dirname $path)
 cp -v tmp/binance_assets.csv "$path"
-cd ${APEX_HOME}/data/refdata/assets && ln -vsnf "$path" assets-latest.csv
+cd ${APEX_HOME}/data/refdata/instruments && ln -vsnf "$path" instruments.csv
