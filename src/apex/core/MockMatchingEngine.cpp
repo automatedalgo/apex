@@ -128,7 +128,7 @@ std::string MockMatchingEngine::add_order(const std::string& symbol,
 
   if (order->has_unsol_cancel_fn()) {
     _event_loop.dispatch(
-        std::chrono::seconds(15), [wp = order->weak_from_this(), this]() {
+        std::chrono::seconds(60), [wp = order->weak_from_this(), this]() {
           if (auto sp = wp.lock()) {
             if (this->remove_order(sp->client_order_id())) {
               LOG_INFO("mock: order unsol canceled: " << sp->client_order_id());
