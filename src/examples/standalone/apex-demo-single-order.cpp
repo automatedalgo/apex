@@ -28,7 +28,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 class OneOrderDemoBot : public apex::Bot
 {
 public:
-  std::shared_ptr<apex::Order> _order;
 
   OneOrderDemoBot(apex::Strategy* strategy, const apex::Instrument& instrument)
     : apex::Bot("OneOrderDemoBot", strategy, instrument) {}
@@ -38,12 +37,14 @@ public:
     // Every 1 second run the Bot logic, which is just an order if we already
     // have not, but if we have sent one, then cancel it.
     if (!_order)
-      create_and_send_order();
+      _create_and_send_order();
     else
-      cancel_existing_order();
+      _cancel_existing_order();
   }
 
-  void create_and_send_order()
+private:
+
+  void _create_and_send_order()
   {
     if (!market_data_ok() || !has_fx_rate()) {
       LOG_WARN(ticker() << ": waiting for market data");
@@ -73,7 +74,7 @@ public:
     _order->send();
   }
 
-  void cancel_existing_order()
+  void _cancel_existing_order()
   {
     if (!_order->is_closed_or_canceling()) {
       // The order is still 'live', so here we will manage it.  Our only
@@ -84,6 +85,8 @@ public:
       }
     }
   }
+
+  std::shared_ptr<apex::Order> _order;
 };
 
 int main()
@@ -111,7 +114,7 @@ int main()
     // ----- Strategy -----
 
     // create a Strategy object, which is a container for individual bots
-    apex::Strategy strategy(services.get(), "DEMO01");
+    apex::Strategy strategy(services.get(), "DEM01");
 
     // add a bot, which is responsible for trading a single name
     strategy.create_bot<OneOrderDemoBot>(apex::InstrumentQuery(
