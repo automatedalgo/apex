@@ -30,13 +30,14 @@ packages.
 
 ## Ubuntu
 
-On Ubuntu 22 you can run the following commands to install essential build packages:
+On Ubuntu 22 & 24 you can run the following commands to install essential build packages:
 
     sudo apt install git
     sudo apt install wget
     sudo apt install build-essential
     sudo apt install cmake
     sudo apt install libssl-dev
+    sudo apt install zlib1g-dev
     sudo apt install automake
     sudo apt install libtool
     sudo apt install autoconf
