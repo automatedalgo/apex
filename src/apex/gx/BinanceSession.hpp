@@ -150,22 +150,6 @@ private:
 
   std::unique_ptr<AccountStream> _account_stream;
 
-  // struct {
-  //   std::string md_host = "testnet.binance.vision";
-  //   int md_port = 443;
-  //   std::string md_path = "/ws";
-
-  //  //    wss://stream.binance.com:9443/ws	  | wss://testnet.binance.vision/ws
-
-  //   std::string user_host = "testnet.binance.vision";
-  //   int user_port = 443;
-  //   std::string user_path = "/ws";
-  //   int recv_window = 5000;
-
-  //   std::string api_endpoint = "https://testnet.binance.vision";
-  //   bool use_test = false;
-  // } _params;
-
   struct {
     std::string md_host = "stream.binance.com";
     int md_port = 9443;
@@ -186,9 +170,6 @@ private:
   std::string _user_api_secret;
 
   std::string _raw_capture_dir;
-
-  // connection health
-  ExchangeSessionHealth _order_session_health;
 
   enum class ServiceState {
     connecting,
