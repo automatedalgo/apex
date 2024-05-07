@@ -27,14 +27,17 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/util/Error.hpp>
 
 #include <unistd.h>
+#include <utility>
 #include <vector>
 #include <variant>
 #include <list>
 #include <fstream>
 #include <chrono>
-#include <string_view>
+#include <functional>
 
-/* Capture ticks related to a single instrument and single stream/channel. As as
+namespace apex {
+
+/* Capture ticks related to a single instrument and single stream/channel. As a
  base class this largely defines an interface that derived classes have to
  implement. */
 class BaseCollector {
@@ -46,34 +49,35 @@ public:
   // have not arrived for a specified interval, `stale_interval`
   bool is_stale;
 
-
   BaseCollector(std::string descr,
-                apex::StreamInfo info) :
+                StreamInfo info) :
     is_stale(false),
     _descr(std::move(descr)),
-    _info(info)
+    _info(std::move(info))
   {}
 
 
   virtual ~BaseCollector() = default;
 
-  virtual size_t tick_count() const = 0;
+  [[nodiscard]] virtual size_t tick_count() const = 0;
 
-  virtual apex::TickFileBucketId earliest_tick_bucket_id() const = 0;
+  [[nodiscard]] virtual size_t total_tick_count() const { return _count; }
+
+  [[nodiscard]] virtual apex::TickFileBucketId earliest_tick_bucket_id() const = 0;
 
   virtual size_t write_to_file(apex::TickbinFileWriter&) = 0;
 
-  const std::string & descr() const { return _descr; }
-  const apex::StreamInfo& info() const { return _info; }
-  apex::Time last_data_time() const { return _last_data; }
+  [[nodiscard]] const std::string & descr() const { return _descr; }
+  [[nodiscard]] const apex::StreamInfo& info() const { return _info; }
 
   // Time elapse since the most recent tick arrived
-  std::chrono::milliseconds duration_since_update() const {
+  [[nodiscard]] std::chrono::milliseconds duration_since_update() const {
     return apex::Time::realtime_now().as_epoch_ms() - _last_data.as_epoch_ms() ;
   }
 
 protected:
   apex::Time _last_data; // time last data arrived
+  size_t _count = 0; // count of ticks collected
 
 private:
   std::string _descr; // description, for logging purpose
@@ -100,6 +104,20 @@ public:
     return bucketid;
   }
 
+
+  size_t write_ticks_impl(TickbinFileWriter& file,
+                          std::function<size_t(T&)> write_fn) {
+    size_t byte_count = 0;
+    auto iter = this->_ticks.begin();
+    while (iter != _ticks.end() &&
+           (TickFileBucketId::from_time(iter->recv_time) == file.bucketid())) {
+      byte_count += write_fn(*iter);
+      iter++;
+    }
+    this->_ticks.erase(this->_ticks.begin(), iter);
+    return byte_count;
+  }
+
 protected:
   std::list<T> _ticks;
 };
@@ -110,16 +128,17 @@ struct CapturedVariantTick {
   std::variant<apex::TickTop, apex::TickTrade> tick;
 };
 
-// VariantCollector is able to collect streams of hetrogeneous tick types
+// VariantCollector is able to collect streams of heterogeneous tick types
 class VariantCollector : public BaseCollectorImpl<CapturedVariantTick> {
 public:
   VariantCollector(std::string descr, apex::StreamInfo info)
-    : BaseCollectorImpl<CapturedVariantTick>(std::move(descr), info) {
+    : BaseCollectorImpl<CapturedVariantTick>(std::move(descr), std::move(info)) {
   }
 
 
   template<typename T>
   void add_tick(apex::Time captured, const T& tick) {
+    _count++;
     this->_last_data = apex::Time::realtime_now();
     _ticks.push_back({captured, tick});
   }
@@ -136,26 +155,16 @@ public:
       return 0;
   }
 
-
-  size_t write(apex::TickbinFileWriter& file, CapturedVariantTick& item) {
-    size_t bytes = 0;
-
-    if ((bytes = this->write<apex::TickTop>(file, item)))
-      return bytes;
-    if ((bytes = this->write<apex::TickTrade>(file, item)))
-      return bytes;
-
-    throw std::runtime_error("cannot serialise collected tick, unsupportded tick variant");
-  };
-
-
   size_t write_to_file(apex::TickbinFileWriter& file) override {
-    size_t byte_count = 0;
-    for (auto & item : _ticks) {
-      byte_count += write(file, item);
-    }
-    _ticks.clear();
-    return byte_count;
+    auto write_fn= [&](CapturedVariantTick& item) ->size_t{
+      size_t bytes;
+      if ((bytes = this->write<apex::TickTop>(file, item)))
+        return bytes;
+      if ((bytes = this->write<apex::TickTrade>(file, item)))
+        return bytes;
+      throw std::runtime_error("cannot serialise collected tick, unsupported tick variant");
+    };
+    return this->write_ticks_impl(file, write_fn);
   }
 
 private:
@@ -179,29 +188,37 @@ public:
     : BaseCollectorImpl<CapturedSingleTick<T> > (std::move(descr), info) {}
 
   void add_tick(apex::Time captured, T& tick) {
+    this->_count++;
     this->_last_data = apex::Time::realtime_now();
     this->_ticks.push_back({captured, tick});
   }
 
   size_t write_to_file(apex::TickbinFileWriter& file) override {
-    size_t byte_count = 0;
-    for (auto & item : this->_ticks) {
-      auto bytes = apex::tickbin::Serialiser::serialise(item.recv_time, item.tick);
+
+    auto write_fn = [&]( CapturedSingleTick<T> & item) -> size_t {
+      auto bytes = apex::tickbin::Serialiser::serialise(item.recv_time,
+                                                        item.tick);
       file.write_bytes(&bytes[0], bytes.size());
-      byte_count += bytes.size();
-    }
-    this->_ticks.clear();
-    return byte_count;
+      return bytes.size();
+    };
+
+    return this->write_ticks_impl(file, write_fn);
   }
 };
 
+/* Apex tick collection service */
 
 class TickCollectorService {
 public:
+
+  // The location parameter is user text that can describe the geographic
+  // location of where the tick collector is running.  This is important because
+  // tick can arrive at different times based on how far away the tick
+  // collector is from the exchange.
   TickCollectorService(apex::Services* services,
                        std::string location)
     : _services{services},
-      _location(location),
+      _location(std::move(location)),
       _event_loop{_services->realtime_evloop()},
       _ioloop{_services->ioloop()}
   {
@@ -214,20 +231,20 @@ public:
 
   // add a new collector for a specified instrument
   void add_collector(std::string symbol, apex::ExchangeId exchange_id, std::string stream) {
-    apex::Instrument inst = _services->ref_data_service()->get_instrument({symbol, exchange_id});
-    apex::StreamInfo info{inst, stream};
+    apex::Instrument inst = _services->ref_data_service()->get_instrument({std::move(symbol), exchange_id});
+    apex::StreamInfo info{inst, std::move(stream)};
     this->add_stream_collector(info);
   }
 
   // add a stream-collector; this configures new object to capture a market-data
-  // stream (e.g. L1, Trades etc) for a specific Instrument
-  void add_stream_collector(apex::StreamInfo info) {
+  // stream (e.g. L1, Trades etc.) for a specific Instrument
+  void add_stream_collector(const apex::StreamInfo& info) {
     if (_streams_to_add.find(info) != std::end(_streams_to_add))
       throw std::runtime_error("cannot add duplicate collector");
     _streams_to_add.insert(info);
   }
 
-  const std::string& location() const { return _location; }
+  [[nodiscard]] const std::string& location() const { return _location; }
 
 private:
   std::pair<std::filesystem::path, std::filesystem::path>
@@ -245,6 +262,8 @@ private:
   std::unique_ptr<apex::SslContext> _ssl;
 
   std::map<apex::ExchangeId, std::shared_ptr<apex::BaseExchangeSession>> _exchange_sessions;
+
+  // container of tick collections pending creation
   std::set<apex::StreamInfo> _streams_to_add;
   std::vector<std::shared_ptr<BaseCollector>> _collectors;
 };
@@ -305,7 +324,9 @@ void TickCollectorService::check_collector_queues()
                                  meta);
 
     auto byte_count = collector->write_to_file(file);
-    LOG_INFO("wrote bytes: " << byte_count << ", stream: " << collector->descr());
+    LOG_INFO("stream: " << collector->descr() << ", file: " << file.full_path()
+             << ", wrote bytes: " << byte_count
+             << ", total ticks: " << collector->total_tick_count());
   }
 }
 
@@ -352,8 +373,8 @@ void TickCollectorService::setup_collector_l1(apex::BaseExchangeSession* sp,
 }
 
 
-/* For the various instruments this instance is configured to collect, create
- * the exchange sessions to which can subscribe to, to receive the market-data.
+/* For the various instruments this service is configured to collect, create the
+ * exchange sessions that will provide the underlying market data access.
  */
 void TickCollectorService::create_exchange_sessions() {
   for (auto & item : _streams_to_add)  {
@@ -400,12 +421,17 @@ void TickCollectorService::setup_collectors()
 }
 
 
-void TickCollectorService::start() {
+void TickCollectorService::start()
+{
+  // create the exchange-session components required by the tick collectors
   create_exchange_sessions();
+
+  // create the tick-collectors, which will immediately start collecting
   setup_collectors();
 
+  // create a period callback that will check the state of tick collectors,
+  // possibly leading to disk-writes
   auto save_internal = std::chrono::seconds(60);
-
   _event_loop->dispatch(
     save_internal,
     [this, save_internal]() -> std::chrono::milliseconds {
@@ -421,7 +447,7 @@ void TickCollectorService::start() {
       return save_internal;
     });
 }
-
+} // namespace
 
 int main(int , char** )
 {
@@ -432,8 +458,6 @@ int main(int , char** )
     apex::Logger::instance().set_detail(true);
     apex::Logger::instance().register_thread_id("main");
 
-    LOG_INFO("application built: " << apex::Services::build_datetime());
-
     // Create core-services configured for paper trading, which provides
     // real-time a real time event loop and market-data but no access to
     // production trading.
@@ -441,7 +465,7 @@ int main(int , char** )
 
     // capture location of the collection;
     auto location = "london";
-    TickCollectorService tick_collector_svc(services.get(), location);
+    apex::TickCollectorService tick_collector_svc(services.get(), location);
 
     tick_collector_svc.add_collector("ETHUSDT", apex::ExchangeId::binance, "l1");
     tick_collector_svc.add_collector("ETHUSDT", apex::ExchangeId::binance, "aggtrades");
@@ -452,15 +476,14 @@ int main(int , char** )
     tick_collector_svc.add_collector("BTCUSDT", apex::ExchangeId::binance, "l1");
     tick_collector_svc.add_collector("BTCUSDT", apex::ExchangeId::binance, "aggtrades");
 
-    tick_collector_svc.add_collector("BTCBUSD", apex::ExchangeId::binance, "l1");
-    tick_collector_svc.add_collector("BTCBUSD", apex::ExchangeId::binance, "aggtrades");
-
     tick_collector_svc.add_collector("BNBUSDT", apex::ExchangeId::binance, "l1");
     tick_collector_svc.add_collector("BNBUSDT", apex::ExchangeId::binance, "aggtrades");
 
     tick_collector_svc.add_collector("ADAUSDT", apex::ExchangeId::binance, "l1");
     tick_collector_svc.add_collector("ADAUSDT", apex::ExchangeId::binance, "aggtrades");
 
+    // start the collector service after the various streams have been
+    // configured.
     tick_collector_svc.start();
 
     while (true) {
