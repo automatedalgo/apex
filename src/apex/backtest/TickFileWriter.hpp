@@ -37,6 +37,8 @@ public:
 
   void write_bytes(char* buf, size_t size);
 
+  [[nodiscard]] std::filesystem::path full_path() const { return _dirname/_filename; }
+
 private:
   TickFileBucketId _bucketid;
   std::filesystem::path _dirname;

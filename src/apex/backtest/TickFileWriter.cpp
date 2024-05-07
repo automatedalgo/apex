@@ -36,9 +36,7 @@ TickbinFileWriter::TickbinFileWriter(
     _filename(std::move(filename)
       ) {
   std::filesystem::path dir = _dirname;
-  auto full_path = _dirname / _filename;
-
-  if (!std::filesystem::exists(full_path)) {
+  if (!std::filesystem::exists(full_path())) {
     std::error_code err;
     auto created = fs::create_directories(dir, err);
     if (err) {
@@ -76,7 +74,7 @@ TickbinFileWriter::TickbinFileWriter(
     strcpy(&preamble[0], tick_version.c_str());
 
     // write the preamble region size
-    snprintf(&preamble[8], 8, "%07u", preamble_size);
+    snprintf(&preamble[8], 8, "%07lu", preamble_size);
 
     // write the json meta data
     strncpy(&preamble[16], meta_str.c_str(), 1024 - 16);
@@ -85,13 +83,13 @@ TickbinFileWriter::TickbinFileWriter(
     assert(preamble[preamble_size-1] == '\0');
 
     // --- Write to file
-    LOG_INFO("creating tick-bin file: " << full_path);
-    auto file = std::ofstream(full_path, std::ios::binary);
+    LOG_INFO("creating tick-bin file: " << full_path());
+    auto file = std::ofstream(full_path(), std::ios::binary);
     file.write(preamble.data(), preamble_size);
     file.close();
   }
 
-  _ostream = std::make_unique<std::ofstream>(full_path, std::ios::binary | std::ios::app);
+  _ostream = std::make_unique<std::ofstream>(full_path(), std::ios::binary | std::ios::app);
 }
 
 TickbinFileWriter::~TickbinFileWriter()
