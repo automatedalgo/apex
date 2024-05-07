@@ -25,7 +25,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <fstream>
 
 #include <unistd.h>
-#include <errno.h>
+#include <cerrno>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -59,7 +59,7 @@ public:
   {
   }
 
-  ~TickbinDecoder() {}
+  ~TickbinDecoder() = default;
 
   virtual apex::Time get_next_event_time() const {
     tickbin::Header* head = reinterpret_cast<tickbin::Header*>(_head);
@@ -168,7 +168,7 @@ TickFileReader::TickFileReader(std::filesystem::path fn,
   }
 
   // obtain file size
-  struct stat stat_buf;
+  struct stat stat_buf{};
   if (fstat(fd, &stat_buf) < 0) {
     THROW("fstat failed, file " << fn << ", errno " << errno);
   }
@@ -208,7 +208,7 @@ TickFileReader::TickFileReader(std::filesystem::path fn,
 }
 
 
-TickFileReader::~TickFileReader() {}
+TickFileReader::~TickFileReader() = default;
 
 void TickFileReader::wind_forward(apex::Time t)
 {
@@ -257,9 +257,7 @@ void TickFileReader::consume_next_event() {
 
 std::tuple<size_t, json> TickFileReader::parse_mmap_header(char* ptr)
 {
-  char* const start = ptr;
   auto tickbin_header = decode_tickbin_file_header(ptr);
-  ptr += TickbinHeader::header_lead_length;
 
   auto meta = json::parse(ptr + TickbinHeader::header_lead_length,
                           ptr + tickbin_header.length);
