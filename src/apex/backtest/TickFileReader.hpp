@@ -76,6 +76,10 @@ struct TickFileBucketId {
     snprintf(buf, sizeof(buf), "%04d%02d%02d", year, month, day);
     return buf;
   };
+
+  bool operator==(const TickFileBucketId& rhs) const {
+    return (year == rhs.year) && (month == rhs.month) && (day == rhs.day);
+  }
 };
 
 
