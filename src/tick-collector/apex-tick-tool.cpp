@@ -17,8 +17,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/backtest/TickFileWriter.hpp>
 #include <apex/backtest/TickbinMsgs.hpp>
-#include <apex/gx/BinanceSession.hpp>
-#include <apex/infra/SocketAddress.hpp>
 #include <apex/infra/TcpSocket.hpp>
 #include <apex/util/Error.hpp>
 #include <apex/util/json.hpp>
@@ -94,8 +92,9 @@ int main(int argc, char** argv)
     md.subscribe_events([&](MarketData::EventType et){
       if (et.is_trade()) {
         auto last = md.last();
-        std::cout << "i " << inst_id << "; " << "mt trade; et " << last.et << "; tp "
-                  << last.price << "; ts " << last.qty << "\n";
+        std::cout << "i " << inst_id << "; " << "mt trade; et " << last.et
+                  << "; tp " << format_double(last.price, true)
+                  << "; ts " << format_double(last.qty, true) << "\n";
       }
       if (et.is_top()) {
         std::cout << "got TOP event\n";
