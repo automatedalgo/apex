@@ -21,7 +21,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/util/Config.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
 #include <apex/core/Logger.hpp>
-#include <apex/core/MockMatchingEngine.hpp>
 #include <apex/core/Services.hpp>
 #include <apex/model/Order.hpp>
 
@@ -147,8 +146,7 @@ public:
          }
          return false; // don't terminate the curl eventloop
        },
-         [] { apex::Logger::instance().register_thread_id("curl"); }),
-       _mock_engine(run_mode == RunMode::paper ? std::make_unique<MockMatchingEngine>(event_loop) : nullptr)
+         [] { apex::Logger::instance().register_thread_id("curl"); })
   {
   }
 
@@ -162,17 +160,12 @@ public:
     });
   }
 
-  std::unique_ptr<MockMatchingEngine>& mock_matching_engine()
-  {
-    return _mock_engine;
-  }
 
 protected:
   RealtimeEventLoop& _event_loop;
   IoLoop* _ioloop;
   SslContext* _ssl;
   RealtimeEventLoop _curl_requests;
-  std::unique_ptr<MockMatchingEngine> _mock_engine;
 };
 
 } // namespace apex

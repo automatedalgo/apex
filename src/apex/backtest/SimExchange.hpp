@@ -18,39 +18,47 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
 #include <apex/util/Time.hpp>
+#include <apex/util/json.hpp>
 #include <apex/model/MarketData.hpp>
+#include <apex/model/ExchangeId.hpp>
+#include <apex/model/Instrument.hpp>
 #include <apex/core/OrderRouter.hpp>
 
-#include <list>
-#include <memory>
-#include <map>
+#include <filesystem>
 
 namespace apex
 {
 
-class TickReplayer;
 
-class BacktestService
+class Services;
+class Instrument;
+class MarketData;
+class BacktestService;
+class Instrument;
+class SimLimitOrder;
+class SimOrderBook;
+
+
+class SimExchange : public OrderRouter
 {
 public:
-  BacktestService(Services*, apex::Time replay_from, apex::Time replay_upto);
-  ~BacktestService();
-  void subscribe_canned_data(const Instrument&, MarketData*, MdStreamParams stream_params);
+  SimExchange(Services*);
+
+  ~SimExchange() override;
+
+  void send_order(Order&) override;
+  void cancel_order(Order&) override;
+  bool is_up() const override;
+
+  void add_instrument(const Instrument&);
 
 private:
-
-  void create_tick_replayer(const Instrument& instrument,
-                            MarketData* mktdata,
-                            MdStream stream_type);
-
+  using ExtOrderId = std::string;
   Services* _services;
-  apex::Time _from;
-  apex::Time _upto;
-  std::list<Time> _dates;
-
-  std::map<std::pair<Instrument, MdStream>,
-           std::unique_ptr<TickReplayer>> _replayers;
+  std::map<ExtOrderId, std::shared_ptr<SimLimitOrder>> _all_orders;
+  std::map<Instrument, std::unique_ptr<SimOrderBook>> _books;
 };
+
 
 
 } // namespace apex

@@ -191,30 +191,6 @@ std::string to_binance(TimeInForce tif)
   }
 }
 
-json construct_mock_cancel_reject(MockRequestError::ErrorCode error_code,
-                                  std::string error_text)
-{
-  json msg;
-  switch (error_code) {
-    case MockRequestError::ErrorCode::order_not_found: {
-      msg["code"] = -2011;
-      msg["msg"] = "Unknown order sent.";
-      break;
-    }
-    case MockRequestError::ErrorCode::lot_size: {
-      msg["code"] = -1013;
-      msg["msg"] = "Filter failure: LOT_SIZE.";
-      break;
-    }
-    default: {
-      msg["code"] = -1;
-      msg["msg"] = error_text;
-    }
-  }
-  msg["_mock"] = true;
-  return msg;
-}
-
 std::string serialise_msg(json msg)
 {
   std::ostringstream oss;
@@ -515,10 +491,6 @@ void BinanceSession::subscribe_trades(Symbol sym, subscription_options,
           tick.qty = std::stod(get_string_field(*data, "q"));
           tick.aggr_side = buyer_market_maker_to_aggrSide(get_bool(*data, "m"));
           callback(tick);
-
-          if (auto mock_engine = sp->mock_matching_engine().get()) {
-            mock_engine->apply_trade(sym.native, tick.price, tick.qty);
-          }
         }
       }
     }
@@ -1156,24 +1128,11 @@ void BinanceSession::cancel_order(std::string symbol, std::string order_id,
                                   SubmitOrderCallbacks callbacks)
 {
   if (is_paper_trading()) {
-    run_on_evloop([=](BinanceSession* self) {
-      auto mock_engine = mock_matching_engine().get();
-      try {
-        mock_engine->cancel_order(order_id);
-        auto msg = binance::construct_mock_cancel_order_ack(order_id);
-        self->on_cancel_order_reply(binance::serialise_msg(msg), "", callbacks);
-      } catch (MockRequestError& e) {
-        auto msg = binance::construct_mock_cancel_reject(e.code, e.what());
-        self->on_cancel_order_reply(binance::serialise_msg(msg), "", callbacks);
-      }
-    });
-
+    LOG_WARN("cancel-order not valid for paper-trading");
     return;
   }
 
-
   auto path = "/api/v3/order";
-
   auto timestamp = binance::build_timestamp();
 
   /* build the request body */
@@ -1208,43 +1167,9 @@ void BinanceSession::submit_order(OrderParams params,
                                   SubmitOrderCallbacks callbacks)
 {
   if (is_paper_trading()) {
-
-    run_on_evloop([=](BinanceSession* self) {
-      auto on_fill = [params, wp = weak_from_this()](double fill_qty,
-                                                     bool fully_filled) {
-        if (auto sp = wp.lock()) {
-          auto fill = binance::construct_mock_fill(
-              params.order_id, params.price, fill_qty, fully_filled);
-          sp->on_userdata_msg(fill);
-        }
-      };
-
-      auto on_unsol_cancel= [params, wp = weak_from_this()]() {
-        if (auto sp = wp.lock()) {
-          auto msg = binance::construct_mock_unsol_cancel(params.order_id);
-          sp->on_userdata_msg(msg);
-        }
-      };
-
-      auto engine = self->mock_matching_engine().get();
-      auto error =
-          engine->add_order(params.symbol, params.order_id, params.size,
-                            params.price, params.side, on_fill, on_unsol_cancel);
-      if (error.empty()) {
-        auto new_order_reply = binance::construct_mock_new_order_reply(
-            params.order_id, params.price, params.size);
-
-        std::ostringstream oss;
-        oss << new_order_reply;
-        self->on_new_order_reply(oss.str(), callbacks);
-      } else {
-        callbacks.on_rejected(error::e0102, error);
-      }
-    });
-
+    LOG_WARN("submit-order not valid for paper-trading");
     return;
   }
-
 
   auto path = endpoint("/api/v3/order");
 
@@ -1465,8 +1390,6 @@ void BinanceSession::on_userdata_msg(json msg)
       LOG_WARN("unhandled Binance user-data message: " << event_type_str);
       break;
     }
-
-
   }
 }
 

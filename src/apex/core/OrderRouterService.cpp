@@ -21,6 +21,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/core/OrderRouterService.hpp>
 #include <apex/core/Services.hpp>
 #include <apex/util/Error.hpp>
+#include <apex/backtest/SimExchange.hpp>
 
 #include <memory>
 #include <cassert>
@@ -33,13 +34,30 @@ OrderRouterService::OrderRouterService(Services* services) :
 {
 }
 
+OrderRouterService::~OrderRouterService() {
+}
+
 /* Get an OrderRouter object for sending orders to the provided exchange, and
  * this is configured with the provided strategy_id. */
 OrderRouter* OrderRouterService::get_order_router(Instrument& instrument,
                                                   const std::string& strategy_id)
 {
-  if (_services->is_backtest()) {
-    return _services->backtest_service()->get_order_router(instrument);
+
+  if (_services->run_mode() == RunMode::paper || _services->run_mode() == RunMode::backtest) {
+    // create/obtain an exchange simulator
+    auto iter = _sim_exchanges.find(instrument.exchange_id());
+    if (iter == std::end(_sim_exchanges)) {
+      bool inserted = false;
+      std::tie(iter, inserted) = _sim_exchanges.insert({instrument.exchange_id(),
+                                                        std::make_unique<SimExchange>(_services)});
+      if (inserted) {
+        LOG_INFO("created exchange-simulator for " << QUOTE(instrument.exchange_name()));
+      }
+    }
+
+    // add our instrument to the exchange simulator
+    iter->second->add_instrument(instrument);
+    return iter->second.get();
   }
   else {
     auto exchange = instrument.exchange_id();

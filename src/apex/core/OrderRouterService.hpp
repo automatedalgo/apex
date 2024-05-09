@@ -28,12 +28,13 @@ namespace apex
 class Services;
 class OrderRouter;
 class Instrument;
+class SimExchange;
 
 class OrderRouterService
 {
 public:
   explicit OrderRouterService(Services*);
-
+  ~OrderRouterService();
   /* Get an OrderRouter object for sending orders to the provided exchange, and
    * this is configured with the provided strategy_id. */
   OrderRouter* get_order_router(Instrument&,
@@ -42,7 +43,11 @@ public:
 private:
   Services* _services;
 
+  // order router services for live trading
   std::map<std::pair<ExchangeId, std::string>, std::unique_ptr<OrderRouter>> _routers;
+
+  // order routers for simulation (paper-trading & backtest)
+  std::map<ExchangeId, std::unique_ptr<SimExchange>> _sim_exchanges;
 };
 
 }

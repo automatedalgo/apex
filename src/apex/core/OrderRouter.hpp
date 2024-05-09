@@ -47,6 +47,7 @@ private:
 
 class OrderRouter {
 public:
+  virtual ~OrderRouter() = default;
   virtual void send_order(Order&) = 0;
   virtual void cancel_order(Order&) = 0;
   virtual bool is_up() const = 0;
