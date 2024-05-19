@@ -15,8 +15,6 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/backtest/TickFileReader.hpp>
-#include <apex/backtest/TickbinMsgs.hpp>
 #include <apex/backtest/SimExchange.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/model/tick_msgs.hpp>
@@ -28,6 +26,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/core/Errors.hpp>
 
 #include <iostream>
+#include <utility>
 
 namespace apex
 {
@@ -102,7 +101,7 @@ SimLimitOrder::SimLimitOrder(Order& order,
                              double size,
                              double price,
                              Side side)
-  : _ext_order_id(ext_order_id),
+  : _ext_order_id(std::move(ext_order_id)),
     _size(size),
     _price(price),
     _side(side),
