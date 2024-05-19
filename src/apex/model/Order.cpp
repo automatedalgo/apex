@@ -38,6 +38,11 @@ const char * to_string(OrderState s) {
   }
 }
 
+std::ostream& operator<<(std::ostream& os, OrderState s) {
+  os << to_string(s);
+  return os;
+}
+
 const char * to_string(Side s) {
   switch (s) {
     case Side::none : return "none";

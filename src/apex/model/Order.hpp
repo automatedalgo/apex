@@ -68,6 +68,7 @@ enum class OrderState : unsigned int {
   live,
   closed
 };
+std::ostream& operator<<(std::ostream&, OrderState);
 
 const char * to_string(OrderState);
 
