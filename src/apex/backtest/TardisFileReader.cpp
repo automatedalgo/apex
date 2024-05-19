@@ -66,7 +66,7 @@ TardisFileReader::TardisFileReader(std::filesystem::path fn,
 
 TardisFileReader::~TardisFileReader()
 {
-  LOG_INFO("event count: " << _event_count);
+  // LOG_INFO("event count: " << _event_count);
 }
 
 
