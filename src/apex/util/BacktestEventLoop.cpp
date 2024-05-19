@@ -189,9 +189,9 @@ void BacktestEventLoop::update_current_time(Time t)
       _timers->schedule_pending_timers(t);
     }
     else if (t < _current) {
-      LOG_WARN("attempt to set backtest time backwards, from now: "
-               << _current << ", to: " << t);
-      throw std::runtime_error("backtest time cannot go backwards");
+      LOG_WARN("tick-data event time is in the past; now: "
+               << _current << ", event-time: " << t);
+      //throw std::runtime_error("backtest time cannot go backwards");
     }
 
     _current = t;
