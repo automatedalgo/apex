@@ -31,26 +31,16 @@ namespace apex
 
 class Bot;
 class Instrument;
+class Auditor;
 
 class Strategy
 {
 public:
-  Strategy(apex::Services* services, Config config)
-    : _services(services),
-      _config(config),
-      _strategy_id(config.get_string("code"))
-  {
-    validate_strategy_id(_strategy_id);
-  }
+  Strategy(apex::Services* services, Config config);
 
-  Strategy(apex::Services* services, std::string strategy_id)
-    : _services(services), _strategy_id(std::move(strategy_id))
-  {
-    validate_strategy_id(_strategy_id);
-  }
+  Strategy(apex::Services* services, std::string strategy_id);
 
-  Strategy(std::unique_ptr<apex::Services>& services, std::string strategy_id)
-    : Strategy(services.get(), std::move(strategy_id)) {  }
+  Strategy(std::unique_ptr<apex::Services>& services, std::string strategy_id);
 
   virtual Bot* construct_bot(const Instrument&)
   {
@@ -83,6 +73,8 @@ public:
 
   Services* services() { return _services; }
 
+  Auditor* auditor() { return _auditor.get(); }
+
 protected:
   std::set<std::string> parse_flat_instruments_config();
   void stop_bots();
@@ -91,7 +83,8 @@ protected:
   Config _config;
   std::string _strategy_id;
   std::map<apex::Instrument, std::unique_ptr<Bot>> _bots;
-};
 
+  std::unique_ptr<Auditor> _auditor;
+};
 
 } // namespace apex

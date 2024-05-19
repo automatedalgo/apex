@@ -73,6 +73,8 @@ list(APPEND LIB_APEX_SRC_FILES
         "model/Instrument.cpp"
         "model/StrategyId.hpp"
         "model/StrategyId.cpp"
+        "core/Auditor.hpp"
+        "core/Auditor.cpp"
         "core/BacktestService.hpp"
         "core/BacktestService.cpp"
         "core/OrderRouterService.hpp"

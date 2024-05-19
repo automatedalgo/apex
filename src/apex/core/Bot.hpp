@@ -162,8 +162,14 @@ public:
 
   double net_position_usd() const {
     return (has_last_price() && has_fx_rate())?
-      _position.net() * last_price() * fx_rate() : apex::nan;
+      _position.net_qty() * last_price() * fx_rate() : apex::nan;
   }
+
+  double pnl_usd() const {
+    return (has_last_price() && has_fx_rate())?
+      _position.total_pnl(last_price()) * fx_rate() : apex::nan;
+  }
+
 
   bool is_stopping();
   void stop();

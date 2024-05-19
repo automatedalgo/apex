@@ -152,7 +152,7 @@ void DemoMakerBot::manage_order_initiation()
     return;
   }
 
-  const auto cur_pos_usd = position().net() * market().last().price * fx_rate();
+  const auto cur_pos_usd = position().net_qty() * market().last().price * fx_rate();
   const auto distance_usd = _target_position_usd - cur_pos_usd;
 
   // limit single order size to some fraction of our target position

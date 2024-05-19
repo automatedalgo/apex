@@ -23,25 +23,11 @@ namespace apex
 
 Position::Position(double startup)
   : _startup(startup),
-    _traded_long(0),
-    _traded_short(0),
-    _live_long(0),
-    _live_short(0)
+    _buy_qty(0),
+    _sell_qty(0),
+    _buy_cost(0),
+    _sell_cost(0)
 {
-}
-
-
-double Position::net() const { return _startup + _traded_long - _traded_short; }
-
-void Position::apply_fill(Side s, double qty)
-{
-  if (s == Side::buy) {
-    _traded_long += qty;
-  } else if (s == Side::sell) {
-    _traded_short += qty;
-  } else {
-    LOG_ERROR("cannot apply fill to position, because side not set");
-  }
 }
 
 } // namespace apex

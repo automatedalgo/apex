@@ -24,6 +24,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/core/PersistenceService.hpp>
 #include <apex/core/Services.hpp>
 #include <apex/core/Strategy.hpp>
+#include <apex/core/Auditor.hpp>
 #include <apex/model/Position.hpp>
 #include <apex/util/Error.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
@@ -64,7 +65,7 @@ void Bot::init(double initial_position)
 {
   _position = Position(initial_position);
   LOG_INFO(ticker() << ": initialising bot, startup-position:"
-                    << _position.net());
+                    << _position.net_qty());
 
   // setup market data subscription
   _mkt = _services->market_data_service()->find_market_data(_instrument);
@@ -197,9 +198,25 @@ std::shared_ptr<Order> Bot::create_order(
   order->events().subscribe([this](OrderEvent ev) {
     // update internal model
     if (ev.is_fill()) {
-      this->_position.apply_fill(ev.order->side(), ev.order->last_fill().size);
+      this->_position.apply_fill(ev.order->side(), ev.order->last_fill().size,
+                                 ev.order->last_fill().price);
       _services->persistence_service()->persist_instrument_positions(
-          "XYZ", ev.order->instrument(), _position.net());
+          "XYZ", ev.order->instrument(), _position.net_qty());
+    }
+
+    if (this->_strategy->auditor()) {
+      this->_strategy->auditor()->add_transaction(
+        _services->now(),
+        this->_strategy->strategy_id(),
+        ev,
+        "EVENT",
+        this->_position,
+        this->_mkt,
+        has_fx_rate()? fx_rate() : 0.0,
+        ev.is_fill(),
+        ev.order->last_fill().size,
+        ev.order->last_fill().price
+        );
     }
 
     // logging - either it's a fill event or state event
@@ -217,8 +234,8 @@ std::shared_ptr<Order> Bot::create_order(
                    << ", xprice:" << format_double(fill.price, true)
                    << ", xqty:" << format_double(fill.size, true)
                    << ccy_value("xqtyUsd", fill.size, fill.price)
-                   << ", pos:" << _position.net()
-                   << ccy_value("posUsd", _position.net(), ev.order->price())
+                   << ", pos:" << _position.net_qty()
+                   << ccy_value("posUsd", _position.net_qty(), ev.order->price())
                    << ", exchId:" << ev.order->exch_order_id()
         );
     } else if (ev.is_state_change()) {
@@ -243,8 +260,8 @@ std::shared_ptr<Order> Bot::create_order(
                  << ", qty:" << format_double(ev.order->size(), true)
                  << ccy_value("qtyUsd", ev.order->size(), ev.order->price())
                  << ", qdone:" << format_double(ev.order->filled_size(), true)
-                 << ", pos:" << _position.net()
-                 << ccy_value("posUsd", _position.net(), ev.order->price())
+                 << ", pos:" << _position.net_qty()
+                 << ccy_value("posUsd", _position.net_qty(), ev.order->price())
                  << (has_exchId? ", exchId:" : "")
                  << (has_exchId? ev.order->exch_order_id() : "")
                  );

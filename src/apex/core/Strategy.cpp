@@ -22,6 +22,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/core/Bot.hpp>
 #include <apex/core/GatewayService.hpp>
 #include <apex/core/Logger.hpp>
+#include <apex/core/Auditor.hpp>
 #include <apex/util/Error.hpp>
 
 #include <future>
@@ -29,7 +30,33 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-Strategy::~Strategy() {
+  Strategy::Strategy(apex::Services* services,
+                   Config config)
+    : _services(services),
+      _config(config),
+      _strategy_id(config.get_string("code"))
+  {
+    validate_strategy_id(_strategy_id);
+    _auditor = std::make_unique<Auditor>(_services);
+  }
+
+  Strategy::Strategy(apex::Services* services,
+                     std::string strategy_id)
+    : _services(services),
+      _strategy_id(std::move(strategy_id))
+  {
+    validate_strategy_id(_strategy_id);
+    _auditor = std::make_unique<Auditor>(_services);
+  }
+
+  Strategy::Strategy(std::unique_ptr<apex::Services>& services,
+                     std::string strategy_id)
+    : Strategy(services.get(),
+               std::move(strategy_id))
+  {
+  }
+
+  Strategy::~Strategy() {
   this->stop();
 }
 

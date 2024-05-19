@@ -24,23 +24,60 @@ namespace apex
 
 class Position
 {
-  // position loaded from external persistence at startup
-  double _startup;
-
-  // accumulated traded quantity
-  double _traded_long;
-  double _traded_short;
-
-  // live positions, not yet traded; used to arrive theo positions
-  double _live_long;
-  double _live_short;
-
 public:
   explicit Position(double startup = 0.0);
 
-  [[nodiscard]] double net() const;
+  double net_qty() const {
+    return _startup + _buy_qty - _sell_qty;
+  }
 
-  void apply_fill(Side, double qty);
+  // Quantity bought, in base asset units
+  double buy_qty() const { return _buy_qty; }
+
+  // Quantity sold, in base asset units
+  double sell_qty() const { return _sell_qty; }
+
+  // Cost of all buys, in asset currency
+  double buy_cost() const { return _buy_cost; }
+
+  // Cost of all sells, in asset currency
+  double sell_cost() const { return _sell_cost; }
+
+  // Total turnover traded, in asset currency
+  double total_turnover(double mark_price) const {
+    return (_sell_cost + _buy_cost)
+      + abs((_buy_qty - _sell_qty)) * mark_price;
+  }
+
+  double total_pnl(double mark_price) const {
+    return (_sell_cost - _buy_cost)
+      + (_buy_qty - _sell_qty) * mark_price;
+  }
+
+  void apply_fill(Side side, double qty, double price)
+  {
+    if (side == Side::buy) {
+      _buy_qty += qty;
+      _buy_cost += qty*price;
+    }
+    else if (side == Side::sell) {
+      _sell_qty += qty;
+      _sell_cost += qty*price;
+    }
+  }
+
+private:
+
+  // position loaded from external persistence at startup
+  double _startup;
+
+  // total quantities bought & sold, during current session
+  double _buy_qty;
+  double _sell_qty;
+
+  // total value bought & sold, during current session, in the asset ccy
+  double _buy_cost;
+  double _sell_cost;
 };
 
 } // namespace apex
