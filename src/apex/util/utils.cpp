@@ -29,7 +29,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <cxxabi.h>
 #include <pwd.h>
 #include <unistd.h>
-#include <signal.h>
+#include <csignal>
 #include <future>
 
 namespace apex
@@ -42,7 +42,7 @@ std::vector<std::string> split(const std::string_view& s, char d)
     size_t p = 0;
     while (true) {
       size_t e = s.find(d, p);
-      items.push_back(std::string(s.substr(p, e-p)));
+      items.emplace_back(s.substr(p, e-p));
       if (e == std::string::npos)
         break;
       else
@@ -90,7 +90,7 @@ std::string utc_timestamp_condensed(bool add_fraction)
   assert(sizeof buf > (sizeof full_format));
   assert(sizeof full_format > sizeof shrt_format);
 
-  struct tm parts;
+  struct tm parts = {};
   time_t rawtime = tv.sec;
 
 #ifndef _WIN32
@@ -199,7 +199,7 @@ std::string HMACSHA256_base4(const char* key, int keylen, const char* msg,
   return to_hex(md, mdlen);
 }
 
-void log_message_exception(const char* source, std::string data)
+void log_message_exception(const char* source, const std::string& data)
 {
   try {
     throw;
@@ -216,7 +216,6 @@ std::string format_double(double d, bool trim_zeros, int precision)
 {
   char buf[256] = {};
   int written = snprintf(buf, sizeof(buf) - 1, "%.*f", precision, d);
-
 
   // TODO: unit test this!
   if (written > 0 && trim_zeros) // 50.02000###
@@ -244,8 +243,8 @@ std::string str_tolower(std::string s)
 }
 
 
-void write_json_message(const std::string& dir, std::string msgtype,
-                        std::string raw)
+void write_json_message(const std::string& dir, const std::string& msgtype,
+                        const std::string& raw)
 {
   try {
     auto msg = json::parse(raw);
@@ -350,7 +349,7 @@ double ScaledInt::round(double d) const
 */
 
 
-void create_dir(std::filesystem::path dir)
+void create_dir(const std::filesystem::path& dir)
 {
   std::error_code err;
   auto created = std::filesystem::create_directories(dir, err);
@@ -442,5 +441,15 @@ RunMode parse_run_mode(const std::string& s)
   throw std::runtime_error(oss.str());
 }
 
+
+std::filesystem::path apex_home() {
+  // the APEX_HOME environment variable can be used to customise where Apex
+  // finds all the files it needs (such as tickdata, refdata, positions etc)
+  const char * home_var = "APEX_HOME";
+  const char * custom_base = std::getenv(home_var);
+  std::string default_root = "apex";
+  std::filesystem::path result = (custom_base)? custom_base : apex::user_home_dir() / "apex";
+  return result;
+}
 
 } // namespace apex

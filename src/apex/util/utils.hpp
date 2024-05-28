@@ -51,7 +51,7 @@ enum class connect_mode { active, passive };
  */
 std::vector<std::string> split(const std::string_view& str, char delim);
 
-void create_dir(std::filesystem::path dir);
+void create_dir(const std::filesystem::path& dir);
 
 /* Return user home directory, or empty path if not determined */
 std::filesystem::path user_home_dir();
@@ -96,8 +96,8 @@ std::string slurp(const char* filename);
 std::string HMACSHA256_base4(const char* key, int keylen, const char* msg,
                              int msglen);
 
-void write_json_message(const std::string& dir, std::string msgtype,
-                        std::string raw_json);
+void write_json_message(const std::string& dir, const std::string& msgtype,
+                        const std::string& raw_json);
 
 /** Optionally store a value of value of type T.  Methods to assign
 the value and compare with it are protected by an internal mutex.
@@ -225,7 +225,7 @@ void log_exception(const char* site);
 
 std::string format_double(double d, bool trim_zeros = false, int precision = 9);
 
-void log_message_exception(const char* source, std::string data);
+void log_message_exception(const char* source, const std::string& data);
 
 std::string str_toupper(std::string s);
 std::string str_tolower(std::string s);
@@ -242,5 +242,9 @@ template <typename E> constexpr auto to_underlying(E e) noexcept
 /* Install a signal handler for SIGINT (Control-C), and wait
  * for it occur. */
 void wait_for_sigint();
+
+/* Return the apex home directory.  This is either the value defined by
+ * APEX_HOME or, if undefined, the path ~/apex. */
+std::filesystem::path apex_home();
 
 } // namespace apex
