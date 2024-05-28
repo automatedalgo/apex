@@ -22,6 +22,8 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/core/Services.hpp>
 #include <apex/util/EventLoop.hpp>
 
+#include <iostream>
+
 #define FMT(X) (std::isfinite(X)? apex::format_double(X, true): "")
 
 namespace apex
@@ -39,10 +41,35 @@ int to_int(Side s) {
 
 }
 
-Auditor::Auditor(Services * services)
+
+
+ Auditor::Auditor(Services * services,
+                 std::string transactions_dir)
   : _services(services)
 {
-  _file.open("/var/tmp/translog.csv", std::ofstream::out | std::ofstream::trunc);
+  if (transactions_dir.empty())
+    transactions_dir = apex_home() / "log";
+
+  if (!transactions_dir.empty())
+    create_dir(transactions_dir);
+
+  std::ostringstream oss;
+
+  if (!transactions_dir.empty())
+    oss << transactions_dir << "/";
+
+  oss << "audit-transactions-";
+  oss << Time::realtime_now().strftime("%Y%m%d_%H%M%S");
+  oss << ".csv";
+
+  // DIR/apex_transactions-DATE.log
+
+  auto now = Time::realtime_now();
+
+  auto fn = oss.str();
+  LOG_INFO("auditor transactions file '" << fn << "'");
+
+  _file.open(fn, std::ofstream::out | std::ofstream::trunc);
   auto columns = {
     "time",
     "symbol",

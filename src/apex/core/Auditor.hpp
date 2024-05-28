@@ -38,7 +38,7 @@ class Auditor
 {
 public:
 
-  Auditor(Services*);
+  Auditor(Services*, std::string transactions_dir="");
   ~Auditor();
 
   void add_transaction(Time event_time,
