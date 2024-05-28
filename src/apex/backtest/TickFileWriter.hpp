@@ -17,7 +17,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <apex/backtest/TickFileReader.hpp>
+#include <apex/backtest/TickbinFileReader.hpp>
 
 namespace apex
 {

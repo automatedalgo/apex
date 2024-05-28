@@ -15,7 +15,7 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/backtest/TickFileReader.hpp>
+#include <apex/backtest/TickbinFileReader.hpp>
 #include <apex/backtest/TickbinMsgs.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/model/tick_msgs.hpp>
@@ -140,9 +140,9 @@ public:
 };
 
 
-TickFileReader::TickFileReader(std::filesystem::path fn,
-                               MarketData* mktdata,
-                               MdStream stream_type)
+TickbinFileReader::TickbinFileReader(std::filesystem::path fn,
+                                     MarketData* mktdata,
+                                     MdStream stream_type)
   :_fn(fn),
    _mktdata(mktdata)
 {
@@ -208,9 +208,9 @@ TickFileReader::TickFileReader(std::filesystem::path fn,
 }
 
 
-TickFileReader::~TickFileReader() = default;
+TickbinFileReader::~TickbinFileReader() = default;
 
-void TickFileReader::wind_forward(apex::Time t)
+void TickbinFileReader::wind_forward(apex::Time t)
 {
   size_t consumed = 0;
   apex::Time earliest_consumed;
@@ -238,24 +238,24 @@ void TickFileReader::wind_forward(apex::Time t)
   }
 }
 
-[[nodiscard]] bool TickFileReader::has_next_event() const {
+[[nodiscard]] bool TickbinFileReader::has_next_event() const {
     return _decoder && _decoder->has_next_event();
 }
 
-[[nodiscard]] apex::Time TickFileReader::next_event_time() const {
+[[nodiscard]] apex::Time TickbinFileReader::next_event_time() const {
   if (_decoder)
     return _decoder->get_next_event_time();
   else
     return Time{};
 }
 
-void TickFileReader::consume_next_event() {
+void TickbinFileReader::consume_next_event() {
     if (_decoder)
       _decoder->consume_next_event(_mktdata);
 }
 
 
-std::tuple<size_t, json> TickFileReader::parse_mmap_header(char* ptr)
+std::tuple<size_t, json> TickbinFileReader::parse_mmap_header(char* ptr)
 {
   auto tickbin_header = decode_tickbin_file_header(ptr);
 

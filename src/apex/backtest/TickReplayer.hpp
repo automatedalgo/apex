@@ -29,35 +29,38 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-class TickFileReader;
 class TardisFileReader;
 class MarketData;
 
+enum class TickFormat {
+  tickbin1 = 1,
+  tardis
+};
+const char* to_string(TickFormat);
 
 class BaseTickFileReader {
 public:
   virtual void wind_forward(apex::Time t) = 0;
-  virtual bool has_next_event() const = 0;
-  virtual apex::Time next_event_time() const = 0;
+  [[nodiscard]] virtual bool has_next_event() const = 0;
+  [[nodiscard]] virtual apex::Time next_event_time() const = 0;
   virtual void consume_next_event() = 0;
-  virtual ~BaseTickFileReader() {}
+  virtual ~BaseTickFileReader() = default;
 };
 
-/* Find tick-files for according to critea: exchange, instrument, data-type and
+/* Find tick-files for according to criteria: exchange, instrument, data-type and
  * stream-type; and that are between the backtest time range. */
 class TickReplayer : public BacktestEventSource
 {
 public:
-  TickReplayer(std::string base_directory,
-               std::string tick_format,
+  TickReplayer(const std::filesystem::path& tick_dir,
+               TickFormat tick_format,
                const Instrument& instrument,
                MarketData*,
                MdStream stream,
                Time replay_from,
-               Time replay_upto,
                std::list<Time> dates);
 
-  ~TickReplayer();
+  ~TickReplayer() override;
 
   Time get_next_event_time() override;
   void consume_next_event() override;
@@ -66,28 +69,27 @@ public:
   [[nodiscard]] size_t file_count() const { return _filenames.size(); }
 
 private:
-  std::filesystem::path build_tickbin_filename(apex::Time time);
-
-  std::list<std::filesystem::path> find_tick_files();
+  std::tuple<std::list<std::filesystem::path>,
+             std::list<std::filesystem::path>> find_tick_files();
 
   void get_next_file_reader();
 
   void build_tick_file_options();
 
-  std::string _tick_format;
+  TickFormat _tick_format;
   Instrument _instrument;
   MarketData* _mktdata;
   MdStream _stream;
   Time _replay_from;
-  Time _replay_upto;
   std::list<Time> _dates;
   std::filesystem::path _base_dir;
   std::list<std::filesystem::path> _filenames;
   std::unique_ptr<BaseTickFileReader> _reader;
 
-  // settings related to the specifc tick-file format
+  // settings related to the specific tick-file format
   std::string _tick_subdir;
   std::function<std::unique_ptr<BaseTickFileReader>(std::filesystem::path)>  _tick_reader_factory;
+  std::function<std::filesystem::path(Time)> _tick_filename_factory;
 };
 
 } // namespace

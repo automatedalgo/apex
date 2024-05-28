@@ -19,7 +19,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/backtest/TardisFileReader.hpp>
 #include <apex/backtest/TardisCsvParsers.hpp>
 #include <apex/util/BufferedFileReader.hpp>
-#include <apex/backtest/TickFileReader.hpp>
 #include <apex/backtest/TickbinMsgs.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/model/tick_msgs.hpp>

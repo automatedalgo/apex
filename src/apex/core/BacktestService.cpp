@@ -69,16 +69,17 @@ void BacktestService::create_tick_replayer(const Instrument& instrument,
                                            MarketData* mktdata,
                                            MdStream stream_type)
 {
+  auto tick_format = TickFormat::tickbin1;
 
-  std::string tick_format = "tardis";
-  std::string base_directory = _services->paths_config().tickdata / "tardis";
+  auto tick_dir = _services->paths_config().tickdata;
 
   std::pair<Instrument, MdStream> key{instrument, stream_type};
 
-  auto sp = std::make_unique<TickReplayer>(base_directory,
+  auto sp = std::make_unique<TickReplayer>(tick_dir,
                                            tick_format,
                                            instrument, mktdata, stream_type,
-                                           _from, _upto, _dates);
+                                           _from,
+                                           _dates);
 
   auto file_count = sp->file_count();
   if (!file_count) {
@@ -87,14 +88,11 @@ void BacktestService::create_tick_replayer(const Instrument& instrument,
           << " for dates "
           << _dates.front().strftime("%Y/%m/%d") << " - "
           << _dates.back().strftime("%Y/%m/%d")
-          << ", looking under path '" << base_directory << "'"
+          << ", looking under path '" << tick_dir << "'"
       );
   }
 
   _services->backtest_evloop()->add_event_source(sp.get());
-
-  LOG_INFO("tick-data files found for '"
-           << instrument << "/" << stream_type <<"' : " << file_count);
   _replayers.insert({key, std::move(sp)});
 }
 

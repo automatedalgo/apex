@@ -87,7 +87,7 @@ int main(int argc, char** argv)
 
     MarketData md;
     MdStream md_stream = apex::MdStream::AggTrades;
-    TickFileReader reader{fn, &md, md_stream};
+    TickbinFileReader reader{fn, &md, md_stream};
 
     md.subscribe_events([&](MarketData::EventType et){
       if (et.is_trade()) {

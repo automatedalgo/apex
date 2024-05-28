@@ -22,6 +22,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/model/MarketData.hpp>
 #include <apex/model/ExchangeId.hpp>
 #include <apex/model/Instrument.hpp>
+#include <apex/backtest/TickReplayer.hpp>
 
 #include <filesystem>
 
@@ -85,11 +86,13 @@ struct TickFileBucketId {
 
 class TickbinDecoder;
 
-class TickFileReader
+class TickbinFileReader : public BaseTickFileReader
 {
 public:
-  explicit TickFileReader(std::filesystem::path fn, MarketData*, MdStream stream_type);
-  ~TickFileReader();
+  explicit TickbinFileReader(std::filesystem::path fn,
+                             MarketData*,
+                             MdStream stream_type);
+  ~TickbinFileReader();
 
   void wind_forward(apex::Time t);
 
