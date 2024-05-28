@@ -464,7 +464,7 @@ void GxServer::on_subscribe(GxServerSession& session,
     LOG_WARN("no exchange subscription for " << key.symbol);
 
     // create a subscription
-    LOG_INFO("creating exchange subscription object");
+    // LOG_INFO("creating exchange subscription object");
     auto exchange_session = _exchange_sessions[ExchangeId::binance];
     std::shared_ptr<ExchangeSubscription> sub =
       std::make_shared<ExchangeSubscription>(exchange_session, key);
