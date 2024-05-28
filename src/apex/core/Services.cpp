@@ -58,20 +58,11 @@ std::unique_ptr<EventLoop> construct_event_loop(RunMode run_mode,
 }
 
 static PathsConfig default_paths_config() {
-  // the APEX_HOME environment variable can be used to customise where Apex
-  // finds all the files it needs (such as tickdata, refdata, positions etc)
   PathsConfig config;
-  const char *  home_var = "APEX_HOME";
-  const char * custom_base = std::getenv(home_var);
-  std::string default_root = "apex";
-
-  auto root = (custom_base)? custom_base : apex::user_home_dir() / default_root;
-
-  config.root = root;
-  config.refdata = root / "data"/ "refdata";
-  config.tickdata = root / "data" / "tickdata";
-  config.fdb = root / "persist";
-
+  config.root = apex_home();
+  config.refdata = apex_home() / "data"/ "refdata";
+  config.tickdata = apex_home() / "data" / "tickdata";
+  config.fdb = apex_home() / "persist";
   return config;
 }
 
