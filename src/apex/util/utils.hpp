@@ -239,8 +239,7 @@ template <typename E> constexpr auto to_underlying(E e) noexcept
   return static_cast<std::underlying_type_t<E>>(e);
 }
 
-/* Install a signal handler for SIGINT (Control-C), and wait
- * for it occur. */
+/* Install a signal handler for SIGINT and SIGTERM, and wait for it occur. */
 void wait_for_sigint();
 
 /* Return the apex home directory.  This is either the value defined by

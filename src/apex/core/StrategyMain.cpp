@@ -144,19 +144,22 @@ static void interrupt_handler(int)
 }
 
 
+void _install_signal_handler(int sig) {
+  struct sigaction newsigact = {};
+  newsigact.sa_handler = interrupt_handler;
+  sigaction(sig, &newsigact, nullptr);
+}
+
 /* This function can serve as the C++ main for apex strategies.  It will parse
  * command line arguments, load a config file and create and start a strategy
  * using a provided strategy factory.
  */
 int strategy_runner(int argc, char** argv, const StrategyFactoryBase& factory)
 {
-  // install control-c signal handler
-  struct sigaction newsigact = {};
-  memset(&newsigact, 0, sizeof(newsigact));
-  newsigact.sa_handler = interrupt_handler;
-  sigaction(SIGINT, &newsigact, nullptr);
+  // install signal interrupt handlers
+  _install_signal_handler(SIGINT);
+  _install_signal_handler(SIGTERM);
 
-  // TODO: allow strateyMain to parse args?
   std::future<int> prodResult = interrupt_code.get_future();
 
   // parse command line arguments

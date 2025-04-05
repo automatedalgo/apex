@@ -396,12 +396,19 @@ void interrupt_handler(int)
   }
 }
 
+
 void wait_for_sigint() {
-  // install control-c signal handler
-  struct sigaction newsigact = {};
-  memset(&newsigact, 0, sizeof(newsigact));
-  newsigact.sa_handler =  interrupt_handler;
-  sigaction(SIGINT, &newsigact, nullptr);
+  {
+    struct sigaction newsigact = {};
+    newsigact.sa_handler = interrupt_handler;
+    sigaction(SIGINT, &newsigact, nullptr);
+  }
+  {
+    struct sigaction newsigact = {};
+    newsigact.sa_handler = interrupt_handler;
+    sigaction(SIGTERM, &newsigact, nullptr);
+  }
+
 
   interrupt_code.get_future().wait();
 }
