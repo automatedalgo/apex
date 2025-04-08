@@ -32,13 +32,13 @@ namespace apex
 class HttpParser;
 class WebsocketppImpl;
 struct websocketpp_msg;
+class TcpSocket;
 
 
 enum class serialiser_type { none = 0x00, json = 0x01 };
 
 enum class protocol_type { none = 0x00, websocket = 0x01 };
 
-class TcpSocket;
 
 constexpr inline int operator&(int lhs, serialiser_type rhs)
 {

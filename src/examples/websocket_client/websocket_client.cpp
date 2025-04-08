@@ -19,7 +19,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/util/json.hpp>
 #include <apex/infra/WebsocketClient.hpp>
 #include <apex/core/Logger.hpp>
-#include <apex/infra/IoLoop.hpp>
 #include <apex/infra/ssl.hpp>
 
 #include <chrono>
@@ -34,17 +33,25 @@ exchange, subscribe for data, and display received messages.
 
 
 int run(RealtimeEventLoop& event_loop,
-        IoLoop& io_loop,
+        Reactor& reactor,
         SslContext& ssl_context)
 {
   auto address = "testnet.binance.vision";
   auto port = 443;
   auto path = "/ws";
 
-  auto sock = std::make_unique<SslSocket>(ssl_context, io_loop);
 
   LOG_INFO("connecting...");
-  auto fut = sock->connect(address, port);
+
+  auto promise = std::make_shared<std::promise<int>>();
+  auto connected_cb = [&](int err) {
+    promise->set_value(err);
+  };
+  int timeout_secs = 5;
+
+  auto sock = std::make_unique<SslSocket>(&ssl_context, &reactor);
+  sock->connect(address, port, 10, connected_cb);
+  auto fut = promise->get_future();
 
   if (fut.wait_for(5s) != std::future_status::ready) {
     LOG_ERROR("connect timeout");
@@ -102,12 +109,15 @@ int main(int, char**) {
   };
 
   RealtimeEventLoop event_loop(on_event_exception);
-  IoLoop io_loop;
+
+  Reactor reactor;
   SslContext ssl_context(SslConfig(true));
 
-  int ec = run(event_loop, io_loop, ssl_context);
+  int ec = run(event_loop, reactor, ssl_context);
 
-  io_loop.sync_stop();
+  while(1) {
+    sleep(1);
+  }
 
   return ec;
 }

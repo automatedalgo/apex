@@ -317,9 +317,12 @@ BinanceSession::Params build_params(Config config) {
 }
 
 BinanceSession::BinanceSession(BaseExchangeSession::EventCallbacks callbacks,
-                               Config& config, RunMode run_mode, IoLoop* ioloop,
-                               RealtimeEventLoop& event_loop, SslContext* ssl)
-  : BinanceSession(callbacks, build_params(config),  run_mode, ioloop, event_loop, ssl)
+                               Config& config,
+                               RunMode run_mode,
+                               Reactor* reactor,
+                               RealtimeEventLoop& event_loop,
+                               SslContext* ssl)
+  : BinanceSession(callbacks, build_params(config),  run_mode, reactor, event_loop, ssl)
 {
 }
 
@@ -341,10 +344,10 @@ const std::string& get_string_field(const json& msg, const std::string& key,
 
 
 BinanceSession::BinanceSession(BaseExchangeSession::EventCallbacks callbacks,
-                               Params config, RunMode run_mode, IoLoop* ioloop,
+                               Params config, RunMode run_mode, Reactor* reactor,
                                RealtimeEventLoop& event_loop, SslContext* ssl)
   : ExchangeSession(std::move(callbacks), ExchangeId::binance,
-                    run_mode, ioloop,
+                    run_mode, reactor,
                     event_loop, ssl)
 {
   if (ssl == nullptr)
@@ -375,7 +378,6 @@ BinanceSession::BinanceSession(BaseExchangeSession::EventCallbacks callbacks,
   _curl_requests.dispatch(
       []() { Logger::instance().register_thread_id("curl"); });
 }
-
 
 
 void BinanceSession::start()
@@ -712,23 +714,31 @@ std::shared_ptr<apex::WebsocketClient> BinanceSession::open_websocket(
   LOG_INFO(streamname << ": attempting websocket connection to '" << host << ":"
                       << port << path << "'");
 
-  std::unique_ptr<TcpSocket> sock(new SslSocket(*_ssl, *_ioloop));
-  auto fut = sock->connect(host, port);
+  auto promise = std::make_shared<std::promise<int>>();
+  TcpSocket::connect_complete_cb_t connected_cb = [&](int err) {
+    promise->set_value(err);
+  };
 
-  if (fut.wait_for(std::chrono::milliseconds(4000)) !=
-      std::future_status::ready)
+  auto sock = std::make_unique<SslSocket>(_ssl, _reactor);
+  int timeout_secs = 4;
+  sock->connect(host, port, timeout_secs, connected_cb);
+
+  // wait for completion
+  auto fut2 = promise->get_future();
+
+  if (fut2.wait_for(std::chrono::seconds(timeout_secs)) != std::future_status::ready)
     throw std::runtime_error("timeout during connect");
 
-  if (UvErr ec = fut.get())
-    throw std::runtime_error(
-        "connect failed: " + std::to_string(ec.os_value()) + ", " +
-        ec.message());
+  int err2 = fut2.get();
+  if (err2)
+    throw std::runtime_error("connect failed");
+
+  assert(sock->is_open());
 
   auto msg_cb = [on_msg](const char* buf, size_t len) {
     /* io-thread */
     on_msg(json::parse(buf, buf + len));
   };
-
 
   auto completion_promise = std::make_shared<std::promise<void>>();
 

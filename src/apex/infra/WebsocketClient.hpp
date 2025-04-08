@@ -65,7 +65,7 @@ public:
 private:
   void io_on_read(char* src, size_t len);
 
-  void io_on_error(UvErr ec);
+  void io_on_error(int ec);
 
   RealtimeEventLoop& _event_loop;
   std::unique_ptr<TcpSocket> _socket;

@@ -30,7 +30,6 @@ option(BUILD_STATIC_LIBS "Use static libraries" ON)
 option(BUILD_EXAMPLES "Build example apps" ON)
 option(BUILD_UTILS "Build utility apps" ${DEFAULT_BUILD_UTILS})
 option(BUILD_TESTS "Build test apps" OFF)
-set(LIBUV_DIR "" CACHE STRING "libuv installation directory")
 
 
 include(GNUInstallDirs)
@@ -73,13 +72,6 @@ find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
 
 ##
-## Try to find libuv
-##
-find_package(Libuv REQUIRED)
-set(HAVE_LIBUV ON)
-
-
-##
 ## Try to find google protobuf3
 ##
 
@@ -97,8 +89,6 @@ message(STATUS "OpenSSL_INCLUDE_DIR:      " ${OPENSSL_INCLUDE_DIR})
 message(STATUS "OpenSSL_LIBRARIES:        " ${OPENSSL_LIBRARIES})
 message(STATUS "ZLIB_INCLUDE_DIRS:        " ${ZLIB_INCLUDE_DIRS})
 message(STATUS "ZLIB_LIBRARIES:           " ${ZLIB_LIBRARIES})
-message(STATUS "LIBUV_INCLUDE_DIRS:       " ${LIBUV_INCLUDE_DIRS})
-message(STATUS "LIBUV_LIBRARIES:          " ${LIBUV_LIBRARIES})
 message(STATUS "LIBCURL_INCLUDE_DIR:      " ${LIBCURL_INCLUDE_DIRS})
 message(STATUS "LIBCURL_LIBRARY:          " ${LIBCURL_LIBRARIES})
 message(STATUS "LIBPROTOBUF3_INCLUDE_DIR: " ${LIBPROTOBUF3_INCLUDE_DIRS})

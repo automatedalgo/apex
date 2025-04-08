@@ -30,7 +30,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-class IoLoop;
+class Reactor;
 class SslContext;
 class TickTrade;
 class TickTop;
@@ -73,6 +73,7 @@ public:
         on_order_cancel;
 
   };
+
 
   BaseExchangeSession(EventCallbacks callbacks,
                       ExchangeId exchange_id, apex::RunMode run_mode)
@@ -118,6 +119,7 @@ private:
   RunMode _run_mode;
 };
 
+
 /* Base class for all exchange sessions */
 template <typename T>
 class ExchangeSession : public std::enable_shared_from_this<T>,
@@ -125,13 +127,14 @@ class ExchangeSession : public std::enable_shared_from_this<T>,
 {
 
 public:
+
   ExchangeSession(BaseExchangeSession::EventCallbacks callbacks,
-                  ExchangeId exchange_id, RunMode run_mode, IoLoop* ioloop,
+                  ExchangeId exchange_id, RunMode run_mode, Reactor* reactor,
                   RealtimeEventLoop& event_loop, SslContext* ssl)
      : BaseExchangeSession(std::move(callbacks), exchange_id,
                           run_mode),
        _event_loop(event_loop),
-       _ioloop(ioloop),
+       _reactor(reactor),
        _ssl(ssl),
       _curl_requests([](){
          try {
@@ -150,6 +153,7 @@ public:
   {
   }
 
+
   bool is_event_thread() const { return _event_loop.this_thread_is_ev(); }
 
   void run_on_evloop(std::function<void(T* self)> fn)
@@ -163,7 +167,8 @@ public:
 
 protected:
   RealtimeEventLoop& _event_loop;
-  IoLoop* _ioloop;
+
+  Reactor* _reactor;
   SslContext* _ssl;
   RealtimeEventLoop _curl_requests;
 };

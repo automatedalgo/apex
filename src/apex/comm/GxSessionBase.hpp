@@ -20,6 +20,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/comm/GxWireFormat.pb.h>
 #include <apex/infra/DecodeBuffer.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
+#include <apex/infra/Reactor.hpp>
 #include <apex/infra/TcpSocket.hpp>
 #include <apex/core/Logger.hpp>
 
@@ -29,10 +30,9 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-class IoLoop;
 class RealtimeEventLoop;
 class TcpSocket;
-
+class Reactor;
 
 namespace gx
 {
@@ -91,11 +91,13 @@ public:
     std::function<void(T&)> on_err;
   };
 
-  GxSessionBase(IoLoop& ioloop, RealtimeEventLoop& evloop,
-                std::unique_ptr<TcpSocket> sk)
-    : _io_loop(ioloop),
+
+  GxSessionBase(Reactor* reactor,
+                RealtimeEventLoop& evloop,
+                std::unique_ptr<TcpSocket> sock)
+    : _reactor(reactor),
       _event_loop(evloop),
-      _sock(std::move(sk)),
+      _sock(std::move(sock)),
       _buf(1000, 1000000)
   {
   }
@@ -103,39 +105,39 @@ public:
   ~GxSessionBase()
   {
     // assert(this->_event_loop.this_)
-    if (_sock)
-      _sock->close().wait();
+    // if (_sock)
+    //   _sock->close().wait();
   }
 
-  void close() { _sock->close().wait(); }
+  void close() { _sock->close(); }
 
-  TcpSocket* get_socket() { return _sock.get(); }
+  TcpSocket* get_socket2() { return _sock.get(); }
 
 
-  void start_read(std::function<void(T&, apex::UvErr)> err_cb)
+  void start_read(std::function<void(T&, int)> err_cb)
   {
     auto wp = this->weak_from_this();
-    auto on_data = [wp](char* buf, size_t len) {
-      if (auto sp = wp.lock())
-        sp->io_on_read(buf, len);
-    };
 
-    auto on_err = [wp, err_cb](apex::UvErr e) {
-      /* IO thread */
+    on_read_cb_t on_read = [wp, err_cb](char* buf, ssize_t len){
       if (auto sp = wp.lock()) {
-        sp->_event_loop.dispatch([=]() {
-          if (auto sp = wp.lock()) {
-            err_cb(*sp, e);
-          }
-        });
+        if (len >= 0)
+          sp->io_on_read(buf, len);
+        else
+        {
+          sp->_event_loop.dispatch([=]() {
+            if (auto sp = wp.lock()) {
+              err_cb(*sp, -len);
+            }
+          });
+        }
       }
     };
 
-    _sock->start_read(std::move(on_data), std::move(on_err));
+    _sock->start_read(on_read);
   }
 
 protected:
-  IoLoop& _io_loop;
+  Reactor * _reactor;
   RealtimeEventLoop& _event_loop;
   std::unique_ptr<TcpSocket> _sock;
 

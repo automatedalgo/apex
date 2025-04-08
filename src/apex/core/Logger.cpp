@@ -136,7 +136,7 @@ void Logger::write(Logger::level lvl, std::string msg, const char* file, int l)
   Time t = _clock_fn? _clock_fn() : Time::realtime_now();
   auto tm = t.tm_utc();
   auto usec = t.usec();
-  char buf[32] = {0};
+  char buf[256] = {0};
   snprintf(buf, sizeof(buf), "%04d-%02d-%02d | %02d:%02d:%02d.%06lu",
            tm.tm_year+1900,
            tm.tm_mon + 1,

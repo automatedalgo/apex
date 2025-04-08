@@ -60,6 +60,8 @@ public:
   /* log all entries in the SSL error queue */
   void log_ssl_error_queue();
 
+  std::string get_ssl_errors();
+
   template <size_t N> void throw_ssl_error(const char (&what)[N])
   {
     char buf[N + 256];

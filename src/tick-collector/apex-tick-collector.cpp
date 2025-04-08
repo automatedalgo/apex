@@ -19,7 +19,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/backtest/TickbinMsgs.hpp>
 #include <apex/gx/BinanceSession.hpp>
 #include <apex/gx/GxServer.hpp>
-#include <apex/infra/IoLoop.hpp>
+#include <apex/infra/Reactor.hpp>
 #include <apex/infra/SocketAddress.hpp>
 #include <apex/infra/ssl.hpp>
 #include <apex/util/Config.hpp>
@@ -220,7 +220,7 @@ public:
     : _services{services},
       _location(std::move(location)),
       _event_loop{_services->realtime_evloop()},
-      _ioloop{_services->ioloop()}
+      _reactor{_services->reactor()}
   {
     apex::SslConfig sslconf(true);
     _ssl = std::make_unique<apex::SslContext>(sslconf);
@@ -258,7 +258,7 @@ private:
   apex::Services* _services;
   std::string _location;
   apex::RealtimeEventLoop* _event_loop;
-  apex::IoLoop* _ioloop;
+  apex::Reactor* _reactor;
   std::unique_ptr<apex::SslContext> _ssl;
 
   std::map<apex::ExchangeId, std::shared_ptr<apex::BaseExchangeSession>> _exchange_sessions;
@@ -296,7 +296,7 @@ TickCollectorService::build_tickbin_filename(
 void TickCollectorService::check_collector_queues()
 {
   /* For all collector objects, check the contents of their tick queue, and
-   decide if a write to disk is required. */
+     decide if a write to disk is required. */
   for (auto& collector : _collectors) {
     auto duration_since_update = collector->duration_since_update();
     if (duration_since_update > BaseCollector::stale_interval && !collector->is_stale) {
@@ -384,7 +384,7 @@ void TickCollectorService::create_exchange_sessions() {
         apex::BaseExchangeSession::EventCallbacks callbacks;
         apex::BinanceSession::Params params;
         auto sp = std::make_shared<apex::BinanceSession>(
-          callbacks, params, apex::RunMode::paper, _ioloop, *_event_loop, _ssl.get());
+          callbacks, params, apex::RunMode::paper, _reactor, *_event_loop, _ssl.get());
         _exchange_sessions.insert({apex::ExchangeId::binance, sp});
         sp->start();
       }
@@ -449,10 +449,10 @@ void TickCollectorService::start()
 }
 } // namespace
 
+
 int main(int , char** )
 {
   try {
-
     // setup logging
     // apex::Logger::instance().set_level(apex::Logger::debug);
     apex::Logger::instance().set_detail(true);
@@ -467,31 +467,47 @@ int main(int , char** )
     auto location = "london";
     apex::TickCollectorService tick_collector_svc(services.get(), location);
 
-    tick_collector_svc.add_collector("ETHUSDT", apex::ExchangeId::binance, "l1");
-    tick_collector_svc.add_collector("ETHUSDT", apex::ExchangeId::binance, "aggtrades");
+    // list of binance symbols to subscribe to
+    auto symbols = {"AAVEUSDT",
+        "ADAUSDT",
+        "ALGOUSDT",
+        "ATOMUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "DOTUSDT",
+        "ETHUSDT",
+        "FILUSDT",
+        "LTCUSDT",
+        "MATICUSDT",
+        "SHIBUSDT",
+        "SOLUSDT",
+        "XRPUSDT"
+        };
 
-    tick_collector_svc.add_collector("ETHBTC", apex::ExchangeId::binance, "l1");
-    tick_collector_svc.add_collector("ETHBTC", apex::ExchangeId::binance, "aggtrades");
-
-    tick_collector_svc.add_collector("BTCUSDT", apex::ExchangeId::binance, "l1");
-    tick_collector_svc.add_collector("BTCUSDT", apex::ExchangeId::binance, "aggtrades");
-
-    tick_collector_svc.add_collector("BNBUSDT", apex::ExchangeId::binance, "l1");
-    tick_collector_svc.add_collector("BNBUSDT", apex::ExchangeId::binance, "aggtrades");
-
-    tick_collector_svc.add_collector("ADAUSDT", apex::ExchangeId::binance, "l1");
-    tick_collector_svc.add_collector("ADAUSDT", apex::ExchangeId::binance, "aggtrades");
+    for (const auto & symbol : symbols) {
+      tick_collector_svc.add_collector(symbol, apex::ExchangeId::binance, "l1");
+      tick_collector_svc.add_collector(symbol, apex::ExchangeId::binance, "aggtrades");
+    }
 
     // start the collector service after the various streams have been
     // configured.
     tick_collector_svc.start();
 
-    while (true) {
-      sleep(60);
-    }
+    apex::wait_for_sigint();
+    LOG_INFO("shutting down");
 
+    // shutting down
+    std::promise<void> queue_flush_promise;
+    services->evloop()->dispatch([&](){
+      try {
+        tick_collector_svc.check_collector_queues();
+      }
+      catch (...) {
+      }
+      queue_flush_promise.set_value();
+    });
+    queue_flush_promise.get_future().wait();
     return 0;
-
   } catch (apex::ConfigError& e) {
     LOG_ERROR("config-error: " << e.what());
   } catch (std::exception& e) {

@@ -62,7 +62,8 @@ class GxClientSession : public GxSessionBase<GxClientSession>
 
 
 public:
-  GxClientSession(IoLoop& ioloop, RealtimeEventLoop& evloop, std::string addr,
+  GxClientSession(Reactor* reactor,
+                  RealtimeEventLoop& evloop, std::string addr,
                   std::string port, OrderService*);
 
   void strategy_logon(std::string strategy_id, RunMode run_mode);
@@ -99,7 +100,7 @@ protected:
 
   std::unique_ptr<TcpSocket> _pending_sock;
   Time _pending_sock_start;
-  std::future<UvErr> _pending_sock_fut;
+  std::future<int> _pending_sock_fut;
 
   // TODO- tidy up these containers, the pending need to all go into a
   // variant.

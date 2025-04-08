@@ -23,7 +23,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/core/PersistenceService.hpp>
 #include <apex/core/RefDataService.hpp>
 #include <apex/core/Services.hpp>
-#include <apex/infra/IoLoop.hpp>
+#include <apex/infra/Reactor.hpp>
 #include <apex/util/Config.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
 #include <apex/util/BacktestEventLoop.hpp>
@@ -81,7 +81,7 @@ Services::Services(RunMode run_mode,
   : _run_mode(run_mode),
     _paths_config{default_paths_config()},
     _startup_time(calc_startup_time(run_mode, backtest_period)),
-    _ioloop(std::make_unique<IoLoop>()),
+    _reactor(std::make_unique<Reactor>()),
     _evloop(construct_event_loop(run_mode, backtest_period.from)),
     _bt_evloop(dynamic_cast<BacktestEventLoop*>(_evloop.get())),
     _backtest_period(backtest_period)
@@ -92,7 +92,6 @@ Services::Services(RunMode run_mode,
 Services::~Services()
 {
   /* assumed called on main thread */
-  _ioloop->sync_stop();
   _evloop->sync_stop();
 }
 

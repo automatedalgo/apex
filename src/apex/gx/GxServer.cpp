@@ -185,8 +185,6 @@ GxServer::~GxServer()
 {
   if (_own_event_loop)
     _own_event_loop->sync_stop();
-
-  _ioloop.sync_stop();
 }
 
 
@@ -224,7 +222,7 @@ void GxServer::add_venue(BinanceSession::Params params)
 
   // TODO: check, if binance already added, throw.
   auto sp = std::make_shared<apex::BinanceSession>(
-      callbacks, params, _run_mode, &_ioloop, *event_loop(), _ssl.get());
+      callbacks, params, _run_mode, &_reactor, *event_loop(), _ssl.get());
   _exchange_sessions.insert({ExchangeId::binance, sp});
   sp->start();
 }
@@ -266,12 +264,12 @@ void GxServer::start()
       auto session_type = config.get_string("type");
       if (session_type == "binance") {
         auto sp = std::make_shared<apex::BinanceSession>(
-            callbacks, config, _run_mode, &_ioloop, *event_loop(), _ssl.get());
+            callbacks, config, _run_mode, &_reactor, *event_loop(), _ssl.get());
         _exchange_sessions.insert({ExchangeId::binance, sp});
         sp->start();
       } // else if (session_type == "binance_usdfut") {
         // auto sp = std::make_shared<apex::BinanceUsdFutSession>(
-        //     callbacks, config, sim_mode, &_ioloop, *_event_loop.get(),
+        //     callbacks, config, sim_mode, &_reactor, *_event_loop.get(),
         //     _ssl.get());
         // _exchange_sessions.insert({"binance-usdfut", sp});
         // sp->start();
@@ -297,13 +295,44 @@ void GxServer::start()
   }
 }
 
-UvErr GxServer::create_listen_socket() {
+int GxServer::create_listen_socket() {
   // create the GX server socket
-  auto sock = std::make_unique<TcpSocket>(_ioloop);
-  auto on_accept = [this](std::unique_ptr<TcpSocket>& sk, UvErr e) {
-    if (e) {
-      THROW("accept() failed: " << e);
-    }
+  auto sock = std::make_unique<TcpSocket>(&_reactor);
+  // auto on_accept = [this](std::unique_ptr<TcpSocket>& sk, UvErr e) {
+  //   if (e) {
+  //     THROW("accept() failed: " << e);
+  //   }
+  //   GxServerSession::EventHandlers handlers{
+  //       [this](GxServerSession& s) { on_error(s); },
+  //       [this](GxServerSession& s, GxSubscribeRequest& req) {
+  //         on_subscribe(s, req);
+  //       },
+  //       [this](GxServerSession& /*s*/, ExchangeId /*exchange*/) {
+  //         //on_subscribe_wallet(s, exchange);
+  //       },
+  //       [this](GxServerSession& s, GxServerSession::Request r, OrderParams p) {
+  //         on_submit_order(s, r, p);
+  //       },
+  //       [this](GxServerSession& s, GxServerSession::Request r, ExchangeId exch,
+  //              std::string sym, std::string oid, std::string eid) {
+  //         this->on_cancel_order_request(s, r, exch, sym, oid, eid);
+  //       },
+  //       [this](GxServerSession& s, GxLogonRequest request) -> bool {
+  //         return this->on_logon_request(s, request.strategy_id,
+  //                                       request.run_mode);
+  //       }
+  //   };
+  //   auto client = std::make_shared<GxServerSession>(&_reactor, *event_loop(),
+  //                                                   std::move(sk), handlers);
+  //   event_loop()->dispatch([this, client]() { this->new_client(client); });
+  // };
+  auto node = "0.0.0.0";
+
+  auto on_accept_cb = [this](std::unique_ptr<TcpSocket>& sk){
+
+    // if (e) {
+    //   THROW("accept() failed: " << e);
+    // }
     GxServerSession::EventHandlers handlers{
         [this](GxServerSession& s) { on_error(s); },
         [this](GxServerSession& s, GxSubscribeRequest& req) {
@@ -324,39 +353,41 @@ UvErr GxServer::create_listen_socket() {
                                         request.run_mode);
         }
     };
-    auto client = std::make_shared<GxServerSession>(_ioloop, *event_loop(),
+    auto client = std::make_shared<GxServerSession>(&_reactor, *event_loop(),
                                                     std::move(sk), handlers);
     event_loop()->dispatch([this, client]() { this->new_client(client); });
   };
-  auto node = "0.0.0.0";
 
-  auto fut = sock->listen(node, std::to_string(_port), on_accept);
+  // TODO: detect failure to listen on the provided port
+  sock->listen(/*node, */ _port, on_accept_cb);
 
-  auto uv_err = fut.get();
+//  auto fut = sock->listen(node, std::to_string(_port), on_accept);
 
-  if (uv_err) {
-    LOG_WARN("failed to listen on port " << _port << ", error: " << uv_err);
-    sock->close().wait();
-    return uv_err;
-  }
-  else {
-    _server_sock = std::move(sock);
-    LOG_INFO("listening for GX connections on " << node << ":" << _port);
-    return UvErr{};
-  }
+  // auto uv_err = fut.get();
+
+  // if (uv_err) {
+  //   LOG_WARN("failed to listen on port " << _port << ", error: " << uv_err);
+  //   sock->close().wait();
+  //   return uv_err;
+  // }
+  // else {
+  //   _server_sock = std::move(sock);
+  //   LOG_INFO("listening for GX connections on " << node << ":" << _port);
+  //   return UvErr{};
+  // }
 }
 
 void GxServer::new_client(std::shared_ptr<GxServerSession> session)
 {
   assert(event_loop()->this_thread_is_ev());
 
-  auto sock = session->get_socket();
-  LOG_INFO("received new GX connection from "
-           << sock->get_peer_address().to_string() << ":"
-           << sock->get_peer_port());
+  auto sock = session->get_socket2();
+  // LOG_INFO("received new GX connection from "
+  //          << sock->get_peer_address().to_string() << ":"
+  //          << sock->get_peer_port());
   _gx_sessions.push_back(session);
 
-  session->start_read([&](GxServerSession& session, apex::UvErr err) {
+  session->start_read([&](GxServerSession& session, int err) {
     LOG_INFO("session closed, error: " << err);
     // on socket err, just remove the session
     for (auto iter = _gx_sessions.begin(); iter != _gx_sessions.end(); ++iter) {

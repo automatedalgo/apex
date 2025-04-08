@@ -29,6 +29,7 @@ class UvErr;
 class TickTrade;
 class TickTop;
 class AccountUpdate;
+class Reactor;
 
 namespace pb
 {
@@ -75,7 +76,7 @@ public:
     std::function<bool(GxServerSession&, GxLogonRequest)> on_logon;
   };
 
-  GxServerSession(IoLoop& ioloop, RealtimeEventLoop& evloop, std::unique_ptr<TcpSocket>,
+  GxServerSession(Reactor* reactor, RealtimeEventLoop& evloop, std::unique_ptr<TcpSocket>,
                   EventHandlers);
 
   ~GxServerSession();

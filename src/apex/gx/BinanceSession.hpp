@@ -64,12 +64,18 @@ public:
     std::string api_key_file;
   };
 public:
-  BinanceSession(BaseExchangeSession::EventCallbacks, Config& config,
-                 RunMode run_mode, IoLoop* ioloop,
+
+  BinanceSession(BaseExchangeSession::EventCallbacks,
+                 Config& config,
+                 RunMode run_mode,
+                 Reactor* reactor,
                  RealtimeEventLoop& event_loop,
                  SslContext* ssl);
-  BinanceSession(BaseExchangeSession::EventCallbacks, Params config,
-                 RunMode run_mode, IoLoop* ioloop,
+
+  BinanceSession(BaseExchangeSession::EventCallbacks,
+                 BinanceSession::Params config,
+                 RunMode run_mode,
+                 Reactor* reactor,
                  RealtimeEventLoop& event_loop,
                  SslContext* ssl);
 

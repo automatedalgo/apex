@@ -85,7 +85,7 @@ public:
     : _msg_manager(new WebsocketConfig::con_msg_manager_type)
   {
     m_proc.reset(new websocketpp::processor::hybi13<WebsocketConfig>(
-        false, mode == connect_mode::passive, _msg_manager, _rng_mgr));
+        false, mode == connect_mode::accept, _msg_manager, _rng_mgr));
   }
 
   websocketpp::processor::processor<WebsocketConfig>* processor()

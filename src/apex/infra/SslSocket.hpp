@@ -19,72 +19,60 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/infra/TcpSocket.hpp>
 
+#include <list>
+
 namespace apex
 {
 
 struct SslSession;
 enum class sslstatus;
 class SslContext;
+  class SslSocket;
 
-/**
- * Represent an SSL TCP socket, in both server mode and client mode.
- */
-class SslSocket : public TcpSocket
-{
+class Buffer;
+
+using ssl_on_accept_cb_t = std::function<void(std::unique_ptr<SslSocket>&)>;
+
+class SslSocket : public TcpSocket {
 public:
-  enum class t_handshake_state { pending, success, failed };
 
-  typedef std::function<void(std::unique_ptr<SslSocket>&, UvErr)>
-      ssl_on_accept_cb;
+  /* Create an uninitialised socket */
+  SslSocket(SslContext*, Reactor*);
 
-  SslSocket(SslContext&, IoLoop&, TcpSocket::options = {});
-  ~SslSocket();
-  SslSocket(const SslSocket&) = delete;
-  SslSocket& operator=(const SslSocket&) = delete;
+  /* Create from an existing file descriptor */
+  SslSocket(SslContext*, Reactor*, int fd);
 
-  /* Request the asynchronous send of the SSL client handshake.  This can be
-   * called after connect() has successfully completed.  Note that this does not
-   * have to be called. Any attempt to write data to a SSL connection which has
-   * not completed the handshake will cause a handshake attempt to be
-   * automatically made. Should not be called more than once. */
-  std::future<t_handshake_state> handshake();
+  virtual ~SslSocket();
 
-  /* Has the initial SSL handshake been completed? */
-  t_handshake_state handshake_state();
+  virtual void connect(std::string addr, int port, int timeout,
+                       connect_complete_cb_t = nullptr);
 
-  /** Initialise this SslSocket by creating a listen socket that is bound to
-   * the specified end point. The user callback is called when an incoming
-   * connection request is accepted. Node can be the empty string, in which case
-   * the listen socket will accept incoming connections from all interfaces
-   * (i.e. INADDR_ANY). */
-  std::future<UvErr> listen(const std::string& node, const std::string& service,
-                            ssl_on_accept_cb,
-                            addr_family = addr_family::unspec);
+  /* Set this socket to listen */
+  virtual void listen(int port, ssl_on_accept_cb_t on_accept_cb);
 
-  std::future<UvErr> connect(std::string addr, int port) override;
+  /* Write data */
+  write_err write(const char*, size_t) override;
+  write_err write(std::string_view) override;
 
-  std::future<UvErr> connect(const std::string& node,
-                             const std::string& service,
-                             addr_family = addr_family::unspec,
-                             bool resolve_addr = true) override;
+  virtual void start_read(on_read_cb_t) override;
+
 private:
-  SslSocket(SslContext&, IoLoop&, uv_tcp_t*, socket_state ss,
-            TcpSocket::options);
+  ssize_t ssl_do_write();
+  int ssl_do_read(char*, size_t);
+  sslstatus ssl_handshake();
+  int do_encrypt_and_write(char* src, size_t len);
 
-  void handle_read_bytes(ssize_t, const uv_buf_t*) override;
-  void service_pending_write() override;
-  static SslSocket* create(SslContext&, IoLoop&, uv_tcp_t*,
-                           TcpSocket::socket_state, TcpSocket::options);
+  SslContext* _ssl_context;
+  std::unique_ptr<SslSession> _ssl_session;
 
-  std::pair<int, size_t> do_encrypt_and_write(char*, size_t);
-  sslstatus do_handshake();
-  void write_encrypted_bytes(const char* src, size_t len);
-  int ssl_do_read(char* src, size_t len);
+  enum class handshake_state_t {pending, success, failed} _handshake_state ;
 
-  SslContext& _ssl_context;
-  std::unique_ptr<SslSession> _ssl;
-  t_handshake_state _handshake_state;
-  std::promise<t_handshake_state> _prom_handshake;
+  // outbound bytes awaiting encryption
+  std::mutex _encryptbuf_mtx;
+  std::list<Buffer> _encrypt;
+
+  on_read_cb_t _user_on_read;
 };
+
 
 } // namespace apex

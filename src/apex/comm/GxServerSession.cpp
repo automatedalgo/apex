@@ -20,7 +20,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/model/Account.hpp>
 #include <apex/model/ExchangeId.hpp>
 #include <apex/core/Errors.hpp>
-#include <apex/infra/UvErr.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/model/tick_msgs.hpp>
 
@@ -31,7 +30,6 @@ namespace apex
 {
 
 class RealtimeEventLoop;
-class TcpSocket;
 
 
 static apex::pb::Exchange to_exchange(apex::ExchangeId id) {
@@ -81,10 +79,11 @@ static apex::Side from_side(apex::pb::Side side)
 }
 
 
-GxServerSession::GxServerSession(IoLoop& ioloop, RealtimeEventLoop& evloop,
+GxServerSession::GxServerSession(Reactor* reactor,
+                                 RealtimeEventLoop& evloop,
                                  std::unique_ptr<TcpSocket> sk,
                                  EventHandlers callbacks)
-  : GxSessionBase<GxServerSession>(ioloop, evloop, std::move(sk)),
+  : GxSessionBase<GxServerSession>(reactor, evloop, std::move(sk)),
     _server_callbacks(callbacks)
 {
   // if (!_callbacks.on_err)

@@ -19,6 +19,8 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/util/RealtimeEventLoop.hpp>
 #include <apex/core/Logger.hpp>
 
+#include <cassert>
+
 namespace apex
 {
 
@@ -68,13 +70,20 @@ WebsocketClient::WebsocketClient(RealtimeEventLoop& evloop,
   _proto = new WebsocketProtocol(
       this->_socket.get(), msg_cb,
       {std::move(request_timer_cb), std::move(protocol_closed_fn)},
-      connect_mode::active, protocol_options);
-
+      connect_mode::connect, protocol_options);
 
   // start socket read
-  this->_socket->start_read(
-      [this](char* s, size_t n) { this->io_on_read(s, n); },
-      [this](UvErr ec) { this->io_on_error(ec); });
+  this->_socket->start_read([this](char* s, ssize_t n) {
+    if (n > 0)
+      this->io_on_read(s, (size_t)n);
+    else {
+      _is_open = false;
+      LOG_WARN("lost websocket connection, error " << -n);
+      if (_on_close)
+        _on_close();
+    }
+  });
+
 
   _proto->initiate([this, on_open]() {
     this->_is_open = true;
@@ -85,12 +94,12 @@ WebsocketClient::WebsocketClient(RealtimeEventLoop& evloop,
 }
 
 WebsocketClient::~WebsocketClient() {
-  if (!_socket->is_closed()) {
-    // request socket close on the event loop
-    if (_event_loop.this_thread_is_ev()) {
-      _socket->close().wait();
-    }
-  }
+  // if (!_socket->is_closed()) {
+  //   // request socket close on the event loop
+  //   if (_event_loop.this_thread_is_ev()) {
+  //     _socket->close().wait();
+  //   }
+  // }
 }
 
 void WebsocketClient::io_on_read(char* src, size_t len)
@@ -104,7 +113,7 @@ void WebsocketClient::io_on_read(char* src, size_t len)
   }
 }
 
-void WebsocketClient::io_on_error(UvErr ec)
+void WebsocketClient::io_on_error(int ec)
 {
   /* io-thread */
   _is_open = false;
@@ -132,8 +141,8 @@ void WebsocketClient::send(const char* buf)
 
 
 void WebsocketClient::sync_close() {
-  auto fut = _socket->close();
-  fut.wait();
+  // auto fut = _socket->close();
+  // fut.wait();
 }
 
 } // namespace apex

@@ -19,10 +19,8 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/gx/ExchangeSession.hpp>
 #include <apex/gx/BinanceSession.hpp>
-
 #include <apex/model/MarketData.hpp>
 #include <apex/comm/GxServerSession.hpp>
-#include <apex/infra/IoLoop.hpp>
 #include <apex/infra/ssl.hpp>
 
 #include <memory>
@@ -143,7 +141,7 @@ private:
   void on_fill(BaseExchangeSession&, std::string order_id, OrderFill);
   void on_unsol_cancel(BaseExchangeSession&, std::string order_id, OrderUpdate);
 
-  UvErr create_listen_socket();
+  int create_listen_socket();
 
   RealtimeEventLoop* event_loop();
 
@@ -154,7 +152,7 @@ private:
   std::unique_ptr<apex::RealtimeEventLoop> _own_event_loop;
   apex::RealtimeEventLoop* _external_event_loop;
 
-  apex::IoLoop _ioloop;
+  apex::Reactor _reactor;
   std::unique_ptr<apex::SslContext> _ssl;
 
   // exchange connections

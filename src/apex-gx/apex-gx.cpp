@@ -17,8 +17,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/gx/BinanceSession.hpp>
 #include <apex/gx/GxServer.hpp>
-#include <apex/infra/SocketAddress.hpp>
-#include <apex/infra/TcpSocket.hpp>
 #include <apex/util/Config.hpp>
 
 #include <unistd.h>

@@ -120,6 +120,26 @@ void SslContext::log_ssl_error_queue()
 }
 
 
+std::string SslContext::get_ssl_errors()
+{
+  std::ostringstream oss;
+  unsigned long ec;
+  char buf[256];
+
+  do {
+    ec = ERR_get_error();
+    if (ec) {
+      memset(buf, 0, sizeof(buf));
+      ERR_error_string_n(ec, buf, sizeof(buf)-1);
+      oss << buf << ";";
+    }
+  } while (ec);
+
+  return oss.str();
+}
+
+
+
 SslSession::SslSession(SslContext* ctx, connect_mode cm)
   : ssl(nullptr), rbio(nullptr), wbio(nullptr)
 {
@@ -131,9 +151,9 @@ SslSession::SslSession(SslContext* ctx, connect_mode cm)
   ssl = SSL_new(ctx->context());
   SSL_set_bio(ssl, rbio, wbio);
 
-  if (cm == connect_mode::active)
+  if (cm == connect_mode::connect)
     SSL_set_connect_state(ssl);
-  if (cm == connect_mode::passive)
+  if (cm == connect_mode::accept)
     SSL_set_accept_state(ssl);
 }
 

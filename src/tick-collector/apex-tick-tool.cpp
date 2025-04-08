@@ -17,7 +17,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/backtest/TickFileWriter.hpp>
 #include <apex/backtest/TickbinMsgs.hpp>
-#include <apex/infra/TcpSocket.hpp>
 #include <apex/util/Error.hpp>
 #include <apex/util/json.hpp>
 #include <apex/util/utils.hpp>
@@ -26,6 +25,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <vector>
 #include <variant>
 #include <fstream>
+#include <iostream>
 
 using namespace apex;
 

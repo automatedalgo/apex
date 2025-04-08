@@ -27,7 +27,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-class IoLoop;
+class Reactor;
 class EventLoop;
 class RealtimeEventLoop;
 class BacktestEventLoop;
@@ -102,7 +102,7 @@ public:
 
   GatewayService* gateway_service() { return _gateway_service.get(); }
 
-  IoLoop* ioloop() { return _ioloop.get(); }
+  Reactor* reactor() { return _reactor.get(); }
   EventLoop* evloop() { return _evloop.get(); }
 
   Time now();
@@ -128,7 +128,7 @@ private:
   Config _config;
   PathsConfig _paths_config;
   Time _startup_time;
-  std::unique_ptr<IoLoop> _ioloop;
+  std::unique_ptr<Reactor> _reactor;
   std::unique_ptr<EventLoop> _evloop;
   BacktestEventLoop* _bt_evloop;
   std::unique_ptr<OrderRouterService> _order_router_service;

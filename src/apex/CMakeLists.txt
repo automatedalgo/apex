@@ -23,8 +23,6 @@ list(APPEND LIB_APEX_SRC_FILES
         "util/json.cpp"
         "infra/SocketAddress.hpp"
         "infra/SocketAddress.cpp"
-        "infra/UvErr.hpp"
-        "infra/UvErr.cpp"
         "util/StopFlag.hpp"
         "util/StopFlag.cpp"
         "util/EventLoop.cpp"
@@ -35,10 +33,12 @@ list(APPEND LIB_APEX_SRC_FILES
         "util/BacktestEventLoop.cpp"
         "core/Services.hpp"
         "core/Services.cpp"
-        "infra/IoLoop.hpp"
-        "infra/IoLoop.cpp"
+        "infra/Reactor.hpp"
+        "infra/Reactor.cpp"
         "infra/TcpSocket.hpp"
         "infra/TcpSocket.cpp"
+        "infra/TcpConnector.hpp"
+        "infra/TcpConnector.cpp"
         "infra/ssl.hpp"
         "infra/ssl.cpp"
         "infra/SslSocket.hpp"
@@ -145,7 +145,6 @@ if (BUILD_STATIC_LIBS)
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
             PRIVATE
             ${LIBCURL_INCLUDE_DIRS}
-            ${LIBUV_INCLUDE_DIRS}
             ${LIBPROTOBUF3_INCLUDE_DIRS}
             )
 
@@ -186,7 +185,6 @@ if (BUILD_SHARED_LIBS)
             $<INSTALL_INTERFACE:include>
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
             ${LIBCURL_INCLUDE_DIRS}
-            ${LIBUV_INCLUDE_DIRS}
             ${LIBPROTOBUF3_INCLUDE_DIRS}
             )
 

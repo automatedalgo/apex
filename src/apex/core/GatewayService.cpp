@@ -47,7 +47,7 @@ GatewayService::GatewayService(Services* services, Config config)
       throw ConfigError(oss.str());
     }
     auto session = std::make_shared<apex::GxClientSession>(
-        *services->ioloop(), *services->realtime_evloop(), node, port,
+        services->reactor(), *services->realtime_evloop(), node, port,
         services->order_service());
 
     session->start_connecting();
@@ -69,7 +69,7 @@ std::shared_ptr<GxClientSession> GatewayService::find_session(
 
 void GatewayService::set_default_gateway(std::string port) {
   _default_session  =  std::make_shared<apex::GxClientSession>(
-      *_services->ioloop(), *_services->realtime_evloop(), "127.0.0.1", port,
+      _services->reactor(), *_services->realtime_evloop(), "127.0.0.1", port,
       _services->order_service());
 
   _default_session->start_connecting();

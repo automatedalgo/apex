@@ -38,7 +38,7 @@ int to_int(Side s) {
     case Side::none:
       return 0;
   }
-
+  return 0;
 }
 
 
@@ -123,7 +123,7 @@ Auditor::~Auditor() = default;
 void Auditor::add_transaction(Time time,
                               const std::string& strat_id,
                               const OrderEvent& order_event,
-                              const std::string event_type,
+                              const std::string /* event_type */,
                               const Position& position,
                               const MarketData* market_data,
                               double fx_to_usd,

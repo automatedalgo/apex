@@ -61,7 +61,7 @@ protocol::protocol(TcpSocket* h, t_msg_cb cb, protocol_callbacks callbacks,
 }
 
 
-std::string protocol::fd() const { return m_socket->fd_info().second; }
+std::string protocol::fd() const { return std::to_string(m_socket->fd()); }
 
 
 /**
@@ -76,9 +76,9 @@ WebsocketProtocol::WebsocketProtocol(TcpSocket* h, t_msg_cb msg_cb,
                                      protocol::protocol_callbacks callbacks,
                                      connect_mode mode, options opts)
   : protocol(h, msg_cb, callbacks, mode),
-    _state(mode == connect_mode::passive ? state::handling_http_request
-                                          : state::handling_http_response),
-    _http_parser(new HttpParser(mode == connect_mode::passive
+    _state(mode == connect_mode::accept ? state::handling_http_request
+           : state::handling_http_response),
+    _http_parser(new HttpParser(mode == connect_mode::accept
                                      ? HttpParser::e_http_request
                                      : HttpParser::e_http_response)),
     _options(std::move(opts)),
@@ -144,11 +144,8 @@ void WebsocketProtocol::send_msg(const char* buf, size_t len)
   LOG_DEBUG("fd: " << fd() << ", frame_tx: "
                    << WebsocketppImpl::frame_to_string(out_msg_ptr));
 
-  std::pair<const char*, size_t> bufs[2] = {
-      {out_msg_ptr->get_header().data(), out_msg_ptr->get_header().size()},
-      {out_msg_ptr->get_payload().data(), out_msg_ptr->get_payload().size()}};
-
-  m_socket->write(bufs, 2);
+  m_socket->write(out_msg_ptr->get_header().data(), out_msg_ptr->get_header().size());
+  m_socket->write(out_msg_ptr->get_payload().data(), out_msg_ptr->get_payload().size());
 }
 
 
@@ -353,10 +350,9 @@ void WebsocketProtocol::send_impl(const websocketpp_msg& msg)
   if (msg.ptr->get_payload().empty()) {
     m_socket->write(msg.ptr->get_header().data(), msg.ptr->get_header().size());
   } else {
-    std::pair<const char*, size_t> bufs[2] = {
-        {msg.ptr->get_header().data(), msg.ptr->get_header().size()},
-        {msg.ptr->get_payload().data(), msg.ptr->get_payload().size()}};
-    m_socket->write(bufs, 2);
+
+    m_socket->write(msg.ptr->get_header().data(), msg.ptr->get_header().size());
+    m_socket->write(msg.ptr->get_payload().data(), msg.ptr->get_payload().size());
   }
 }
 

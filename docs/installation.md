@@ -66,7 +66,6 @@ compiled and made available to compile Apex.  Currently these dependencies are:
 
 * protobuf3 (message format between Apex components)
 * libcurl (used for REST requests)
-* libuv (used for socket IO)
 
 Individual build scripts are provided to build each dependency. These can be
 found under the `scripts` directory. To build all dependencies, issue the
@@ -74,7 +73,6 @@ following commands from the `apex` directory, one at a time:
 
     ./scripts/build_protobuf3.sh
     ./scripts/build_libcurl.sh
-    ./scripts/build_libuv.sh
 
 Each script performs a download, unzip, build and install. By default these
 built dependencies are installed under `~/apex/deps`.

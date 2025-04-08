@@ -60,10 +60,11 @@ static apex::pb::Side to_side(apex::Side side)
 }
 
 
-GxClientSession::GxClientSession(IoLoop& ioloop, RealtimeEventLoop& evloop,
+GxClientSession::GxClientSession(Reactor* reactor,
+                                 RealtimeEventLoop& evloop,
                                  std::string addr, std::string port,
                                  OrderService* order_service)
-  : GxSessionBase<GxClientSession>(ioloop, evloop, {}),
+  : GxSessionBase<GxClientSession>(reactor, evloop, {}),
     _remote_addr(addr),
     _remote_port(port),
     _order_service(order_service),
@@ -92,7 +93,7 @@ void GxClientSession::start_connecting()
 
 bool GxClientSession::is_connected()
 {
-  return (_sock && _sock->is_connected());
+  return (_sock && _sock->is_open());
 }
 
 
@@ -102,26 +103,32 @@ void GxClientSession::check_connection()
 
   if (_sock) {
 
-    if (_sock->is_connected())
+    if (_sock->is_open())
       return;
 
-    if (_sock->is_closed()) {
-      _sock.reset();
-      m_connected_subject.next(false);
-      return;
-    }
 
     _sock->close();
+    _sock.reset();
+    m_connected_subject.next(false);
+    return;
+
   }
 
 
   if (!_pending_sock) {
     LOG_INFO("connecting to " << _remote_addr << ":" << _remote_port);
-    _pending_sock = std::make_unique<apex::TcpSocket>(_io_loop);
-    _pending_sock_fut = _pending_sock->connect(_remote_addr, _remote_port);
+
+    auto complete_cb = [](int){};
+    _pending_sock = std::make_unique<apex::TcpSocket>(_reactor);
+
+    int timeout_secs = 10;
+    int port = std::stoi(_remote_port);
+    _pending_sock->connect(_remote_addr, port, timeout_secs, complete_cb);
+    sleep(1);
+
     _pending_sock_start = Time::realtime_now();
   } else {
-    if (_pending_sock->is_connected()) {
+    if (_pending_sock->is_open()) {
       _sock = std::move(_pending_sock);
       auto wp = weak_from_this();
       _callbacks.on_err = [wp](GxClientSession&) {
@@ -130,14 +137,12 @@ void GxClientSession::check_connection()
       };
 
       LOG_INFO("connected to gx-server");
-      this->start_read([](GxClientSession& session, apex::UvErr err) {
+      this->start_read([](GxClientSession& session, int err) {
         if (err) {
-          if (err.is_eof()) {
-            LOG_INFO("connection lost to gx-server");
-          } else {
             LOG_ERROR("start_read error: " << err);
-          }
+
         }
+
         // this call to _sock->close is needed
         // because the _sock still reports a state of
         // is_connected()==true, even though a socket error
@@ -159,14 +164,14 @@ void GxClientSession::check_connection()
         auto err = _pending_sock_fut.get();
         if (err) {
           LOG_ERROR("connect error: " << err);
-        _pending_sock->close().wait();
+        _pending_sock->close();
         _pending_sock.reset();
         }
       }
       auto now = Time::realtime_now();
       if (now - _pending_sock_start >= std::chrono::seconds(3)) {
         LOG_WARN("connection time out");
-        _pending_sock->close().wait();
+        _pending_sock->close();
         _pending_sock.reset();
       }
     }
@@ -207,7 +212,7 @@ void GxClientSession::subscribe(std::string symbol, ExchangeId exchange, apex::M
 void GxClientSession::perform_subscriptions()
 {
   assert(_event_loop.this_thread_is_ev());
-  if (!_sock || !_sock->is_connected())
+  if (!_sock || !_sock->is_open())
     return;
 
   for (auto& item : this->_pending_subs) {
