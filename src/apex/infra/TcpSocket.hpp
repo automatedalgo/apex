@@ -61,8 +61,13 @@ namespace apex
     virtual void connect(std::string addr, int port, int timeout,
                          connect_complete_cb_t = nullptr);
 
-    /* Set this socket to listen */
+    /* Start listening for connections */
     virtual void listen(int port, on_accept_cb_t on_accept_cb);
+
+    /* Start listening for connections */
+    virtual void listen(const std::string& node,
+                        const std::string& service,
+                        on_accept_cb_t on_accept_cb);
 
     /* Write data */
     virtual write_err write(const char*, size_t) ;
@@ -98,6 +103,7 @@ namespace apex
     ssize_t do_write();
     void set_connected_fd(int fd, on_write_cb_t on_write_cb);
     void listen_impl(int port, create_sock_cb_t cb);
+    void listen_impl(const std::string& node, const std::string& port, create_sock_cb_t cb);
     bool wants_write();
 
   protected:

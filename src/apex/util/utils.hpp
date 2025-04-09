@@ -44,7 +44,7 @@ std::ostream& operator<<(std::ostream&, RunMode);
 RunMode parse_run_mode(const std::string& s);
 
 /* Represent the mode of a socket or connection */
-enum class connect_mode { active, passive };
+enum class connect_mode { connect, accept };
 
 /*
  * Split a string based on a single delimiter.

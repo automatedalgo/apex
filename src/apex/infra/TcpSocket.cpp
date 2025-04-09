@@ -102,7 +102,6 @@ TcpSocket::write_err TcpSocket::write(const char* buf, size_t n)
 
 TcpSocket::write_err TcpSocket::write(std::string_view sv)
 {
-  assert(0);
   return this->write(sv.data(), sv.size());
 }
 
@@ -334,6 +333,98 @@ void TcpSocket::listen_impl(int port, create_sock_cb_t create_sock_cb)
 }
 
 
+void TcpSocket::listen_impl(const std::string& node,
+                            const std::string& service,
+                            create_sock_cb_t create_sock_cb)
+{
+  if (_stream)
+    throw std::runtime_error("cannot listen(), socket already initialised");
+
+  if (node.empty() && service.empty())
+    throw std::runtime_error("listen() requires at least node or service");
+
+  struct ::addrinfo hints;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM; /* Connection based socket */
+  hints.ai_flags = AI_PASSIVE; /* Allow wildcard IP address */
+  hints.ai_protocol = IPPROTO_TCP;
+
+  struct ::addrinfo * result;
+
+  // TODO: handle EAI_AGAIN .. basically just retry
+  int s = ::getaddrinfo(node.empty()? nullptr:node.c_str(),
+                        service.empty()? nullptr:service.c_str(),
+                        &hints, &result);
+  if (s != 0)
+    abort_with_msg("getaddrinfo", gai_strerror(s));
+
+  /* getaddrinfo() returns a list of address structures. Try each address until
+     we successfully bind(2).  If socket(2) (or bind(2)) fails, we (close the
+     socket and) try the next address. */
+
+  int sfd = -1;
+  int last_err = 0;
+
+  for (struct ::addrinfo * rp = result; rp != NULL; rp = rp->ai_next) {
+    sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+    if (sfd == -1) {
+      last_err = errno;
+      continue;
+    }
+
+    int value = 1;
+    setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, (&value), sizeof(value));
+
+    if (::bind(sfd, rp->ai_addr, rp->ai_addrlen) == 0)
+      break; /* Success */
+    else {
+      last_err = errno;
+      // LOG_WARN("bind failed: " << err_to_string(errno));
+      ::close(sfd);
+      sfd = -1;
+    }
+  }
+  freeaddrinfo(result);
+
+  if (sfd == -1)
+    throw std::system_error{last_err, std::system_category(), "socket/bind"};
+
+  // TODO: check for EINTR
+  if (::listen(sfd, BACKLOG) < 0) {
+    last_err = errno;
+    ::close(sfd);
+    throw std::system_error{last_err, std::system_category(), "socket/listen"};
+  }
+
+  auto cb = [create_sock_cb](Stream* stream, int /* unused */){
+    /* io-thread */
+    sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    socklen_t len = sizeof(addr);
+
+    // TODO: handle EINTR here?
+    int fd = ::accept4(stream->fd, (sockaddr*)&addr, &len, SOCK_NONBLOCK);
+    if (fd == -1) {
+      perror("Accept failed");
+    }
+    else
+      create_sock_cb(fd);
+  };
+
+  // create TcpStream
+  _stream = std::make_unique<TcpStream>(sfd);
+  _stream->user = this;
+  _stream->on_write_cb = [this]() -> ssize_t {
+    LOG_WARN("ignoring socket-write attempt for listening socket");
+    return -1;
+  };
+  _stream->on_connection_cb = std::move(cb);
+  _reactor->add_stream(_stream.get());
+  _reactor->start_accept(_stream.get());
+}
+
+
 void TcpSocket::listen(int port, on_accept_cb_t user_on_accept_cb)
 {
   if (!user_on_accept_cb)
@@ -348,5 +439,25 @@ void TcpSocket::listen(int port, on_accept_cb_t user_on_accept_cb)
 
   this->listen_impl(port, create_sock_cb);
 }
+
+
+void TcpSocket::listen(const std::string& node,
+                       const std::string& port,
+                       on_accept_cb_t user_on_accept_cb)
+{
+  if (!user_on_accept_cb)
+    throw std::runtime_error("cannot listen(), accept callback is empty");
+
+  create_sock_cb_t create_sock_cb = [user_on_accept_cb, this](int fd){
+    if (fd >= 0) {
+      auto sock = std::make_unique<TcpSocket>(this->_reactor, fd);
+      user_on_accept_cb(sock);
+    }
+  };
+
+  this->listen_impl(node, port, create_sock_cb);
+}
+
+
 
 } // namespace apex
