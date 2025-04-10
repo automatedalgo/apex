@@ -1,16 +1,7 @@
-#include "Reactor.hpp"
+#include <apex/infra/Reactor.hpp>
 
 #include <assert.h>
-#include <sys/socket.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-
-#define LOG_INFO( X ) do { std::cout << "info: " << X << std::endl;} while (0);
-#define LOG_WARN( X ) do { std::cout << "warning: "<< X << std::endl;} while (0);
-#define LOG_ERROR( X ) do { std::cout << "error: "<< X << std::endl;} while (0);
-
-#define BACKLOG 20
 
 namespace apex {
 
@@ -57,7 +48,6 @@ void eventstr(std::ostream& os, int e)
 
 
 Stream::~Stream() {
-  // printf("~stream\n");
 }
 
 
@@ -141,10 +131,9 @@ void Reactor::detach_stream(Stream* stream)
     auto cb = [&promise]() {
       promise->set_value();
     };
-    stream->on_disponse_cb = cb;
+    stream->on_dispose_cb = cb;
     push_command({Command::Type::dispose, stream});
     promise->get_future().wait();
-    // LOG_INFO("detach_stream completed");
   }
 }
 
@@ -435,9 +424,9 @@ void Reactor::reactor_main_loop()
       if (s && s->do_delete) {
         // this callback doesn't need disposing check, because if disposing flag
         // was set on the IO thread the callback won't be set, otherwise if has
-        // been set it means a caller it waiting.
-        if (s->on_disponse_cb)
-          s->on_disponse_cb();
+        // been set it means a caller is waiting.
+        if (s->on_dispose_cb)
+          s->on_dispose_cb();
         // printf("reactor: deleting stream fd:%i\n", s->fd);
         delete s;
         s = nullptr;

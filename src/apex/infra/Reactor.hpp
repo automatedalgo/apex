@@ -20,7 +20,7 @@
 
 namespace apex {
 
-class Stream;
+struct Stream;
 class Reactor;
 
 using on_listen_cb_t = std::function<void(Stream*, int)>;
@@ -32,12 +32,12 @@ Stream objects are deleted on main thread of their associated reactor.
 
 A user can request a Stream be deleted via the dispose stream.  This sets the
 disposing flag, which indicates that it is no longer safe for the reactor to
-invoke any of the user callbacks, with the exception of on_disponse_cb; if that
+invoke any of the user callbacks, with the exception of on_dispose_cb; if that
 is set, it shall be called, typically to inform (& unblock) the user that the
 Stream has been deleted.
 */
 
-#define NULL_FD -1
+#define NULL_FD (-1)
 
 struct Stream {
 
@@ -58,12 +58,12 @@ struct Stream {
   on_write_cb_t on_write_cb;
   on_connect_cb_t on_connect_timeout_cb;
   on_accept_cb_t on_accept_cb;
-  std::function<void()> on_disponse_cb;
+  std::function<void()> on_dispose_cb;
   std::function<void()> user_cb;
   void * user;
   int timeout;  // time in seconds
 
-  Stream(int fd = NULL_FD)
+ explicit Stream(int fd = NULL_FD)
     : fd{fd},
       events(0),
       hangup(false),
@@ -88,7 +88,7 @@ struct Stream {
 
 class TcpStream : public Stream  {
 public:
-  TcpStream(int fd = -1) : Stream(fd) {};
+  explicit TcpStream(int fd = -1) : Stream(fd) {};
 };
 
 
@@ -97,8 +97,6 @@ class Reactor
 public:
   Reactor();
   ~Reactor();
-
-  void start();
 
   void add_stream(Stream*);
   void close_stream(Stream*);
