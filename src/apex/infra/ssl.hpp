@@ -35,6 +35,9 @@ struct SslConfig {
   /* Must be set to true to indicate SSL should be set up. */
   bool enable;
 
+  /* SSL security level */
+  int security_level = 3;
+
   /* For SSL in server mode, both certificate and private key files must be
    * provided. */
   std::string certificate_file;

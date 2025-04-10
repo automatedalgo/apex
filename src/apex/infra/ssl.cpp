@@ -57,7 +57,7 @@ SslContext::SslContext(const SslConfig& conf)
     if (!_ctx)
       throw_ssl_error("SSL_CTX_new failed");
 
-    SSL_CTX_set_security_level(_ctx, 4);
+    SSL_CTX_set_security_level(_ctx, _config.security_level);
 
     _is_custom_ctx = false;
 
