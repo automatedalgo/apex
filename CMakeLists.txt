@@ -140,6 +140,8 @@ include_directories("${PROJECT_SOURCE_DIR}/3rdparty")
 # add external dependencies after project includes
 include_directories(${OPENSSL_INCLUDE_DIR})
 
+enable_testing ()
+
 # include sub directories
 add_subdirectory(src/apex-gx)
 add_subdirectory(src/tick-collector)

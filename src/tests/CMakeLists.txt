@@ -30,3 +30,4 @@ endmacro()
 
 
 Compile_Program(test_runner)
+add_test(TEST test_runner)
