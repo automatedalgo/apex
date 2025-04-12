@@ -116,10 +116,11 @@ void make_tcp_socket(Reactor* reactor, unique_ptr<SslSocket>& ptr) {
 
 template<typename T>
 TestServer<T>::TestServer(int flags)
+  : _flags(flags)
 {
   make_tcp_socket(this->reactor(), _server);
 
-   std::function<void(std::unique_ptr<T>&)> cb = [this, flags](std::unique_ptr<T>& sock) {
+  std::function<void(std::unique_ptr<T>&)> on_accept_cb = [this, flags](std::unique_ptr<T>& sock) {
     /* io-thread */
 
     std::lock_guard<std::mutex> guard(_clients_mtx);
@@ -153,12 +154,14 @@ TestServer<T>::TestServer(int flags)
 
   // if flag are set, override the callack
   if (_flags & Scenarios::server_write_no_accept)
-    cb = [](std::unique_ptr<T>& sock){
+    on_accept_cb = [](std::unique_ptr<T>& sock){
       for (int i = 0; i <100; i++)
         sock->write("WONT ACCEPT");
     };
   else if (_flags & Scenarios::server_no_accept)
-    cb = [](std::unique_ptr<T>&){};
+    on_accept_cb = [](std::unique_ptr<T>&){
+      /* ownership of new connection is not taken, so will be closed */
+    };
 
   int starting_port = 5544;
 
@@ -166,7 +169,7 @@ TestServer<T>::TestServer(int flags)
   bool listening = false;
   for (int i = 0; i < 1000; i++) {
     try {
-      _server->listen(port, cb);
+      _server->listen(port, on_accept_cb);
       this->port = port;
       listening = true;
       break;
@@ -259,6 +262,35 @@ unique_ptr<TcpSocket> create_connected_tcp(Reactor* reactor,
 }
 
 
+/* A server which deliberately discards connection tests leading to the client
+ * socket being immediately closed.
+ */
+TEST_CASE("server_does_not_accept")
+{
+  TestServer<TcpSocket> srv(Scenarios::server_no_accept);
+  Reactor reactor;
+
+  list< unique_ptr<TcpSocket> > sockets;
+  for (int i = 0; i < 100; i++) {
+    auto sock = create_connected_tcp(&reactor, "127.0.0.1", srv.port);
+    assert(sock);
+    if (sock) {
+      sock->start_read([](char* /*buf*/, ssize_t /*n*/) { });
+      for (int j = 0; j < 100; j++)
+        sock->write("HELLO");
+    }
+    sockets.push_back(move(sock));
+  }
+
+  sleep(2); // time for server/network to close sockets
+
+  // check the client sockets are closed - they should have received EOF due to
+  // the server discarding the connection
+  for (auto & sock : sockets)
+    assert(!sock->is_open());
+}
+
+
 TEST_CASE("server_and_client_normal") {
   TestServer<TcpSocket> server;
   Reactor reactor;
@@ -280,7 +312,6 @@ TEST_CASE("server_and_client_normal") {
       client.bytes_recv += n;
       client.recv_data += std::string_view(buf, n);
       if (client.bytes_recv == byte_count)  {
-        cout << "data received " <<  client.bytes_recv << endl;
         prom->set_value();
       }
     });
