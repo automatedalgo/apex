@@ -66,7 +66,7 @@ TcpSocket::~TcpSocket() {
 
 /* Is this socket currently associated with an open file descriptor? */
 bool TcpSocket::is_open() const {
-  return _stream && _stream->has_fd() && !_stream->err;
+  return _stream && _stream->has_fd() && !_stream->err && !_stream->eof;
 }
 
 
