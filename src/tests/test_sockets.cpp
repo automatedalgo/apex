@@ -102,6 +102,16 @@ struct TestServer
   int port = -1;
 
   void thread_main();
+
+  int count_open_clients() {
+    std::lock_guard<std::mutex> guard(_clients_mtx);
+    int count = 0;
+    for (auto & client : _clients) {
+      if (client.sock->is_open())
+        count ++;
+    }
+    return count;
+  };
 };
 
 
@@ -333,8 +343,47 @@ TEST_CASE("server_and_client_normal") {
         throw runtime_error(oss.str());
     }
   }
-
 }
+
+
+TEST_CASE("client_does_close") {
+  TestServer<TcpSocket> server;
+  Reactor reactor;
+
+  auto sock = create_connected_tcp(&reactor, "127.0.0.1", server.port);
+  assert(sock);
+
+  sock->start_read([&](char* /*buf*/, ssize_t n) {
+    if (n > 0)
+      sock->close();
+  });
+  sock->write("hello"); // triggers a reply, on which we do closee
+
+  auto now = time(0);
+  while (sock->is_open() && ((time(0) - now) < 5)) {
+    usleep(250000);
+  }
+  assert(!sock->is_open());
+}
+
+
+TEST_CASE("client_does_dispose_without_close") {
+  TestServer<TcpSocket> server;
+  Reactor reactor;
+
+  auto sock = create_connected_tcp(&reactor, "127.0.0.1", server.port);
+  assert(sock && sock->is_open());
+
+  sock->write("hello");
+  sock.reset();  // delete the socket, which also causes it to close
+
+  auto now = time(0);
+  while (server.count_open_clients() && ((time(0) - now) < 5)) {
+    usleep(250000);
+  }
+  assert(server.count_open_clients() == 0);
+}
+
 
 int main(int argc, char** argv)
 {

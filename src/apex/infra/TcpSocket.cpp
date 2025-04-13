@@ -59,10 +59,10 @@ TcpSocket::TcpSocket(Reactor* r, int fd)
 }
 
 
-
 TcpSocket::~TcpSocket() {
   _reactor->detach_stream_unique_ptr(_stream);
 }
+
 
 /* Is this socket currently associated with an open file descriptor? */
 bool TcpSocket::is_open() const {
