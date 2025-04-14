@@ -385,15 +385,32 @@ TEST_CASE("client_does_dispose_without_close") {
 }
 
 
+TEST_CASE("server_socket_listen_discard")
+{
+  Reactor reactor;
+  for (int i = 0; i < 50; i++) {
+    auto sock = make_unique<TcpSocket>(&reactor);
+    auto on_accept = [](unique_ptr<TcpSocket>&) {};
+
+    for (int p = 33000; p < 34000; p++) {
+      try {
+        sock->listen(p, on_accept);
+        assert(sock->is_open());
+        break;
+      }
+      catch (const std::system_error& e) {
+      }
+    }
+  }
+}
+
+
 int main(int argc, char** argv)
 {
   SslConfig ssl_config(true);
   ssl_config.certificate_file = SOURCE_DIR "/src/tests/test-cert.pem";
   ssl_config.private_key_file = SOURCE_DIR "/src/tests/test-private.pem";
-
   ssl_ctx = std::make_unique<SslContext>(ssl_config);
-
-
 
   try {
     int result = quicktest::run(argc, argv);
