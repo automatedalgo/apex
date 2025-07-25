@@ -12,16 +12,21 @@ echo "==> CSV refdata files saving to [${APEX_HOME}]"
 
 
 rm -v -f \
-   tmp/binance_exchange-info.json \
-   tmp/binance_usdfut_exchange-info.json \
-   tmp/binance_coinfut_exchange-info.json \
-   tmp/binance_assets.csv
+   tmp/binance_* \
+   tmp/kucoin_*
 
 mkdir -p ./tmp
 
 cd "$SCRIPT_DIR"
 python3 fetch_binance_refdata.py
 python3 parse_binance_refdata.py
+python3 fetch_kucoin_refdata.py
+python3 parse_kucoin_refdata.py
+
+python3 bybit_fetch_refdata.py
+python3 bybit_parse_refdata.py
+
+python3 combine_asset_files.py tmp/*assets.csv
 
 # install into shared location
 
@@ -30,5 +35,5 @@ path=${APEX_HOME}/data/refdata/instruments/$(date +%Y%m%d)/instruments-$(date +%
 
 
 mkdir -p $(dirname $path)
-cp -v tmp/binance_assets.csv "$path"
+cp -v tmp/instruments.csv "$path"
 cd ${APEX_HOME}/data/refdata/instruments && ln -vsnf "$path" instruments.csv
