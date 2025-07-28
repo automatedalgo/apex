@@ -26,6 +26,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/core/Logger.hpp>
 #include <apex/model/tick_msgs.hpp>
 #include <apex/util/Config.hpp>
+#include <apex/venues/binance/binance_common.hpp>
 
 #include <filesystem>
 #include <sstream>
@@ -300,15 +301,6 @@ namespace apex
 {
 
 
-// subscribe: BTCUSDT / streamtype, stream-options
-
-Time from_binance_timestamp(json::number_unsigned_t i)
-{
-  int ms = i % 1000;
-  int sec = (i - ms) / 1000;
-  return Time{sec, std::chrono::milliseconds(ms)};
-}
-
 BinanceSession::Params build_params(Config config) {
   BinanceSession::Params params;
   params.raw_capture_dir = config.get_string("raw_capture_dir", "");
@@ -393,13 +385,7 @@ void BinanceSession::start()
 }
 
 
-Side buyer_market_maker_to_aggrSide(bool buyer_is_maker)
-{
-  if (buyer_is_maker)
-    return Side::sell;
-  else
-    return Side::buy;
-}
+
 
 
 void BinanceSession::subscribe_top(Symbol symbol, subscription_options,

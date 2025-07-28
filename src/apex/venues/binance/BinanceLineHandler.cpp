@@ -44,13 +44,6 @@ Side to_side(std::string_view side) {
 }
 
 
-Time from_binance_timestamp2(json::number_unsigned_t i)
-{
-  int ms = i % 1000;
-  int sec = (i - ms) / 1000;
-  return Time{sec, std::chrono::milliseconds(ms)};
-}
-
 static std::string sign_message(const std::string& payload,
                                 const std::string& seed_hex) {
 
@@ -239,7 +232,7 @@ void BinanceLineHandler::process_execution_report(json& event)
     exec.exch_order_id = std::to_string(get_field<unsigned long>(event, "i"));
     exec.symbol = get_field<std::string>(event, "s");
     exec.side = to_side(get_field<std::string>(event, "S"));
-    exec.time = from_binance_timestamp2(get_field<unsigned long>(event, "T"));
+    exec.time = from_binance_timestamp(get_field<unsigned long>(event, "T"));
 
     _callbacks.on_order_execution(exec);
     return;
