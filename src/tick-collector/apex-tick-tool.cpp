@@ -73,7 +73,7 @@ int main(int argc, char** argv)
            remaining_to_read);
 
     auto meta = read_meta(preamble, tickbin_header.length);
-    auto stream_type = get_string_field(meta, "c");
+    auto stream = get_string_field(meta, "c");
     auto exchange = get_string_field(meta, "e");
     auto symbol = get_string_field(meta, "s");
     auto inst_id = get_string_field(meta, "i");
@@ -81,23 +81,41 @@ int main(int argc, char** argv)
               << "exchange: " << exchange << "\n"
               << "symbol: " << symbol << "\n"
               << "inst_id: " << inst_id << "\n"
-              << "stream: " << stream_type << "\n";
+              << "stream: " << stream << "\n";
 
     std::cout << "rawjson[" << meta << "]\n";
 
     MarketData md;
-    MdStream md_stream = apex::MdStream::AggTrades;
+    MdStream md_stream;
+
+    if (stream == "l1") {
+      md_stream = apex::MdStream::L1;
+    }
+    else if (stream == "aggtrades") {
+      md_stream = apex::MdStream::AggTrades;
+    }
+    else {
+      throw std::runtime_error(concat("unsupported stream type: ", stream));
+    }
+
     TickbinFileReader reader{fn, &md, md_stream};
 
     md.subscribe_events([&](MarketData::EventType et){
       if (et.is_trade()) {
         auto last = md.last();
-        std::cout << "i " << inst_id << "; " << "mt trade; et " << last.et
+        std::cout << "s " << inst_id << "; " << "mt trade; et " << last.et
                   << "; tp " << format_double(last.price, true)
-                  << "; ts " << format_double(last.qty, true) << "\n";
+                  << "; ts " << format_double(last.qty, true)
+                  << std::endl;
       }
+
       if (et.is_top()) {
-        std::cout << "got TOP event\n";
+        std::cout << "s " << inst_id
+                  << "; " << "bp1 " <<  format_double(md.bid1().price, true)
+                  << "; " << "bs1 " << format_double(md.bid1().qty, true)
+                  << "; " << "ap1 " <<  format_double(md.ask1().price, true)
+                  << "; " << "as1 " <<  format_double(md.ask1().qty, true)
+                  << std::endl;
       }
     });
 
