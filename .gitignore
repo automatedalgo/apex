@@ -39,3 +39,6 @@ cmake-build-release/
 
 # IDE files
 .idea/
+
+# Python
+__pycache__/
