@@ -40,7 +40,8 @@ def main():
 
     final_file = "tmp/instruments.csv"
     logging.info(f"writing final file to '{final_file}'")
-    final_df.to_csv(final_file)
+
+    final_df.to_csv(final_file, float_format="%.8f")
 
 
 

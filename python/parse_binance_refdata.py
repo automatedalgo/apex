@@ -32,8 +32,7 @@ def log_warn_once(msg):
         logging.warning(msg)
 
 
-def parse_binance_spot_exchange_info(fn):
-    venue = "binance"
+def parse_binance_spot_exchange_info(fn, venue: str):
     assetType = "coinpair"
     logging.info("reading file '{}'".format(fn))
     # read json
@@ -55,9 +54,12 @@ def parse_binance_spot_exchange_info(fn):
 
     logging.info("ignoring following filters: {}".format(filters_to_ignore))
     for item in symbols:
+        symbol = item["symbol"]
         asset_id_root = "{}/{}".format(item['baseAsset'], item['quoteAsset'])
         row = dict()
-        row["symbol"] = item["symbol"]
+        row["symbol"] = symbol
+        row["feed_symbol"] = symbol.lower()
+        row["line_symbol"] = symbol
         row["instId"] = asset_id_root + ".BNC"
         row["type"] = assetType
         row["venue"] = venue
@@ -135,8 +137,8 @@ def parse_binance_usdfut_exchange_info(fn, venue):
     logging.info("ignoring following filters: {}".format(filters_to_ignore))
     for item in symbols:
         row = dict()
-        asset_id_root = "{}/{}".format(item['baseAsset'], item['quoteAsset'])
         symbol = item["symbol"]
+        asset_id_root = "{}/{}".format(item['baseAsset'], item['quoteAsset'])
         row["symbol"] = symbol
         row["feed_symbol"] = symbol.lower()
         row["line_symbol"] = symbol
@@ -243,18 +245,20 @@ def write_csv_file(fn, rows, index_field, delim=','):
 def main():
     apex.logging.init_logging()
 
-    # fn = "tmp/binance_exchange-info.json"
-    # coin_rows = parse_binance_spot_exchange_info(fn)
+    fn = "tmp/binance_exchange-info.json"
+    coin_rows = parse_binance_spot_exchange_info(fn,
+                                                 venue="binance")
 
     fn = "tmp/binance_usdfut_exchange-info.json"
-    futures_rows = parse_binance_usdfut_exchange_info(fn, venue="binance_usdfut")
+    futures_rows = parse_binance_usdfut_exchange_info(fn,
+                                                      venue="binance_usdfut" )
 
     # fn = "tmp/binance_coinfut_exchange-info.json"
     # coinfut_rows = parse_binance_usdfut_exchange_info(fn,
     #                                                   venue="binance_coinfut")
 
     outfn = "tmp/binance_assets.csv"
-    all_rows = [*futures_rows]
+    all_rows = [*coin_rows, *futures_rows]
     #all_rows = [*coin_rows, *futures_rows, *coinfut_rows]
     write_csv_file(outfn, all_rows, "instId")
 
