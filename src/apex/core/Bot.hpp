@@ -38,7 +38,6 @@ class Order;
 class MarketData;
 class Strategy;
 class OrderRouter;
-class RealtimeEventLoop;
 
 
 // Track live and closed orders associated with a single Bot.
