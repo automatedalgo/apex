@@ -111,7 +111,7 @@ public:
 
   const char* c_str() const {
     *_p = '\0';
-z    return _buf;
+    return _buf;
   }
 
 
