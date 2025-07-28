@@ -16,14 +16,17 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <apex/core/Bot.hpp>
-#include <apex/core/GatewayService.hpp>
+#include <apex/core/Logger.hpp>
+#include <apex/core/MarketDataService.hpp>
+#include <apex/core/OrderRouterService.hpp>
 #include <apex/core/Strategy.hpp>
-#include <apex/gx/GxServer.hpp>
+
+#include <iostream>
 
 /* This is a basic demo Bot that places a passive buy order on Binance. The
-   order is positioned far from the bid/ask to prevent execution.  After 10
-   seconds the order is canceled, and the process repeated. This example shows
-   how orders are priced, sized, created, sent and then later managed.
+   order is positioned far from the bid/ask to prevent execution.  After 20
+   seconds the order is canceled. This example shows how orders are priced,
+   sized, created, sent and then later managed.
 */
 class OneOrderDemoBot : public apex::Bot
 {
@@ -32,14 +35,41 @@ public:
   OneOrderDemoBot(apex::Strategy* strategy, const apex::Instrument& instrument)
     : apex::Bot("OneOrderDemoBot", strategy, instrument) {}
 
+  void on_order_live(apex::Order& order) {
+    LOG_INFO("order live: " << order.order_id());
+  }
+
   void on_timer() override
   {
+    using namespace std::chrono_literals;
+
     // Every 1 second run the Bot logic, which is just an order if we already
     // have not, but if we have sent one, then cancel it.
-    if (!_order)
+
+    if (!_order) {
+      // We have not created and order, so create and send
       _create_and_send_order();
-    else
-      _cancel_existing_order();
+      return;
+    }
+
+    if (_order->is_rejected()) {
+      // Our order was rejected - so lets delete the Order instance, so that we
+      // can try again later.
+      if (_order->duration_since_sent() > 5s)
+        _order.reset();
+      return;
+    }
+
+    if (!_order->is_closed_or_canceling()) {
+      // The order is still 'live', so here we will manage it.  Our only
+      // management logic is to cancel the order if it's been alive for too
+      // long.
+      if ((_order->duration_live() > 20s) &&
+          (_order->cancel_reject_count() < 3)) {
+        _order->cancel();
+      }
+      return;
+    }
   }
 
 private:
@@ -55,35 +85,31 @@ private:
       return;
 
     // desired value of the order USD
-    auto order_usd = 10.0;
+    auto order_usd = 25.0;
 
     // choose price 1% away from last trade, so that it doesn't execute
     double price = round_price_passive(last_price() * 0.99, apex::Side::buy);
+
+    // don't send order if calculated order is zero
+    if (apex::dbl_is_zero(price)) {
+      LOG_WARN("cannot send, calculated order price is " << price);
+      return;
+    }
 
     // size the order quantity, based on target price and value
     double qty = round_size(order_usd / (price * fx_rate()));
 
     // don't send order if calculated order qty is zero
-    if (qty == 0)
+    if (apex::dbl_is_zero(qty)) {
+      LOG_WARN("cannot send, calculated order qty is " << qty);
       return;
+    }
 
     // construct an order object (this does not cause it to be sent)
     _order = create_order(apex::Side::buy, qty, price, apex::TimeInForce::gtc);
 
     // send order to the exchange (this is an asynchronous operation)
     _order->send();
-  }
-
-  void _cancel_existing_order()
-  {
-    if (!_order->is_closed_or_canceling()) {
-      // The order is still 'live', so here we will manage it.  Our only
-      // management logic is to cancel the order if it's been alive for too
-      // long.
-      if (_order->duration_live() > std::chrono::seconds(20)) {
-        _order->cancel();
-      }
-    }
   }
 
   std::shared_ptr<apex::Order> _order;
@@ -93,36 +119,52 @@ int main()
 {
   try {
     // create core engine, configured for paper or live trading
-    auto services = apex::Services::create(apex::RunMode::paper);
+    apex::Logger::instance().set_level(apex::Logger::info);
+    auto services = apex::Services::create(apex::RunMode::live);
 
-    // ----- Exchange Gateway (Binance) -----
+    // ----------------------------------------------------------------------
+    // CONFIGURE CORE SERVICES
+    // ----------------------------------------------------------------------
 
-    // create an embedded exchange gateway server
-    apex::GxServer gateway{services->realtime_evloop(), services->run_mode()};
+    // Setup order gateway and price feeds to Binance & Binance USD Futures.
 
-    // add Binance exchange to gateway (API key only needed for live trading)
-    apex::BinanceSession::Params params;
-    // params.api_key_file = apex::user_home_dir()/".apex/binance_key.json";
-    gateway.add_venue(params);
+    apex::FeedConfig feed_config;
+    auto router_service = services->order_router_service();
 
-    // start the gateway, it will listen for connections from the strategy
-    gateway.start();
+    // add a Binance USD-Futures line hander order-router
+    apex::OrderRouterConfig binance_config;
+    binance_config.api_key_file = apex::expand("~/.secrets/binance_key.json");
+    router_service->add_binance_usdfut(binance_config);
 
-    // add a route from core engine to the gateway server
-    services->gateway_service()->set_default_gateway(gateway.get_listen_port());
+    // add a Binance USD-Futures feed hanlder
+    feed_config.type = "BinanceUsdFut";
+    services->market_data_service()->add_feed(feed_config, {"binance_usdfut"});
 
-    // ----- Strategy -----
+    // add a Binance Spot line hander order-router
+    router_service->add_binance_spot(binance_config);
+
+    // add a Binance Spot feed hanlder
+    feed_config.type = "Binance";
+    services->market_data_service()->add_feed(feed_config, {"binance"});
+
+    // ----------------------------------------------------------------------
+    // SINGLE ORDER STRATEGY
+    // ----------------------------------------------------------------------
 
     // create a Strategy object, which is a container for individual bots
     apex::Strategy strategy(services.get(), "DEM01");
 
     // add a bot, which is responsible for trading a single name
     strategy.create_bot<OneOrderDemoBot>(apex::InstrumentQuery(
-                                           "BTCUSDT",
+                                           "DOGEUSDT",
                                            apex::ExchangeId::binance));
 
     // initialise all bots, so they can begin trading
     strategy.init_bots();
+
+    // ----------------------------------------------------------------------
+    // RUN
+    // ----------------------------------------------------------------------
 
     // run until user presses control-c
     services->run();
