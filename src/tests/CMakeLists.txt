@@ -21,7 +21,7 @@ macro(Compile_Program prog)
     target_compile_options(${prog} PUBLIC -DSOURCE_DIR="${CMAKE_SOURCE_DIR}" )
     set_property(TARGET ${prog} PROPERTY CXX_STANDARD 17)
     set_property(TARGET ${prog} PROPERTY CXX_STANDARD_REQUIRED ON)
-    target_link_libraries(${prog} PRIVATE ${EXTRA_LIBS} ${EXTRA_GCC_LIBS})
+    target_link_libraries(${prog} PRIVATE ${EXTRA_LIBS} ${EXTRA_GCC_LIBS} sodium)
     install(TARGETS ${prog})
 
     if (WIN32)
