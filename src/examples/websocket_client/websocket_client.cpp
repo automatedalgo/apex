@@ -36,64 +36,80 @@ int run(RealtimeEventLoop& event_loop,
         Reactor& reactor,
         SslContext& ssl_context)
 {
-  auto address = "testnet.binance.vision";
+  auto host = "fstream.binance.com";
   auto port = 443;
   auto path = "/ws";
 
-
-  LOG_INFO("connecting...");
-
-  auto promise = std::make_shared<std::promise<int>>();
-  auto connected_cb = [&](int err) {
-    promise->set_value(err);
-  };
   int timeout_secs = 5;
 
+  LOG_INFO("attempting websocket connection to '" << host << ":"
+           << port << path << "'");
+
+  /* ----- socket connection ----- */
+
+  auto connected_promise = std::make_shared<std::promise<int>>();
+  auto connected_cb = [&](int err) { connected_promise->set_value(err); };
+
   auto sock = std::make_unique<SslSocket>(&ssl_context, &reactor);
-  sock->connect(address, port, 10, connected_cb);
-  auto fut = promise->get_future();
+  //auto sock = std::make_unique<TcpSocket>(&reactor);
+  sock->connect(host, port, 10, connected_cb);
+  auto fut2 = connected_promise->get_future();
 
-  if (fut.wait_for(5s) != std::future_status::ready) {
-    LOG_ERROR("connect timeout");
-    return 1;
+  if (fut2.wait_for(std::chrono::seconds(timeout_secs)) != std::future_status::ready)
+    throw std::runtime_error("timeout during connect");
+
+  int err2 = fut2.get();
+  if (err2)
+    throw std::runtime_error("connect failed");
+
+  /* ----- websocket initialisation ----- */
+
+  auto msg_cb = [=](const char* buf, size_t len) {
+    LOG_INFO(std::string(buf, len));
+  };
+
+  auto websock_promise = std::make_shared<std::promise<void>>();
+  auto on_open = [&]{ websock_promise->set_value(); };
+
+  // auto on_error = on_down;
+  std::function<void()> on_down = [](){}; // TODO: implement
+
+  LOG_INFO("socket connected: " << sock->is_open());
+  sock->start_read([](char* b, ssize_t n){
+    LOG_INFO( std::string_view(b,n));
+  });
+
+  sleep(20);
+
+  std::shared_ptr<WebsocketClient> ws = std::make_shared<WebsocketClient>(
+    event_loop, std::move(sock), path, msg_cb, on_open, on_down);
+
+  {
+    // wait for the websocket to become open
+    auto fut = websock_promise->get_future();
+    if (fut.wait_for(std::chrono::seconds(timeout_secs)) != std::future_status::ready)
+      throw std::runtime_error("timeout during websocket initiation");
   }
 
-  auto err = fut.get();
+  if (ws->is_open())
+    LOG_INFO("*** websocket open ***");
 
-  if (err) {
-    LOG_ERROR("connect failed: " << err);
-    return 1;
-  }
-  else {
-    LOG_INFO("connect success");
-  }
-
-
-  WebsocketClient ws(event_loop,
-                     std::move(sock),
-                     path,
-                     [](const char* buf, size_t len){
-                       std::string s(buf, len);
-                       std::cout << s << "\n";
-                     },
-                     std::function<void()>{},
-                     std::function<void()>{});
 
   std::string msg = R"(
 {
   "method": "SUBSCRIBE",
   "params": [
-    "btcusdt@depth"
+    "btcusdt@aggTrade"
   ],
   "id": 312
 }
 )";
-  ws.send(msg.c_str(), msg.size());
+  ws->send(msg.c_str(), msg.size());
 
   apex::wait_for_sigint();
   LOG_INFO("control-c detected");
 
-  ws.sync_close();
+  // ws.sync_close();  // TODO: implement this function
   return 0;
 }
 
@@ -102,6 +118,7 @@ int main(int, char**) {
 
   Logger::instance().set_level(Logger::debug);
   Logger::instance().set_detail(true);
+  apex::Logger::instance().register_thread_id("main");
 
   std::function<bool()> on_event_exception = [](){
     LOG_INFO("got exception");
@@ -111,13 +128,12 @@ int main(int, char**) {
   RealtimeEventLoop event_loop(on_event_exception);
 
   Reactor reactor;
-  SslContext ssl_context(SslConfig(true));
+  SslConfig config(true);
+  config.security_level = 0;
+  SslContext ssl_context(config);
 
   int ec = run(event_loop, reactor, ssl_context);
 
-  while(1) {
-    sleep(1);
-  }
 
   return ec;
 }
