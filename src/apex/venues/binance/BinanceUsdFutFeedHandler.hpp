@@ -33,7 +33,7 @@ public:
                            Reactor* reactor,
                            RealtimeEventLoop* event_loop,
                            FeedHandlerCallbacks);
-
+  ~BinanceUsdFutFeedHandler();
   void start() override;
   void subscribe_trades(std::string) override;
   void subscribe_top(std::string) override;

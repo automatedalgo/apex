@@ -109,7 +109,7 @@ BinanceLineHandler::BinanceLineHandler(Services * services,
   _apikey = obj["key"].get<std::string>();
   _seedhex = obj["seed"].get<std::string>(); // TODO: allow other form, eg PEM
 
-  int uat_mode = 1;
+  int uat_mode = 0;
   if (uat_mode) {
     _line_url = "ws://127.0.0.1:9010/ws-fapi/v1?returnRateLimits=false";
     _apikey = "sErnzoWaTESThtDlKTHISISATESTfWppp7t34vOOszl8wNTEST3feMyGv5SjSsLv";
@@ -130,6 +130,7 @@ BinanceLineHandler::BinanceLineHandler(Services * services,
     });
 }
 
+BinanceLineHandler::~BinanceLineHandler() = default;
 
 bool BinanceLineHandler::is_open() const
 {

@@ -37,6 +37,7 @@ public:
                        Reactor* reactor,
                        RealtimeEventLoop* event_loop,
                        FeedHandlerCallbacks);
+  ~KucoinFutFeedHandler();
 
   void start() override;
   void subscribe_trades(std::string) override;

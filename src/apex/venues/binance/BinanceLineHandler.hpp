@@ -39,6 +39,7 @@ public:
                      RealtimeEventLoop* event_loop,
                      LineHandlerCallbacks callbacks,
                      OrderRouterConfig config);
+  ~BinanceLineHandler();
 
   void start();
 

@@ -51,6 +51,8 @@ KucoinFutFeedHandler::KucoinFutFeedHandler(Services* services,
     });
 }
 
+KucoinFutFeedHandler::~KucoinFutFeedHandler() = default;
+
 // TODO: this is duplicated across files
 static size_t write_callback(void* content, size_t size, size_t nmemb,
                              void* user)

@@ -67,7 +67,7 @@ ByBitFeedHandler::ByBitFeedHandler(Services* services,
     });
 }
 
-
+ByBitFeedHandler::~ByBitFeedHandler() = default;
 
 
 void ByBitFeedHandler::manage_connection()

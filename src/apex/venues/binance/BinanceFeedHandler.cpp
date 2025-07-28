@@ -56,6 +56,7 @@ BinanceFeedHandler::BinanceFeedHandler(Services* services,
   _feed_url = "wss://stream.binance.com:9443/stream";
 }
 
+BinanceFeedHandler::~BinanceFeedHandler() = default;
 
 // TODO: need to allow subscriptions to come after has started
 void BinanceFeedHandler::subscribe_trades(std::string feed_symbol)
