@@ -15,7 +15,6 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/gx/BinanceSession.hpp>
 #include <apex/gx/GxServer.hpp>
 #include <apex/util/Config.hpp>
 

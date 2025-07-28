@@ -28,8 +28,6 @@ macro(Compile_Program example)
     endif ()
 endmacro()
 
-
-Compile_Program(standalone_algo)
 Compile_Program(standalone_algo_backtest)
 Compile_Program(apex-demo-single-order)
 Compile_Program(apex-demo-simple-market-maker)

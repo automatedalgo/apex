@@ -120,8 +120,6 @@ list(APPEND LIB_APEX_SRC_FILES
         "gx/GxServer.cpp"
         "gx/GxServer.hpp"
         "gx/ExchangeSession.hpp"
-        "gx/BinanceSession.cpp"
-        "gx/BinanceSession.hpp"
         "venues/venues_common.hpp"
         "venues/venues_common.cpp"
         "venues/binance/BinanceFeedHandler.cpp"

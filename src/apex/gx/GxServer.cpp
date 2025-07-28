@@ -208,24 +208,6 @@ bool GxServer::on_logon_request(GxServerSession& s, std::string id,
   }
 }
 
-void GxServer::add_venue(BinanceSession::Params params)
-{
-  BaseExchangeSession::EventCallbacks callbacks;
-  callbacks.on_order_fill = [this](BaseExchangeSession& exchange,
-                                   std::string order_id, OrderFill msg) {
-    this->on_fill(exchange, std::move(order_id), msg);
-  };
-  callbacks.on_order_cancel = [this](BaseExchangeSession& exchange,
-                                     std::string order_id, OrderUpdate msg) {
-    this->on_unsol_cancel(exchange, order_id, msg);
-  };
-
-  // TODO: check, if binance already added, throw.
-  auto sp = std::make_shared<apex::BinanceSession>(
-      callbacks, params, _run_mode, &_reactor, *event_loop(), _ssl.get());
-  _exchange_sessions.insert({ExchangeId::binance, sp});
-  sp->start();
-}
 
 void GxServer::start()
 {
@@ -262,18 +244,10 @@ void GxServer::start()
     for (size_t i = 0; i < exchanges_config.array_size(); i++) {
       auto config = exchanges_config.array_item(i);
       auto session_type = config.get_string("type");
-      if (session_type == "binance") {
-        auto sp = std::make_shared<apex::BinanceSession>(
-            callbacks, config, _run_mode, &_reactor, *event_loop(), _ssl.get());
-        _exchange_sessions.insert({ExchangeId::binance, sp});
-        sp->start();
-      } // else if (session_type == "binance_usdfut") {
-        // auto sp = std::make_shared<apex::BinanceUsdFutSession>(
-        //     callbacks, config, sim_mode, &_reactor, *_event_loop.get(),
-        //     _ssl.get());
-        // _exchange_sessions.insert({"binance-usdfut", sp});
-        // sp->start();
-      // }
+
+      if (false) {
+        // TODO: put support for Line Handlers
+      }
       else {
         std::ostringstream oss;
         oss << "invalid exchange-type, " << QUOTE(session_type);

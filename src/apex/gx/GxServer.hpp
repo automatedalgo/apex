@@ -18,7 +18,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
 #include <apex/gx/ExchangeSession.hpp>
-#include <apex/gx/BinanceSession.hpp>
 #include <apex/model/MarketData.hpp>
 #include <apex/comm/GxServerSession.hpp>
 #include <apex/infra/ssl.hpp>
@@ -119,8 +118,6 @@ public:
   ~GxServer();
 
   void start();
-
-  void add_venue(BinanceSession::Params);
 
   int get_listen_port() const { return _port; }
 

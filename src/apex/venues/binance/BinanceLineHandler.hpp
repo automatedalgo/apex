@@ -59,7 +59,6 @@ public:
 
   std::unique_ptr<OrderRouter> get_order_router_adapter();
 
-
 private:
   void initiate_user_stream();
 
@@ -68,7 +67,6 @@ private:
   void process_submit_order_reply(PendReq&, json&);
   void process_cancel_order_reply(PendReq&, json&);
   void process_execution_report(json&);
-
 
   Services* _services;
   RealtimeEventLoop* _event_loop;
@@ -87,12 +85,11 @@ private:
   std::string _apikey;
   std::string _seedhex;
 
-  // used to generate exchange client order Id
+  // used to generate exchange request IDs
   size_t _msg_seq_num = 0;
 
   // pending array
   std::mutex _pend_mtx;
-
   std::map<std::string, PendReq> _pend_reqs;
 };
 
