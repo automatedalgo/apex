@@ -22,7 +22,9 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <list>
 #include <mutex>
 #include <string>
+#include <optional>
 
+#include <math.h>
 
 #ifndef STRINGIFY
 #define STRINGIFY(n) STRINGIFY_HELPER(n)
@@ -32,19 +34,12 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-enum class HttpRequestType { post, put, get, del };
+/* Double comparisons */
 
-enum class RunMode {
-  paper = 1,     // paper trading
-  live = 2,      // live trading
-  backtest = 3   // backtest
-};
-std::string to_string(RunMode);
-std::ostream& operator<<(std::ostream&, RunMode);
-RunMode parse_run_mode(const std::string& s);
+inline bool dbl_is_zero(double lhs, double error = 1e-8) {
+  return ::fabs(lhs) < error;
+}
 
-/* Represent the mode of a socket or connection */
-enum class connect_mode { connect, accept };
 
 /*
  * Split a string based on a single delimiter.
@@ -55,6 +50,9 @@ void create_dir(const std::filesystem::path& dir);
 
 /* Return user home directory, or empty path if not determined */
 std::filesystem::path user_home_dir();
+
+/* Expand a file path, to replace a leading ~ with user home dir */
+std::string expand(std::string_view filename);
 
 /* Trim leading and trailer spaces */
 inline std::string trim(const std::string_view& str)
@@ -175,7 +173,7 @@ private:
   std::function<void()> _fn;
 };
 
-/* Represent values like 0.0001 etc, as  pair (1, -4). Does not have to be
+/* Represent values like 0.0001 etc, as pair (1, -4). Does not have to be
    normalised, eg, the _mantissa can be like 10000. */
 struct ScaledInt {
 
@@ -183,7 +181,7 @@ struct ScaledInt {
   explicit ScaledInt(int64_t i) : ScaledInt(i, 0) {}
   ScaledInt(int64_t mantissa, int scale);
 
-  ScaledInt(const std::string&);
+  explicit ScaledInt(const std::string&);
 
   bool operator==(const ScaledInt& other) const
   {
@@ -245,5 +243,29 @@ void wait_for_sigint();
 /* Return the apex home directory.  This is either the value defined by
  * APEX_HOME or, if undefined, the path ~/apex. */
 std::filesystem::path apex_home();
+
+/* Utility to decode parts of a websocket URL */
+struct WebSocketUrlParts {
+  std::string scheme; // "wss" or "ws"
+  std::string host;
+  std::optional<std::string> port;
+  std::string path;
+  std::optional<std::string> query;
+  std::optional<std::string> fragment;
+
+  bool is_wss() const;
+  bool is_ws() const;
+  operator bool() const { return !scheme.empty(); }
+};
+WebSocketUrlParts parse_websocket_url(const std::string& url);
+
+// build a string from vargs
+template<typename... Args>
+std::string concat(Args&&... args) {
+  std::ostringstream oss;
+  (oss << ... << args);  // Fold expression (C++17)
+  return oss.str();
+}
+
 
 } // namespace apex

@@ -15,6 +15,7 @@ list(APPEND LIB_APEX_SRC_FILES
         "util/utils.hpp"
         "util/utils.cpp"
         "util/Error.hpp"
+        "util/JsonWriter.hpp"
         "util/GzFile.hpp"
         "util/GzFile.cpp"
         "util/Time.hpp"
@@ -82,15 +83,17 @@ list(APPEND LIB_APEX_SRC_FILES
         "core/OrderService.hpp"
         "core/OrderService.cpp"
         "core/PersistenceService.hpp"
-        "core/PersistenceService.cpp"
-        "core/RefDataService.hpp"
-        "core/RefDataService.cpp"
-        "core/Bot.hpp"
         "core/Bot.cpp"
-        "core/GatewayService.hpp"
+        "core/Bot.hpp"
         "core/GatewayService.cpp"
-        "core/OrderRouter.hpp"
+        "core/GatewayService.hpp"
         "core/OrderRouter.cpp"
+        "core/OrderRouter.hpp"
+        "core/RefDataService.cpp"
+        "core/RefDataService.hpp"
+        "core/common.cpp"
+        "core/common.hpp"
+        "core/PersistenceService.cpp"
         "core/Strategy.hpp"
         "core/Strategy.cpp"
         "core/StrategyMain.hpp"
@@ -119,6 +122,23 @@ list(APPEND LIB_APEX_SRC_FILES
         "gx/ExchangeSession.hpp"
         "gx/BinanceSession.cpp"
         "gx/BinanceSession.hpp"
+        "venues/venues_common.hpp"
+        "venues/venues_common.cpp"
+        "venues/binance/BinanceFeedHandler.cpp"
+        "venues/binance/BinanceFeedHandler.hpp"
+        "venues/binance/BinanceLineHandler.cpp"
+        "venues/binance/BinanceLineHandler.hpp"
+        "venues/binance/BinanceUsdFutFeedHandler.cpp"
+        "venues/binance/BinanceUsdFutFeedHandler.hpp"
+        "venues/binance/BinanceUsdFutLineHandler.cpp"
+        "venues/binance/BinanceUsdFutLineHandler.hpp"
+        "venues/binance/binance_common.cpp"
+        "venues/binance/binance_common.hpp"
+        "venues/kucoin/KucoinFutFeedHandler.cpp"
+        "venues/kucoin/KucoinFutFeedHandler.hpp"
+        "venues/bybit/BybitFeedHandler.hpp"
+        "venues/bybit/BybitFeedHandler.cpp"
+
         )
 
 
@@ -151,6 +171,7 @@ if (BUILD_STATIC_LIBS)
     target_link_libraries(apexcore_static
             PUBLIC
             uv
+            sodium
             curl
             protobuf3
             OpenSSL::SSL
@@ -191,6 +212,7 @@ if (BUILD_SHARED_LIBS)
     target_link_libraries(apexcore_shared
             PUBLIC
             uv
+            sodium
             curl
             protobuf3
             OpenSSL::SSL

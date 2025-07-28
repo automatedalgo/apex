@@ -17,16 +17,17 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <apex/util/utils.hpp>
+#include <apex/core/common.hpp>
 
-#include <functional>
 
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
 
-#include <string.h>
+#include <functional>
+#include <string>
+#include <stdexcept>
 
 namespace apex
 {

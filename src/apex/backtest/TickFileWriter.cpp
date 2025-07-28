@@ -25,6 +25,9 @@ namespace fs = std::filesystem;
 namespace apex
 {
 
+constexpr int TICK_VERSION_LEN = 8;
+constexpr int PREAMBLE_SIZE_LEN = 8;
+
 TickbinFileWriter::TickbinFileWriter(
   TickFileBucketId bucketid,
   std::filesystem::path dirname,
@@ -33,8 +36,8 @@ TickbinFileWriter::TickbinFileWriter(
   json collect_meta)
   : _bucketid(bucketid),
     _dirname(std::move(dirname)),
-    _filename(std::move(filename)
-      ) {
+    _filename(std::move(filename))
+{
   std::filesystem::path dir = _dirname;
   if (!std::filesystem::exists(full_path())) {
     std::error_code err;
@@ -60,24 +63,29 @@ TickbinFileWriter::TickbinFileWriter(
 
     // Decide the preamble block size. This has to be large enough to accomodate
     // the JSON meta-data, but also we want it be sympathetic to later memory
-    // mapping; so we ensure we allocate header space in 1024 byte blocks.
+    // mapping; so we ensure we allocate header space in 1024 byte blocks. Note
+    // that ">>10" is divide by 1024.
 
     size_t preamble_size = (1 + (head_plus_meta_len  >> 10)) << 10;
     assert (head_plus_meta_len < preamble_size);
 
     // --- Build the binary image for the preamble ---
-    std::string tick_version = "TICK1   ";
-    assert(tick_version.size() == 8);
+    std::string tick_version = "TICK1   ";  // format version
+    assert(tick_version.size() == TICK_VERSION_LEN);
     std::vector<char> preamble(preamble_size, '\0');
 
     // write the tick header version
     strcpy(&preamble[0], tick_version.c_str());
 
     // write the preamble region size
-    snprintf(&preamble[8], 8, "%07lu", preamble_size);
+    auto preamble_size_str = to_padded_str(preamble_size, PREAMBLE_SIZE_LEN);
+    assert(preamble_size_str.size() == PREAMBLE_SIZE_LEN);
+    memcpy(&preamble[TICK_VERSION_LEN], preamble_size_str.c_str(), PREAMBLE_SIZE_LEN);
 
     // write the json meta data
-    strncpy(&preamble[16], meta_str.c_str(), 1024 - 16);
+    strncpy(&preamble[TICK_VERSION_LEN+PREAMBLE_SIZE_LEN],
+            meta_str.c_str(),
+            preamble_size - (TICK_VERSION_LEN+PREAMBLE_SIZE_LEN) -1);
 
     // we should not have overritten the final preamble byte
     assert(preamble[preamble_size-1] == '\0');

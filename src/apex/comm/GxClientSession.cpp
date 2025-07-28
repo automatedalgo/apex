@@ -288,20 +288,20 @@ void GxClientSession::io_on_full_message(gx::Header* header, char* payload,
           tick.qty = msg.size();
           switch (msg.side()) {
             case apex::pb::Side::side_buy:
-              tick.aggr_side = apex::Side::buy;
+              tick.side = apex::Side::buy;
               break;
             case apex::pb::Side::side_sell:
-              tick.aggr_side = apex::Side::sell;
+              tick.side = apex::Side::sell;
               break;
             case apex::pb::Side::side_none:
-              tick.aggr_side = apex::Side::none;
+              tick.side = apex::Side::none;
               break;
             default: {
               LOG_ERROR("dropping GxTickTrade message, invalid side");
               return;
             }
           }
-          iter->second->apply(tick);
+          iter->second->apply(Time::realtime_now(), tick);
         } else {
           LOG_ERROR("received unexpected TickTrade event");
         }
@@ -344,7 +344,7 @@ void GxClientSession::io_on_full_message(gx::Header* header, char* payload,
           tick.ask_price = msg.ask_price();
 
           // apply the model-update
-          iter->second->apply(tick);
+          iter->second->apply(Time::realtime_now(), tick);
         } else {
           LOG_WARN("received unexpected TickTop event");
         }

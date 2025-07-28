@@ -49,7 +49,7 @@ void ExchangeSubscription::activate()
   auto sp = shared_from_this();
   std::function<void(TickTrade)> callback = [sp](TickTrade tick) {
     // update local market-view, for later snapshot requests
-    sp->_market.apply(tick);
+    sp->_market.apply(Time::realtime_now(), tick);
 
     // broadcast the update to all connect server-sessions
     std::set<std::shared_ptr<GxServerSession>> drop_list;
@@ -88,7 +88,7 @@ void ExchangeSubscription::activate()
 
   _exchange_session->subscribe_trades(symbol, options, callback);
   _exchange_session->subscribe_top(symbol, options, [sp](TickTop tick) {
-    sp->_market.apply(tick);
+    sp->_market.apply(Time::realtime_now(), tick);
 
     // broadcast the update to all connect server-sessions
     for (auto& item : sp->_subscribers) {
@@ -295,93 +295,49 @@ void GxServer::start()
   }
 }
 
+
 int GxServer::create_listen_socket() {
   // create the GX server socket
   auto sock = std::make_unique<TcpSocket>(&_reactor);
-  // auto on_accept = [this](std::unique_ptr<TcpSocket>& sk, UvErr e) {
-  //   if (e) {
-  //     THROW("accept() failed: " << e);
-  //   }
-  //   GxServerSession::EventHandlers handlers{
-  //       [this](GxServerSession& s) { on_error(s); },
-  //       [this](GxServerSession& s, GxSubscribeRequest& req) {
-  //         on_subscribe(s, req);
-  //       },
-  //       [this](GxServerSession& /*s*/, ExchangeId /*exchange*/) {
-  //         //on_subscribe_wallet(s, exchange);
-  //       },
-  //       [this](GxServerSession& s, GxServerSession::Request r, OrderParams p) {
-  //         on_submit_order(s, r, p);
-  //       },
-  //       [this](GxServerSession& s, GxServerSession::Request r, ExchangeId exch,
-  //              std::string sym, std::string oid, std::string eid) {
-  //         this->on_cancel_order_request(s, r, exch, sym, oid, eid);
-  //       },
-  //       [this](GxServerSession& s, GxLogonRequest request) -> bool {
-  //         return this->on_logon_request(s, request.strategy_id,
-  //                                       request.run_mode);
-  //       }
-  //   };
-  //   auto client = std::make_shared<GxServerSession>(&_reactor, *event_loop(),
-  //                                                   std::move(sk), handlers);
-  //   event_loop()->dispatch([this, client]() { this->new_client(client); });
-  // };
-  auto node = "0.0.0.0";
-
-  auto on_accept_cb = [this](std::unique_ptr<TcpSocket>& sk){
-
-    // if (e) {
-    //   THROW("accept() failed: " << e);
-    // }
-    GxServerSession::EventHandlers handlers{
-        [this](GxServerSession& s) { on_error(s); },
-        [this](GxServerSession& s, GxSubscribeRequest& req) {
-          on_subscribe(s, req);
-        },
-        [this](GxServerSession& /*s*/, ExchangeId /*exchange*/) {
-          //on_subscribe_wallet(s, exchange);
-        },
-        [this](GxServerSession& s, GxServerSession::Request r, OrderParams p) {
-          on_submit_order(s, r, p);
-        },
-        [this](GxServerSession& s, GxServerSession::Request r, ExchangeId exch,
-               std::string sym, std::string oid, std::string eid) {
-          this->on_cancel_order_request(s, r, exch, sym, oid, eid);
-        },
-        [this](GxServerSession& s, GxLogonRequest request) -> bool {
-          return this->on_logon_request(s, request.strategy_id,
-                                        request.run_mode);
-        }
+  auto on_accept = [this](std::unique_ptr<TcpSocket>& sk){
+    GxServerSession::EventHandlers handlers {
+      [this](GxServerSession& s) { on_error(s); },
+      [this](GxServerSession& s, GxSubscribeRequest& req) {
+        on_subscribe(s, req);
+      },
+      [this](GxServerSession& /*s*/, ExchangeId /*exchange*/) {
+        //on_subscribe_wallet(s, exchange);
+      },
+      [this](GxServerSession& s, GxServerSession::Request r, OrderParams p) {
+        on_submit_order(s, r, p);
+      },
+      [this](GxServerSession& s, GxServerSession::Request r, ExchangeId exch,
+             std::string sym, std::string oid, std::string eid) {
+        this->on_cancel_order_request(s, r, exch, sym, oid, eid);
+      },
+      [this](GxServerSession& s, GxLogonRequest request) -> bool {
+        return this->on_logon_request(s, request.strategy_id,
+                                      request.run_mode);
+      }
     };
     auto client = std::make_shared<GxServerSession>(&_reactor, *event_loop(),
                                                     std::move(sk), handlers);
     event_loop()->dispatch([this, client]() { this->new_client(client); });
   };
 
-  // TODO: detect failure to listen on the provided port
-  sock->listen(/*node, */ _port, on_accept_cb);
-
-//  auto fut = sock->listen(node, std::to_string(_port), on_accept);
-
-  // auto uv_err = fut.get();
-
-  // if (uv_err) {
-  //   LOG_WARN("failed to listen on port " << _port << ", error: " << uv_err);
-  //   sock->close().wait();
-  //   return uv_err;
-  // }
-  // else {
-  //   _server_sock = std::move(sock);
-  //   LOG_INFO("listening for GX connections on " << node << ":" << _port);
-  //   return UvErr{};
-  // }
+  auto node = "0.0.0.0";
+  sock->listen(node, std::to_string(_port), on_accept);
+  _server_sock = std::move(sock);
+  LOG_INFO("listening for GX connections on " << node << ":" << _port);
+  return 0;
 }
+
 
 void GxServer::new_client(std::shared_ptr<GxServerSession> session)
 {
   assert(event_loop()->this_thread_is_ev());
 
-  auto sock = session->get_socket2();
+  // auto sock = session->get_socket2();
   // LOG_INFO("received new GX connection from "
   //          << sock->get_peer_address().to_string() << ":"
   //          << sock->get_peer_port());

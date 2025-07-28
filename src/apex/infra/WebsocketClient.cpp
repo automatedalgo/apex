@@ -25,9 +25,94 @@ namespace apex
 {
 
 
+/* Utility function to synchronously establish a websocket */
+std::shared_ptr<WebsocketClient> connect_websocket(
+  const std::string& addr,
+  std::string_view label,
+  Reactor * reactor,
+  SslContext* ssl,
+  RealtimeEventLoop* timer_thread,
+  std::function<void(const char* buf, size_t n)> on_message,
+  SslSocket::Options options
+  )
+{
+  auto url_parts = parse_websocket_url(addr);
+  if (!url_parts)
+    throw std::runtime_error(concat("bad websocket url: '",addr,"'"));
+
+  std::string host = url_parts.host;
+  int port = url_parts.port? std::stoi(*url_parts.port) : 443;
+  auto path = concat(url_parts.path,
+                     (url_parts.query)? "?":"",
+                     (url_parts.query)? url_parts.query.value():"");
+
+
+  int timeout_secs = 5;
+
+  LOG_INFO(label << ": attempting websocket connection to '" << host << ":"
+           << port << path << "'");
+
+  /* ----- socket connection ----- */
+
+  auto conn_promise = std::make_shared<std::promise<int>>();
+  TcpSocket::connect_complete_cb_t connected_cb = [&](int err) {
+    conn_promise->set_value(err);
+  };
+
+  std::unique_ptr<TcpSocket> sock;
+  if (url_parts.is_ws()) {
+    sock = std::make_unique<TcpSocket>(reactor);
+  }
+  else if (url_parts.is_wss()) {
+    SslSocket::Options ssl_options;
+    options.sni_policy =  SslSocket::Options::use_addr;
+    sock = std::make_unique<SslSocket>(ssl, reactor, ssl_options);
+  }
+
+  sock->connect(host, port, timeout_secs, connected_cb);
+
+  auto conn_fut = conn_promise->get_future();
+
+  if (conn_fut.wait_for(std::chrono::seconds(timeout_secs)) != std::future_status::ready)
+    throw std::runtime_error("timeout during connect");
+
+  int conn_err = conn_fut.get();
+  if (conn_err)
+    throw std::runtime_error("connect failed");
+
+  /* ----- websocket initialisation ----- */
+
+  auto msg_cb = [on_message](const char* buf, size_t len) {
+    on_message(buf, len);
+  };
+
+  auto completion_promise = std::make_shared<std::promise<void>>();
+  auto on_open = [&] {
+    completion_promise->set_value();
+  };
+
+  std::function<void()> on_down = [](){};
+
+
+  std::shared_ptr<WebsocketClient> ws = std::make_shared<WebsocketClient>(
+    *timer_thread, std::move(sock), url_parts.path, msg_cb, on_open, on_down);
+
+  {
+    // wait for the websocket to become open
+    auto fut = completion_promise ->get_future();
+    if (fut.wait_for(std::chrono::seconds(timeout_secs)) != std::future_status::ready)
+      throw std::runtime_error("timeout during websocket initiation");
+  }
+
+  LOG_INFO(label << ": websocket established, fd: " << ws->fd(););
+  return ws;
+}
+
+
 WebsocketClient::WebsocketClient(RealtimeEventLoop& evloop,
                                  std::unique_ptr<TcpSocket> sock,
-                                 std::string path, MsgCallback msg_cb,
+                                 std::string path,
+                                 MsgCallback msg_cb,
                                  OnOpenCallback on_open,
                                  OnCloseCallback on_close)
   : _event_loop(evloop),
@@ -36,6 +121,9 @@ WebsocketClient::WebsocketClient(RealtimeEventLoop& evloop,
     _on_close(std::move(on_close)),
     _is_open(false)
 {
+  assert(_on_close);
+  assert(on_open);
+
   auto request_timer_cb = [this](std::chrono::milliseconds interval) {
     /* If protocol has requested a timer, register a reoccurring event to call
      * the protocol's on_timer function. Called during construction of
@@ -60,7 +148,7 @@ WebsocketClient::WebsocketClient(RealtimeEventLoop& evloop,
     /* io-thread */
     this->_is_open = false;
     this->_on_close();
-    std::cout << "protocol_closed_fn\n"; // TODO@WORK -- what was this in wamp?
+    LOG_WARN("protocol_closed_fn"); // TODO@WORK - what was this in wamp?
   };
 
 
@@ -78,7 +166,11 @@ WebsocketClient::WebsocketClient(RealtimeEventLoop& evloop,
       this->io_on_read(s, (size_t)n);
     else {
       _is_open = false;
-      LOG_WARN("lost websocket connection, error " << -n);
+      if (n == 0) {
+        LOG_INFO("websocket closed by peer");
+      } else {
+        LOG_WARN("lost websocket connection, error " << -n);
+      }
       if (_on_close)
         _on_close();
     }
@@ -113,6 +205,7 @@ void WebsocketClient::io_on_read(char* src, size_t len)
   }
 }
 
+// TODO: appears unused
 void WebsocketClient::io_on_error(int ec)
 {
   /* io-thread */
@@ -120,6 +213,12 @@ void WebsocketClient::io_on_error(int ec)
   LOG_WARN("lost websocket connection, error " << ec);
   if (_on_close)
     _on_close();
+}
+
+
+void WebsocketClient::send(std::string_view sv)
+{
+  this->send(sv.data(), sv.size());
 }
 
 
@@ -139,10 +238,25 @@ void WebsocketClient::send(const char* buf)
   this->send(buf, strlen(buf));
 }
 
+void WebsocketClient::send(const std::string& str) {
+  this->send(str.c_str(), str.size());
+}
 
 void WebsocketClient::sync_close() {
   // auto fut = _socket->close();
   // fut.wait();
 }
+
+void WebsocketClient::send_ping() {
+  _proto->send_ping();
+}
+
+
+void WebsocketClient::send_pong() {
+  _proto->send_pong();
+}
+
+
+
 
 } // namespace apex

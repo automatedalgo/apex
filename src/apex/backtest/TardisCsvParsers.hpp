@@ -57,7 +57,6 @@ public:
   // Return whether the parser has encountered an error
   [[nodiscard]] bool is_bad() const { return _err; }
 
-
   /* Reset parser state to point to new raw bytes available for decoding. */
   void reset_pointers(char* buf, std::size_t len)
   {
@@ -66,8 +65,7 @@ public:
     _ptr = buf;
   }
 
-
-  [[nodiscard]] apex::Time event_time() const;
+  [[nodiscard]] apex::Time event_time() ;
 
 
 protected:
@@ -93,8 +91,7 @@ public:
   char* p_symbol = nullptr;
   char* p_timestamp = nullptr;
   char* p_local_timestamp = nullptr;
-
-
+  Time _next;
 };
 
 

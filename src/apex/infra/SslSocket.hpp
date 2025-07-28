@@ -36,11 +36,21 @@ using ssl_on_accept_cb_t = std::function<void(std::unique_ptr<SslSocket>&)>;
 class SslSocket : public TcpSocket {
 public:
 
+  struct Options
+  {
+    enum SNI {none=0, use_addr, use_custom } ;
+
+    SNI sni_policy;
+    std::string sni_custom_addr;
+
+    Options() : sni_policy(Options::none) {}
+  };
+
   /* Create an uninitialised socket */
-  SslSocket(SslContext*, Reactor*);
+  SslSocket(SslContext*, Reactor*, Options = Options());
 
   /* Create from an existing file descriptor */
-  SslSocket(SslContext*, Reactor*, int fd);
+  SslSocket(SslContext*, Reactor*, int fd, Options = Options());
 
   virtual ~SslSocket();
 
@@ -72,6 +82,8 @@ private:
   std::list<Buffer> _encrypt;
 
   on_read_cb_t _user_on_read;
+
+  Options _options;
 };
 
 

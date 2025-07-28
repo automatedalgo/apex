@@ -42,6 +42,8 @@ public:
   /** Post a timer function which is invoked after the elapsed time. */
   virtual void dispatch(std::chrono::milliseconds, timer_fn fn) = 0;
 
+  void dispatch_after(std::chrono::milliseconds init_delay, std::function<void()> fn);
+
   virtual void sync_stop() {};
 
   virtual bool this_thread_is_ev() const = 0;

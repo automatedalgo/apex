@@ -23,12 +23,14 @@ namespace apex
 namespace error
 {
 
-// internal reject, GX connection not up
-inline const char* const e0003 = "e0003";
-
 // internal reject, no exchange
 inline const char* const e0001 = "e0001";
 
+// internal reject, exchange link down
+inline const char* const e0002 = "e0002";
+
+// internal reject, GX connection not up
+inline const char* const e0003 = "e0003";
 
 // exchange new order reject
 inline const char* const e0102 = "e0102";

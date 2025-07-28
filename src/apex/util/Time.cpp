@@ -24,9 +24,10 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-
 static TimeVal parse_time(const std::string& s)
 {
+  // TODO: add support for '1922-11-23T00:00:00.987Z'
+  // TODO: add support for '1922-11-23T00:00:00Z'
   static const char* const yyyyMmmMddSPhhCmmCss = "%Y-%m-%d %H:%M:%S"; //
   static const char* const yyyyMmmMddSPhhCmm    = "%Y-%m-%d %H:%M";       // len 16
   static const char* const yyyyMmmMddThhCmmCss  = "%Y-%m-%dT%H:%M:%S";
@@ -91,14 +92,18 @@ static TimeVal parse_time(const std::string& s)
   }
 }
 
+
+Time::Time(int ms)
+  : Time(std::chrono::microseconds(ms))
+{
+}
+
+
 Time::Time(std::chrono::microseconds usec) : _tv{0, 0}
 {
   _tv.sec = usec.count() / 1000000;
   _tv.usec = usec.count() - _tv.sec * 1000000;
 }
-
-
-Time::Time(const char* s) : _tv(parse_time(std::string(s))) {}
 
 
 Time::Time(const std::string& s) : _tv(parse_time(s)) {}

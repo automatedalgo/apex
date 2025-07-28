@@ -22,6 +22,33 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
+Instrument::Instrument(InstrumentType type,
+                       std::string inst_id,
+                       Asset base,
+                       Asset quote,
+                       std::string native_symbol,
+                       std::string feed_symbol,
+                       std::string line_symbol,
+                       std::string venue)
+    : _type(type),
+      _id(std::move(inst_id)),
+      _base(base),
+      _quote(quote),
+      _symbol(native_symbol),
+      _feed_symbol(feed_symbol),
+      _line_symbol(line_symbol),
+      _venue(venue),
+      _exchange_id(to_exchange_id(venue)),
+      _minimum_notnl(0),
+      _has_min_notl(false)
+  {
+  }
+
+void Instrument::set_minimum_notnl(double d) {
+  _minimum_notnl = d;
+  _has_min_notl = isfinite(d);
+}
+
 const char * instrument_type_to_string(InstrumentType t) {
 
   switch (t) {
@@ -52,14 +79,17 @@ InstrumentType to_instrument_type(const std::string& s)
 }
 
 
-bool Instrument::operator==(const Instrument& other) const
+bool Instrument::operator==(const Instrument& rhs) const
 {
-  return (other.lot_size == lot_size) &&
-         (other.minimum_size == minimum_size) &&
-         (other.minimum_notnl == minimum_notnl) &&
-         (other.tick_size == tick_size) & (other._type == _type) &&
-         (other._base == _base) && (other._quote == _quote) &&
-         (other._symbol == _symbol);
+  // TODO: also check all the other fields, but, becware, some are can be nan
+  return
+    (rhs._type == _type) &&
+    (rhs._id == _id) &&
+    (rhs._base == _base) &&
+    (rhs._quote == _quote) &&
+    (rhs._symbol == _symbol) &&
+    (rhs._venue == _venue) &&
+    (rhs._exchange_id == _exchange_id);
 }
 
 

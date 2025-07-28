@@ -18,18 +18,21 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
 #include <apex/util/Time.hpp>
-#include <apex/util/utils.hpp>
+#include <apex/core/common.hpp>
 
 #include <functional>
 #include <map>
 #include <mutex>
 #include <sstream>
 #include <string>
+#include <memory>
+#include <list>
 
 
 namespace apex
 {
 class Config;
+class RealtimeEventLoop;
 
 class Logger
 {
@@ -85,12 +88,16 @@ public:
 
   void log_banner(RunMode);
 
+  void enable_async_mode();
+
 private:
   Logger();
 
   Logger(const Logger&) = delete;
 
   Logger& operator=(const Logger&) = delete;
+
+  void drain_async_queue();
 
   int m_mask;
   std::mutex m_write_mutex;
@@ -105,6 +112,12 @@ private:
   bool _detailed_logging = false;
   bool _is_configured = true;
   bool _banner_done = false;
+
+  // async logging
+
+  std::mutex _async_mtx;
+  std::unique_ptr<RealtimeEventLoop> _async_thread;
+  std::list<std::string> _async_queue;
 };
 
 

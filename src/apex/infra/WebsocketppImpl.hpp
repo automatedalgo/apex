@@ -17,8 +17,9 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <apex/util/utils.hpp>
+#include <apex/core/common.hpp>
 
+#include <cstdint> // needed for websocketpp
 #include <websocketpp/extensions/permessage_deflate/disabled.hpp>
 #include <websocketpp/http/request.hpp>
 #include <websocketpp/http/response.hpp>

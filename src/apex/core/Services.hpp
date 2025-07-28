@@ -19,10 +19,13 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/util/Config.hpp>
 #include <apex/util/Time.hpp>
-#include <apex/util/utils.hpp>
+#include <apex/core/common.hpp>
 
 #include <memory>
 #include <filesystem>
+#include <fstream>
+#include <queue>
+#include <mutex>
 
 namespace apex
 {
@@ -38,6 +41,7 @@ class GatewayService;
 class MarketDataService;
 class OrderRouterService;
 class BacktestService;
+class SslContext;
 
 struct BacktestPeriod {
   Time from;
@@ -53,6 +57,7 @@ struct BacktestPeriod {
   }
 };
 
+
 struct PathsConfig
 {
   std::filesystem::path root;
@@ -60,6 +65,46 @@ struct PathsConfig
   std::filesystem::path refdata;
   std::filesystem::path fdb;
 };
+
+
+class MessageCaptureService
+{
+public:
+
+  enum Direction {
+    none = 0,
+    inbound = 1,
+    outbound = 2
+  };
+
+  struct StreamIds {
+    int in;
+    int out;
+  };
+
+  struct Msg {
+    int stream_id;
+    Time time;
+    std::string data;
+    size_t rawlen;
+  };
+
+  MessageCaptureService();
+
+  void write_to_file(bool);
+
+  void push_event(int stream_id, std::string_view);
+
+  int register_stream(std::string);
+  std::pair<int,int> register_stream_id_pair(std::string); // in, out
+
+  std::unique_ptr<RealtimeEventLoop> _loop;
+  std::mutex _mutex;
+  std::queue<Msg> _queue;
+  std::ofstream _file;
+  std::vector<std::pair<std::string, int>> _stream_ids;
+};
+
 
 /* Responsible for creating and providing access to the various core
  * components and services required by all apex application components. */
@@ -102,6 +147,12 @@ public:
 
   GatewayService* gateway_service() { return _gateway_service.get(); }
 
+
+  MessageCaptureService * message_capture_service() {
+    return _message_capture_service.get();
+  }
+
+
   Reactor* reactor() { return _reactor.get(); }
   EventLoop* evloop() { return _evloop.get(); }
 
@@ -123,6 +174,8 @@ public:
   // (control-c) for non-backtest modes.
   void run();
 
+  SslContext* ssl();
+
 private:
   RunMode _run_mode;
   Config _config;
@@ -139,8 +192,11 @@ private:
   std::unique_ptr<GatewayService> _gateway_service;
   std::unique_ptr<MarketDataService> _market_data_service;
   std::unique_ptr<BacktestService> _backtest_service;
+  std::unique_ptr<MessageCaptureService> _message_capture_service;
 
   BacktestPeriod _backtest_period;
+
+  std::unique_ptr<SslContext> _ssl;
 };
 
 

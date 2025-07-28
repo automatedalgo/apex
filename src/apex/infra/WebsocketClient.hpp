@@ -33,6 +33,22 @@ class UvErr;
 class WebsocketProtocol;
 class protocol;
 class RealtimeEventLoop;
+class WebsocketClient;
+
+
+
+/* Utility function to synchronously establish a websocket */
+
+
+std::shared_ptr<WebsocketClient> connect_websocket(
+  const std::string& addr, // eg, "wss://cryptoexchange.com/api"
+  std::string_view label,
+  Reactor * reactor,
+  SslContext* ssl,
+  RealtimeEventLoop* timer_thread,
+  std::function<void(const char* buf, size_t n)> on_message,
+  SslSocket::Options = SslSocket::Options()
+  );
 
 /*
  * Asynchronous websocket client
@@ -55,12 +71,21 @@ public:
 
   ~WebsocketClient();
 
+  void send(std::string_view);
   void send(const char*, size_t);
   void send(const char*);
+  void send(const std::string&);
 
   bool is_open() const { return _is_open; }
 
   void sync_close();
+
+  void send_ping();
+  void send_pong();
+
+  int fd() const {
+    return (_socket)? _socket->fd() : -1;
+  }
 
 private:
   void io_on_read(char* src, size_t len);

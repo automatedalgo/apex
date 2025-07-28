@@ -30,21 +30,41 @@ class OrderRouter;
 class Instrument;
 class SimExchange;
 
+
+struct OrderRouterConfig {
+  std::string api_key_file;
+};
+
+/*
+  Purpose of the OrderRouterService is to provide route to market (an
+  OrderRouter instance) for each Instrument the engine trades.
+ */
 class OrderRouterService
 {
 public:
   explicit OrderRouterService(Services*);
   ~OrderRouterService();
+
   /* Get an OrderRouter object for sending orders to the provided exchange, and
    * this is configured with the provided strategy_id. */
   OrderRouter* get_order_router(Instrument&,
                                 const std::string& strategy_id);
 
+  // Add a generic route, from external config
+  void add_route();
+
+  // add Binance USD Futures route
+  void add_binance_usdfut(OrderRouterConfig);
+
+  // add Binance Spot route
+  void add_binance_spot(OrderRouterConfig);
+
+
 private:
   Services* _services;
 
   // order router services for live trading
-  std::map<std::pair<ExchangeId, std::string>, std::unique_ptr<OrderRouter>> _routers;
+  std::map<ExchangeId, std::shared_ptr<OrderRouter>> _routers;
 
   // order routers for simulation (paper-trading & backtest)
   std::map<ExchangeId, std::unique_ptr<SimExchange>> _sim_exchanges;

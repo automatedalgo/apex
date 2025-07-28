@@ -34,9 +34,9 @@ public:
   Time(int sec, std::chrono::milliseconds ms) : _tv{sec, ms.count() * 1000} {}
   Time(int sec, std::chrono::microseconds us) : _tv{sec, us.count()} {}
   Time(const Time& other) = default;
+  explicit Time(int ms);
   explicit Time(std::chrono::microseconds);
-  explicit Time(const char* s);
-  explicit Time(const std::string& s);
+  explicit Time(const std::string&);
   explicit Time(TimeVal tv) : _tv{tv} {}
 
   /* Caution -- this must not be used by any part of the program/strategy that

@@ -64,8 +64,6 @@ int to_int(Side s) {
 
   // DIR/apex_transactions-DATE.log
 
-  auto now = Time::realtime_now();
-
   auto fn = oss.str();
   LOG_INFO("auditor transactions file '" << fn << "'");
 

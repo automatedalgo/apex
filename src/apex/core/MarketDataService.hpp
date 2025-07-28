@@ -19,6 +19,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <map>
 #include <memory>
+#include <list>
 
 namespace apex
 {
@@ -26,6 +27,15 @@ namespace apex
 class Services;
 class Instrument;
 class MarketData;
+class FeedHandlerSession;
+class EmbeddedFeedHandler;
+
+struct FeedConfig {
+  std::string type;
+  std::string ip;
+  std::string port;
+  std::string path;
+};
 
 class MarketDataService
 {
@@ -37,9 +47,13 @@ public:
    * MarketData cannot be created (eg due to no suitable session). */
   MarketData* find_market_data(const Instrument&);
 
+  void add_feed(FeedConfig config, std::list<std::string> venues);
+
+
 private:
   Services* _services;
   std::map<Instrument, std::unique_ptr<MarketData>> _markets;
+  std::map<ExchangeId, std::shared_ptr<EmbeddedFeedHandler>> _feeds;
 };
 
 } // namespace apex

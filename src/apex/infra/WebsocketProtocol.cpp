@@ -52,16 +52,16 @@ namespace apex
 protocol::protocol(TcpSocket* h, t_msg_cb cb, protocol_callbacks callbacks,
                    connect_mode _mode, size_t buf_initial_size,
                    size_t buf_max_size)
-  : m_socket(h),
+  : _socket(h),
     m_msg_processor(cb),
-    m_callbacks(callbacks),
+    _callbacks(std::move(callbacks)),
     m_buf(buf_initial_size, buf_max_size),
     m_mode(_mode)
 {
 }
 
 
-std::string protocol::fd() const { return std::to_string(m_socket->fd()); }
+std::string protocol::fd() const { return std::to_string(_socket->fd()); }
 
 
 /**
@@ -75,7 +75,7 @@ struct websocketpp_msg {
 WebsocketProtocol::WebsocketProtocol(TcpSocket* h, t_msg_cb msg_cb,
                                      protocol::protocol_callbacks callbacks,
                                      connect_mode mode, options opts)
-  : protocol(h, msg_cb, callbacks, mode),
+  : protocol(h, msg_cb, std::move(callbacks), mode),
     _state(mode == connect_mode::accept ? state::handling_http_request
            : state::handling_http_response),
     _http_parser(new HttpParser(mode == connect_mode::accept
@@ -83,12 +83,12 @@ WebsocketProtocol::WebsocketProtocol(TcpSocket* h, t_msg_cb msg_cb,
                                      : HttpParser::e_http_response)),
     _options(std::move(opts)),
     _websock_impl(new WebsocketppImpl(mode)),
-    _last_pong(std::chrono::steady_clock::now()),
+    _last_pong{},
     _missed_pings(0)
 {
   // register to receive heartbeat callbacks
   if (_options.ping_interval.count() > 0)
-    callbacks.request_timer(_options.ping_interval);
+    _callbacks.request_timer(_options.ping_interval);
 }
 
 
@@ -144,8 +144,8 @@ void WebsocketProtocol::send_msg(const char* buf, size_t len)
   LOG_DEBUG("fd: " << fd() << ", frame_tx: "
                    << WebsocketppImpl::frame_to_string(out_msg_ptr));
 
-  m_socket->write(out_msg_ptr->get_header().data(), out_msg_ptr->get_header().size());
-  m_socket->write(out_msg_ptr->get_payload().data(), out_msg_ptr->get_payload().size());
+  _socket->write(out_msg_ptr->get_header().data(), out_msg_ptr->get_header().size());
+  _socket->write(out_msg_ptr->get_payload().data(), out_msg_ptr->get_payload().size());
 }
 
 
@@ -216,7 +216,7 @@ void WebsocketProtocol::io_on_read(char* src, size_t len)
 
             LOG_DEBUG("fd: " << fd() << ", http_tx: " << msg);
 
-            m_socket->write(msg.c_str(), msg.size());
+            _socket->write(msg.c_str(), msg.size());
             _state = state::open;
           } else if (_http_parser->has("connection") &&
                      header_contains(_http_parser->get("connection"),
@@ -227,13 +227,13 @@ void WebsocketProtocol::io_on_read(char* src, size_t len)
              * load balancer that is checking server health. */
 
             LOG_DEBUG("fd: " << fd() << ", http_tx: " << http_200_response);
-            m_socket->write(http_200_response.c_str(),
+            _socket->write(http_200_response.c_str(),
                             http_200_response.size());
             _state = state::closed;
 
             // request session closure after delay, gives time of peer to close,
             // and for message to be fully written
-            m_callbacks.protocol_closed(std::chrono::milliseconds(3000));
+            _callbacks.protocol_closed(std::chrono::milliseconds(3000));
           } else
             throw handshake_error("http header is not a websocket upgrade");
         }
@@ -259,7 +259,6 @@ void WebsocketProtocol::io_on_read(char* src, size_t len)
 
             if (websock_key != _expected_accept_key)
               throw handshake_error("incorrect key for Sec-WebSocket-Accept");
-
 
             _state = state::open;
             _initiate_cb();
@@ -303,7 +302,7 @@ void WebsocketProtocol::initiate(t_initiate_cb cb)
          "Connection: Upgrade\r\n";
   switch (_options.host_header) {
     case options::host_header_mode::automatic: {
-      oss << "Host: " << m_socket->node() << ":" << m_socket->service()
+      oss << "Host: " << _socket->node() << ":" << _socket->service()
           << "\r\n";
       /*
       oss << "Host: "
@@ -338,7 +337,7 @@ void WebsocketProtocol::initiate(t_initiate_cb cb)
   _expected_accept_key = make_accept_key(sec_websocket_key);
 
   LOG_DEBUG("fd: " << fd() << ", http_tx: " << http_request);
-  m_socket->write(http_request.c_str(), http_request.size());
+  _socket->write(http_request.c_str(), http_request.size());
 }
 
 
@@ -348,11 +347,10 @@ void WebsocketProtocol::send_impl(const websocketpp_msg& msg)
                    << WebsocketppImpl::frame_to_string(msg.ptr));
 
   if (msg.ptr->get_payload().empty()) {
-    m_socket->write(msg.ptr->get_header().data(), msg.ptr->get_header().size());
+    _socket->write(msg.ptr->get_header().data(), msg.ptr->get_header().size());
   } else {
-
-    m_socket->write(msg.ptr->get_header().data(), msg.ptr->get_header().size());
-    m_socket->write(msg.ptr->get_payload().data(), msg.ptr->get_payload().size());
+    _socket->write(msg.ptr->get_header().data(), msg.ptr->get_header().size());
+    _socket->write(msg.ptr->get_payload().data(), msg.ptr->get_payload().size());
   }
 }
 
@@ -388,7 +386,7 @@ void WebsocketProtocol::on_timer()
     if (_missed_pings.load() >= _options.max_missed_pings) {
       send_close(websocketpp::close::status::protocol_error, "");
       _state = state::closed;
-      m_callbacks.protocol_closed(std::chrono::milliseconds(0));
+      _callbacks.protocol_closed(std::chrono::milliseconds(0));
     } else {
       /* assume our next ping will be missed; the count will be reset on arrival
        * of data from peer */
@@ -452,8 +450,6 @@ void WebsocketProtocol::process_frame_bytes(DecodeBuffer::read_pointer& rd)
       // data message, dispatch to user
       if ((msg->get_opcode() == websocketpp::frame::opcode::binary) ||
           (msg->get_opcode() == websocketpp::frame::opcode::text)) {
-
-
         // TODO: is user throws, what should
         /* user callback of raw data */
         m_msg_processor(msg->get_payload().data(), msg->get_payload().size());
@@ -464,8 +460,9 @@ void WebsocketProtocol::process_frame_bytes(DecodeBuffer::read_pointer& rd)
 
       if (op == websocketpp::frame::opcode::PING) {
         const auto now = std::chrono::steady_clock::now();
-        if ((now > _last_pong) &&
-            (now - _last_pong >= _options.pong_min_interval)) {
+        if (((now > _last_pong) && (now - _last_pong >= _options.pong_min_interval)) ||
+            (_last_pong == std::chrono::time_point<std::chrono::steady_clock>())
+          ) {
           _last_pong = now;
           send_pong(msg->get_payload());
           return;
@@ -473,12 +470,20 @@ void WebsocketProtocol::process_frame_bytes(DecodeBuffer::read_pointer& rd)
       } else if (op == websocketpp::frame::opcode::PONG) {
         // no-op
       } else if (op == websocketpp::frame::opcode::CLOSE) {
+        LOG_WARN("got a close frame");
         if (_state == state::closing) {
           // sent & received close-frame, so protocol closed
           _state = state::closed;
-          m_callbacks.protocol_closed(std::chrono::milliseconds(0));
+          _callbacks.protocol_closed(std::chrono::milliseconds(0));
         } else if (_state == state::open) {
           // received & sending close-frame, so protocol closed
+          LOG_WARN("fd: " << fd() << ", frame_rx: "
+                    << WebsocketppImpl::frame_to_string(msg)
+                   << ", payload: "
+                   << msg->get_payload()
+                   << ", raw: "
+                   << msg->get_raw_payload());
+
           send_close(websocketpp::close::status::normal, "");
           _state = state::closed;
 
@@ -498,8 +503,7 @@ void WebsocketProtocol::process_frame_bytes(DecodeBuffer::read_pointer& rd)
           //   }
           // }
 
-          send_pong(msg->get_payload());
-          m_callbacks.protocol_closed(std::chrono::milliseconds(0));
+          _callbacks.protocol_closed(std::chrono::milliseconds(0));
         }
       }
     }

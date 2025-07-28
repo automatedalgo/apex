@@ -19,6 +19,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/core/Services.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/util/Error.hpp>
+#include <apex/util/EventLoop.hpp>
 
 #include <iomanip>
 #include <iostream>
@@ -107,6 +108,11 @@ OrderService::OrderService(Services* services)
 //    _order_id_src(std::make_unique<ClientOrderIdGenerator>(services))
     _order_id_src(std::make_unique<FullUniqueOrderIdGenerator>(services))
 {
+  auto interval = std::chrono::minutes(60);
+  _services->evloop()->dispatch(interval, [this, interval]() {
+    this->background_tasks();
+    return interval;
+  });
 }
 
 
@@ -194,5 +200,127 @@ void OrderService::route_update_to_order(const std::string& order_id,
     }
   }
 }
+
+
+void OrderService::process_submit_order_ack(ExchangeId exch_id,
+                                            const MxSubmitOrderAck& ack)
+{
+  auto order = find_order(ack.order_id);
+  if (order) {
+    std::pair<ExchangeId, std::string> key {exch_id,ack.exch_order_id};
+    // auto key = std::make_pair<>(exch_id, ack.exch_order_id);
+    // TODO: check does not exist
+
+    _orders_by_exch_order_id.insert({key, order});
+    order->apply(ack);
+  }
+  else {
+    // An order ack matching this already exists
+    if (!(ack.flags & MxSubmitOrderAck::possible_duplicated))
+      LOG_WARN("ingoring duplicate order ack, order_id: " << ack.order_id);
+  }
+}
+
+
+void OrderService::process_order_expired(ExchangeId exch_id,
+                                         const MxOrderExpired& exp)
+{
+  std::pair<ExchangeId, std::string> key {exch_id, exp.exch_order_id};
+
+  auto iter = _orders_by_exch_order_id.find(key);
+
+  if (iter != _orders_by_exch_order_id.end()) {
+
+    OrderUpdate update;
+    update.state = OrderState::closed;
+    update.close_reason = OrderCloseReason::lapsed;
+    iter->second->apply(update);
+
+    if (iter->second->is_closed()) {
+      _orders_by_exch_order_id_closed.insert({key, std::move(iter->second)});
+      _orders_by_exch_order_id.erase(iter);
+    }
+  }
+  else {
+    LOG_WARN("ignoring order expired, order not found, exch_order_id: " << exp.exch_order_id);
+  }
+}
+
+
+void OrderService::process_order_execution(ExchangeId exch_id,
+                                           const MxOrderExecution& exec)
+{
+  std::pair<ExchangeId, std::string> key {exch_id, exec.exch_order_id};
+
+  auto iter = _orders_by_exch_order_id.find(key);
+
+  if (iter != _orders_by_exch_order_id.end()) {
+    iter->second->apply_order_execution(exec.qty,
+                                        exec.price,
+                                        exec.fullfill==MxOrderExecution::filled);
+  }
+  else {
+    LOG_ERROR("dropped execution for unknown order, "
+              << " exch_order_id: " << exec.exch_order_id
+              << ", exchange: " << exch_id);
+  }
+}
+
+
+void OrderService::process_submit_order_rej(const MxSubmitOrderRej& msg)
+{
+  auto order = find_order(msg.order_id);
+  if (order) {
+    order->apply_order_rej();
+  }
+}
+
+
+void OrderService::process_cancel_order_ack(const MxCancelOrderAck& ack)
+{
+  auto order = find_order(ack.order_id);
+  if (order) {
+    OrderUpdate update;
+    update.state = OrderState::closed;
+    update.close_reason = OrderCloseReason::cancelled;
+    order->apply(update);
+
+    if (order->is_closed()) {
+
+      std::pair<ExchangeId, std::string> key {
+        order->instrument().exchange_id(),
+        order->exch_order_id()};
+      auto iter = _orders_by_exch_order_id.find(key);
+      if (iter != _orders_by_exch_order_id.end()) {
+        _orders_by_exch_order_id_closed.insert({key, std::move(iter->second)});
+        _orders_by_exch_order_id.erase(iter);
+      }
+    }
+  }
+}
+
+void OrderService::process_cancel_order_rej(const MxCancelOrderRej& rej)
+{
+  auto order = find_order(rej.order_id);
+  if (order) {
+    order->apply_cancel_reject(rej.exch_error_code,
+                               rej.exch_error_text);
+  }
+  else {
+    LOG_WARN("ignoring cancel order reject for unknown order ID " <<
+             rej.order_id);
+  }
+}
+
+
+void OrderService::background_tasks()
+{
+  /* event thread */
+
+  LOG_INFO("number of active orders: " << std::size(_orders));
+  LOG_INFO("number of exch_order_id entries: " << std::size(_orders_by_exch_order_id));
+  LOG_INFO("number of exch_order_id entries (closed): " << std::size(_orders_by_exch_order_id_closed));
+}
+
 
 } // namespace apex

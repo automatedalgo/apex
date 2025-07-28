@@ -32,6 +32,10 @@ ExchangeId to_exchange_id(const std::string& s)
     return apex::ExchangeId::binance_usdfut;
   else if (s == "binance_coinfut")
     return apex::ExchangeId::binance_coinfut;
+  else if (s == "kucoin_fut")
+    return apex::ExchangeId::kucoin_fut;
+  else if (s == "bybit")
+    return apex::ExchangeId::bybit;
   else {
     THROW("not a valid exchange type: '" << s << "'");
   }
@@ -48,6 +52,8 @@ const char* exchange_id_to_string(ExchangeId e) {
       return "binance_usdfut";
     case ExchangeId::binance_coinfut:
       return "binance_coinfut";
+    case ExchangeId::bybit:
+      return "bybit";
     default:
       THROW("invalid exchange ID");
   }

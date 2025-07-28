@@ -431,7 +431,7 @@ void GxServerSession::send(const std::string & symbol,
   msg.set_exchange(to_exchange(exchange_id));
   msg.set_price(tick.price);
   msg.set_size(tick.qty);
-  msg.set_side(from_size(tick.aggr_side));
+  msg.set_side(from_size(tick.side));
 
   // build wire
   auto payload = msg.SerializeAsString();

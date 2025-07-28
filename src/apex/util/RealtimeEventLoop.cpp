@@ -181,6 +181,7 @@ void RealtimeEventLoop::eventloop()
 void RealtimeEventLoop::handle_exception()
 {
   try {
+    // TODO: if we don't have an exception handler then log and continue
     if (!m_on_exception)
       return;
 

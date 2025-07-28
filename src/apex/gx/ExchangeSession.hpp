@@ -95,12 +95,14 @@ public:
 
 
   virtual void subscribe_trades(Symbol, subscription_options,
-                                std::function<void(TickTrade)>) = 0;
+                                std::function<void(TickTrade)>) {
+    throw std::runtime_error("subscribe_trades not implemented");
+  }
 
   virtual void subscribe_top(Symbol /*symbol*/, subscription_options,
                              std::function<void(TickTop)> /*callback*/)
   {
-    throw std::runtime_error("subscribe_topsubscribe_top not implemented");
+    throw std::runtime_error("subscribe_top not implemented");
   }
 
   ExchangeId exchange_id() const { return _exchange_id; }

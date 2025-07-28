@@ -26,6 +26,10 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
+static bool is_approx_zero(double x, double epsilon = 1e-7) {
+    return std::fabs(x) < epsilon;
+}
+
 const char * to_string(OrderState s) {
   switch (s) {
     case OrderState::none : return "none";
@@ -185,8 +189,10 @@ void Order::set_state_impl(Time time, OrderState new_state, bool with_fill,
     if (new_state == OrderState::live)
       _live_time = _services->now();
 
-    if (new_state == OrderState::closed)
+    if (new_state == OrderState::closed) {
+      _closed_time = _services->now();
       _close_reason = close_reason;
+    }
 
     _order_state = new_state;
   }
@@ -203,19 +209,57 @@ void Order::set_state_impl(Time time, OrderState new_state, bool with_fill,
 
 const std::string& Order::symbol() const { return _instrument.native_symbol(); }
 
+
+void Order::apply(const MxSubmitOrderAck& ack)
+{
+  if (!ack.exch_order_id.empty())
+    _exch_order_id = ack.exch_order_id;
+
+  set_state_impl(_services->now(), OrderState::live,
+                 false, OrderCloseReason::none);
+}
+
+
+void Order::apply_order_rej() {
+  set_state_impl(_services->now(),
+                 OrderState::closed,
+                 false,
+                 OrderCloseReason::rejected);
+}
+
+
 void Order::apply(const OrderUpdate& update)
 {
   if (!update.ext_order_id.empty())
     _exch_order_id = update.ext_order_id;
 
-  Time time = _services->now(); // TODO: take this from `update`
-  set_state_impl(time, update.state, false, update.close_reason);
+  set_state_impl(_services->now(), update.state,
+                 false, update.close_reason);
 }
 
+void Order::apply_order_execution(double size, double price, bool filled)
+{
+  _fills.push_back({size, price});
+  _total_fill_qty += size;
+
+  if (!filled) {
+    filled = is_approx_zero(_size - _total_fill_qty);
+  }
+
+  // TODO: take this from caller, or, why do we need this?
+  auto recv_time = _services->now();
+  if (filled) {
+    set_state_impl(recv_time, OrderState::closed, true,
+                   OrderCloseReason::filled);
+  } else {
+    set_state_impl(recv_time, _order_state,
+                   true); // not an actual state change
+  }
+}
 
 void Order::apply(const OrderFill& fill)
 {
-  _fills.push_back(fill);
+  _fills.push_back({fill.size, fill.price});
   _total_fill_qty += fill.size;
 
   if (fill.is_fully_filled) {
@@ -230,6 +274,8 @@ void Order::apply(const OrderFill& fill)
 
 void Order::apply_cancel_reject(std::string code, std::string text)
 {
+  _cancel_reject_count++;
+
   // TODO: invoke an appropriate Bot callback
   _cancel_state = OrderCancelState::rejected;
   _error_code = std::move(code);

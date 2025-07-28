@@ -19,7 +19,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/util/utils.hpp>
 #include <apex/model/ExchangeId.hpp>
-
+#include <math.h>
 namespace apex
 {
 
@@ -56,7 +56,6 @@ public:
   }
 
   const std::string & symbol() const { return _symbol; }
-
   // TODO: add AssetType?  eg, fiat, coin, future
 private:
   std::string _symbol;   // native symbol on exchange
@@ -71,20 +70,16 @@ struct Instrument {
 
   ScaledInt lot_size;
   double minimum_size;
-  double minimum_notnl;
   ScaledInt tick_size;
 
-  Instrument(InstrumentType type, std::string inst_id, Asset base, Asset quote,
-             std::string native_symbol, std::string venue)
-    : _type(type),
-      _id(std::move(inst_id)),
-      _base(base),
-      _quote(quote),
-      _symbol(native_symbol),
-      _venue(venue),
-      _exchange_id(to_exchange_id(venue))
-  {
-  }
+  Instrument(InstrumentType type,
+             std::string inst_id,
+             Asset base,
+             Asset quote,
+             std::string native_symbol,
+             std::string feed_symbol,
+             std::string line_symbol,
+             std::string venue);
 
   Instrument(const Instrument& i) = default;
 
@@ -92,6 +87,9 @@ struct Instrument {
   [[nodiscard]] ExchangeId exchange_id() const { return _exchange_id; }
 
   [[nodiscard]] const std::string& native_symbol() const { return _symbol; }
+
+  [[nodiscard]] const std::string & feed_symbol() const { return _feed_symbol; }
+  [[nodiscard]] const std::string & line_symbol() const { return _line_symbol; }
 
   [[nodiscard]] const Asset& base() const { return _base; }
   [[nodiscard]] const Asset& quote() const { return _quote; }
@@ -107,14 +105,23 @@ struct Instrument {
 
  [[nodiscard]] const std::string& id() const { return _id; }
 
+  bool has_min_notl() const { return _has_min_notl; }
+  double minimum_notnl() const { return _minimum_notnl; } // can be nan
+
+  void set_minimum_notnl(double);
+
 private:
   InstrumentType _type;
   std::string _id;
   Asset _base;
   Asset _quote;
   std::string _symbol;
+  std::string _feed_symbol;
+  std::string _line_symbol;
   std::string _venue;
   ExchangeId _exchange_id;
+  double _minimum_notnl;
+  bool _has_min_notl;
 };
 
 std::ostream& operator<<(std::ostream&, const Instrument&);

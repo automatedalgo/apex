@@ -491,7 +491,7 @@ void BinanceSession::subscribe_trades(Symbol sym, subscription_options,
           tick.et = from_binance_timestamp(get_uint(*data, "E"));
           tick.price = std::stod(get_string_field(*data, "p"));
           tick.qty = std::stod(get_string_field(*data, "q"));
-          tick.aggr_side = buyer_market_maker_to_aggrSide(get_bool(*data, "m"));
+          tick.side = buyer_market_maker_to_aggrSide(get_bool(*data, "m"));
           callback(tick);
         }
       }

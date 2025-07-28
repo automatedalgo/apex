@@ -55,20 +55,22 @@ std::string print_ssl_state(T & ssl)
 }
 
 
-SslSocket::SslSocket(SslContext* ssl_context, Reactor* r)
+SslSocket::SslSocket(SslContext* ssl_context, Reactor* r, Options opts)
   : TcpSocket(r),
     _ssl_context(ssl_context),
-    _handshake_state(handshake_state_t::pending)
+    _handshake_state(handshake_state_t::pending),
+    _options(opts)
 {
   if (_stream)
     _stream->on_write_cb = [this]()-> ssize_t { return this->ssl_do_write();};
 }
 
 
-SslSocket::SslSocket(SslContext* ssl_context, Reactor* r, int fd)
+SslSocket::SslSocket(SslContext* ssl_context, Reactor* r, int fd, Options opts)
   : TcpSocket(r, fd),
     _ssl_context(ssl_context),
-    _handshake_state(handshake_state_t::pending)
+    _handshake_state(handshake_state_t::pending),
+    _options(opts)
 {
   if (_stream)
     _stream->on_write_cb = [this]()-> ssize_t { return this->ssl_do_write();};
@@ -150,7 +152,7 @@ int SslSocket::ssl_do_read(char* src, size_t len)
 
     // maybe contine handshake
     if (!SSL_is_init_finished(_ssl_session->ssl)) {
-      if (ssl_handshake() == sslstatus::fail)
+      if (this->ssl_handshake() == sslstatus::fail)
         return -1; // unrecoverable, close connection
 
       /* If we are still not initialised, then perhaps there is more data to
@@ -283,7 +285,7 @@ int SslSocket::do_encrypt_and_write(char* src, size_t srclen)
   char buf[DEFAULT_BUF_SIZE];
 
   if (!SSL_is_init_finished(_ssl_session->ssl)) {
-    if (ssl_handshake() == sslstatus::fail)
+    if (this->ssl_handshake() == sslstatus::fail)
       return -1; // fail
     if (!SSL_is_init_finished(_ssl_session->ssl)) {
       return 0; // nothing written
@@ -320,8 +322,30 @@ void SslSocket::connect(std::string addr,
   _ssl_session = std::make_unique<SslSession>(_ssl_context,
                                               connect_mode::connect);
 
+
   this->_node = addr;
   this->_service = std::to_string(port);
+
+
+  // Some SSL servers require Server Name Indication. If not set correctly (to
+  // the name of the target domain), the SSL handshake can fail (example can
+  // cause error 0A000410).  Remote server might need this information to tell
+  // them what certificate to use.
+  switch (_options.sni_policy) {
+    case SslSocket::Options::none :  break;
+    case SslSocket::Options::use_addr : {
+      SSL_set_tlsext_host_name(_ssl_session->ssl, addr.c_str());
+      break;
+    }
+    case SslSocket::Options::use_custom : {
+      if (_options.sni_custom_addr.empty()) {
+        LOG_WARN("applying any empty SNI address");
+      }
+      SSL_set_tlsext_host_name(_ssl_session->ssl,
+                               _options.sni_custom_addr.c_str());
+      break;
+    }
+  };
 
   auto completed_cb = [this, user_cb](int fd, int err) {
                                 /* io-thread */

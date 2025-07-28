@@ -60,7 +60,6 @@ public:
                       std::shared_ptr<GxClientSession> gx_session,
                       std::string strategy_id);
 
-
   void send_order(Order&) override;
   void cancel_order(Order&) override;
   bool is_up() const override;

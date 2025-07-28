@@ -19,7 +19,7 @@ macro(Compile_Program example)
     )
   set_property(TARGET ${example} PROPERTY CXX_STANDARD 17)
   set_property(TARGET ${example} PROPERTY CXX_STANDARD_REQUIRED ON)
-  target_link_libraries(${example} PRIVATE ${EXTRA_LIBS} ${EXTRA_GCC_LIBS})
+  target_link_libraries(${example} PRIVATE ${EXTRA_LIBS} ${EXTRA_GCC_LIBS} sodium)
 
   if (WIN32)
     set_target_properties(${example} PROPERTIES LINK_FLAGS "/NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:libcmtd.lib")

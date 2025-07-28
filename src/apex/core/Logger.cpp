@@ -19,6 +19,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/util/platform.hpp>
 #include <apex/util/utils.hpp>
 #include <apex/util/Config.hpp>
+#include <apex/util/RealtimeEventLoop.hpp>
 
 #include <functional>
 #include <iostream>
@@ -27,7 +28,7 @@ namespace apex
 {
 
 
-static const size_t thread_width = 18;
+static const size_t thread_width = 24;
 
 static std::string format_threadid(int tid_int, const std::string& tname)
 {
@@ -102,7 +103,7 @@ void Logger::log_banner(RunMode mode) {
       mode_name = "paper trading";
       break;
     case RunMode::live:
-      mode_name = "LIVE TRADING";
+      mode_name = "live";
       break;
     case RunMode::backtest:
       mode_name = "backtest";
@@ -211,6 +212,40 @@ void Logger::configure_from_config(Config config) {
   apex::Logger::instance().set_level(level);
   apex::Logger::instance().set_detail(detailed_logging);
   apex::Logger::instance().set_is_configured(true); // mark as ready
+}
+
+
+void Logger::enable_async_mode() {
+  auto guard = std::lock_guard(_async_mtx);
+  if (!_async_thread) {
+    _async_thread = std::make_unique<RealtimeEventLoop>(
+      [](){
+        return false;
+      },
+      [] {
+        apex::Logger::instance().register_thread_id("asynclog");
+      });
+
+
+
+    _async_thread -> dispatch(std::chrono::seconds{1}, [this]() {
+      this->drain_async_queue();
+      return std::chrono::seconds{1};
+    });
+  }
+}
+
+
+void Logger::drain_async_queue()
+{
+  std::list<std::string> async_queue;
+  {
+    auto guard = std::lock_guard(_async_mtx);
+
+    async_queue = std::move(_async_queue);
+    _async_queue.clear();
+  }
+
 }
 
 } // namespace apex

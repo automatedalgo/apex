@@ -26,7 +26,9 @@ enum class ExchangeId : int {
   none = 0,
   binance = 1,
   binance_usdfut = 2,
-  binance_coinfut = 3
+  binance_coinfut = 3,
+  kucoin_fut = 4,
+  bybit = 5
 };
 
 ExchangeId to_exchange_id(const std::string&);

@@ -55,7 +55,7 @@ public:
     // TODO: also check vector size
     return !std::isnan(_bids[0].price) && !std::isnan(_asks[0].price);
   }
- 
+
   void apply(TickBookSnapshot5&);
 
 private:
@@ -89,9 +89,9 @@ public:
 public:
   MarketData();
 
-  void apply(TickTrade&);
-  void apply(TickTop&);
-  void apply(TickBookSnapshot5&);
+  void apply(Time t, TickTrade&);
+  void apply(Time t, TickTop&);
+  void apply(Time t, TickBookSnapshot5&);
 
   void subscribe_events(std::function<void(EventType)>);
 
@@ -118,11 +118,21 @@ public:
   [[nodiscard]] bool has_bid_ask() const { return (bid() != 0.0) &&
                                                   (ask() != 0.0) &&
                                                   (!is_crossed()); }
+
+  const Book::Level&  bid1() const { return _l1_bid; }
+  const Book::Level&  ask1() const { return _l1_ask; }
+
+  Time time_last_trade() const { return _ts_trade; }
+  Time time_last_l1() const { return _ts_l1; }
+
 private:
+  Services * _services;
   TickTrade _last;
   Book _book;
   Book::Level _l1_bid;
   Book::Level _l1_ask;
+  Time _ts_l1;
+  Time _ts_trade;
 
   std::vector<std::function<void(EventType)>> _events_listeners;
 };

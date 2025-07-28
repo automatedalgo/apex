@@ -38,19 +38,19 @@ namespace apex
 {
 
 
-[[nodiscard]] apex::Time TardisCsvParser::event_time() const
+[[nodiscard]] apex::Time TardisCsvParser::event_time()
 {
   if (this->parse_ok()) {
-    auto epoc_usec2 = strtoll("123455", nullptr, 10);
     auto epoc_usec = strtoll(this->p_timestamp, nullptr, 10);
     auto epoc_sec = epoc_usec / 1000000;
     auto usec = epoc_usec - (epoc_sec * 1000000);
-    apex::Time t(epoc_sec, std::chrono::microseconds(usec));
-    return t;
+    _next = apex::Time(epoc_sec, std::chrono::microseconds(usec));
   }
   else { //  "1706745599997000"
-    return Time{};
+    _next = Time(0);
   }
+
+  return _next;
 }
 
 
@@ -194,15 +194,11 @@ void TardisCsvParserBookSnapshot5::check_header() const
 
 void TardisCsvParserBookSnapshot5::apply_event(MarketData* mktdata)
 {
-  // timestamp
-  auto epoc_usec = atoll(this->p_timestamp);
-  auto epoc_sec = epoc_usec / 1000000;
-  auto usec = epoc_usec - (epoc_sec * 1000000);
-  apex::Time t(epoc_sec, std::chrono::microseconds(usec));
+  apex::Time ts(_next);
 
   TickBookSnapshot5 tick;
-  tick.xt = t;
-  tick.et = t;
+  tick.xt = ts;
+  tick.et = ts;
   for (int i=0; i<5; i++) {
     tick.levels[i].ask_price = atof(p_ask_price[i]);
     tick.levels[i].ask_qty = atof(p_ask_amount[i]);
@@ -210,7 +206,8 @@ void TardisCsvParserBookSnapshot5::apply_event(MarketData* mktdata)
     tick.levels[i].bid_qty = atof(p_bid_amount[i]);
   }
 
-  mktdata->apply(tick);
+  // TODO: need to invest a line delay here
+  mktdata->apply(ts, tick);
 }
 
 
@@ -275,13 +272,7 @@ void TardisCsvParserTrades::check_header() const
 
 void TardisCsvParserTrades::apply_event(MarketData* md)
 {
-  // symbol - skip
-
-  // timestamp
-  auto epoc_usec = atoll(this->p_timestamp);
-  auto epoc_sec = epoc_usec / 1000000;
-  auto usec = epoc_usec - (epoc_sec * 1000000);
-  apex::Time t(epoc_sec, std::chrono::microseconds(usec));
+  apex::Time ts(_next);
 
   // side
   Side aggr_side = Side::none;
@@ -297,13 +288,14 @@ void TardisCsvParserTrades::apply_event(MarketData* md)
   double qty = ::strtod(this->p_amount, nullptr);
 
   TickTrade tick;
-  tick.aggr_side = aggr_side;
+  tick.side = aggr_side;
   tick.price = price;
   tick.qty = qty;
-  tick.et = t;
-  tick.xt = t;
+  tick.et = ts;
+  tick.xt = ts;
 
-  md->apply(tick);
+  // TODO: should simulate a delay somehow
+  md->apply(ts, tick);
 }
 
 } // namespace apex

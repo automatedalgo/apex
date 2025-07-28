@@ -121,7 +121,7 @@ double get_double_field(const json& msg, const std::string& key)
 }
 
 
-const std::string& get_string_field(const json& msg, const std::string& key)
+const std::string& get_string_field(const json& msg, const std::string_view key)
 {
   auto iter = msg.find(key);
   if (iter == std::end(msg)) {

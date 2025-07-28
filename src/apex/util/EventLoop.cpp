@@ -16,3 +16,20 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <apex/util/EventLoop.hpp>
+
+namespace apex
+{
+
+void EventLoop::dispatch_after(std::chrono::milliseconds delay, std::function<void()> fn)
+{
+  // adapt the user's function to a one-shot timer
+  timer_fn fn_once = [fn_ = move(fn)]() -> std::chrono::milliseconds {
+    fn_();
+    return std::chrono::milliseconds(0); // don't invoke again
+  };
+
+  this->dispatch(delay, std::move(fn_once));
+}
+
+
+}

@@ -40,7 +40,11 @@ struct Event;
 class RealtimeEventLoop : public EventLoop
 {
 public:
-  explicit RealtimeEventLoop(std::function<bool()> on_exception,
+
+  // TODO: create a construct that takes a name
+  // TODO: create an empty constructor
+
+  explicit RealtimeEventLoop(std::function<bool()> on_exception=nullptr,
             std::function<void()> on_start = {},
             std::function<void()> on_stop = {});
   RealtimeEventLoop(const RealtimeEventLoop&) = delete;

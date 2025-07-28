@@ -46,13 +46,26 @@ public:
 
   void route_fill_to_order(const std::string& order_id, OrderFill&);
   void route_update_to_order(const std::string& order_id, OrderUpdate&);
+  void process_submit_order_ack(ExchangeId, const MxSubmitOrderAck&);
+  void process_submit_order_rej(const MxSubmitOrderRej&);
+  void process_cancel_order_ack(const MxCancelOrderAck&);
+  void process_cancel_order_rej(const MxCancelOrderRej&);
+  void process_order_execution(ExchangeId, const MxOrderExecution&);
+  void process_order_expired(ExchangeId, const MxOrderExpired&);
 
   std::shared_ptr<Order> find_order(const std::string& order_id);
 
 private:
+
+  void background_tasks();
+
+  using ExchOrderKey = std::pair<ExchangeId, std::string>;
+
   Services* _services;
   std::unique_ptr<FullUniqueOrderIdGenerator> _order_id_src;
   std::map<std::string, std::shared_ptr<Order>> _orders;
+  std::map<ExchOrderKey, std::shared_ptr<Order>> _orders_by_exch_order_id;
+  std::map<ExchOrderKey, std::shared_ptr<Order>> _orders_by_exch_order_id_closed;
 
   // Note: instead of just holding onto dead orders IDs, can hold on to the
   // actual orders, and retain them for, say 1 hour?

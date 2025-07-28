@@ -78,13 +78,11 @@ SslContext::SslContext(const SslConfig& conf)
         throw_ssl_error("SSL_CTX_check_private_key");
     }
 
-    /* Recommended to avoid SSLv2 & SSLv3 */
-    // SSL_CTX_set_options(m_ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 |
-    // SSL_OP_NO_SSLv3);
+    // note that we are using SSL_CTX_set_security_level, rather than setting
+    // individual options
     SSL_CTX_set_options(_ctx, 0);
 
-
-    SSL_CTX_set_ciphersuites(_ctx, TLS_DEFAULT_CIPHERSUITES);
+    SSL_CTX_set_ciphersuites(_ctx, OSSL_default_ciphersuites());
 
 #ifdef SSL_CTX_set_ecdh_auto
 

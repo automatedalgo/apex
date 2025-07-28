@@ -1,0 +1,65 @@
+/* Copyright 2024 Automated Algo (www.automatedalgo.com)
+
+This file is part of Automated Algo's "Apex" project.
+
+Apex is free software: you can redistribute it and/or modify it under the terms
+of the GNU Lesser General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+Apex is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with Apex. If not, see <https://www.gnu.org/licenses/>.
+*/
+
+#pragma once
+
+#include <apex/model/Order.hpp>
+#include <apex/venues/venues_common.hpp>
+#include <apex/util/json.hpp>
+
+namespace apex {
+
+class WebsocketClient;
+
+class BinanceFeedHandler : public FeedHandlerImpl<BinanceFeedHandler>
+{
+public:
+  BinanceFeedHandler(Services* services,
+                           RunMode run_mode,
+                           Reactor* reactor,
+                           RealtimeEventLoop* event_loop,
+                           FeedHandlerCallbacks);
+
+  void start() override;
+  void subscribe_trades(std::string) override;
+  void subscribe_top(std::string) override;
+
+private:
+
+  void process_raw_message(const char*, size_t);
+  void process_aggtrade(std::string_view, json&);
+  void process_bookticker(std::string_view, json&);
+  void manage_connection();
+  void do_subscriptions();
+
+  FeedHandlerCallbacks _callbacks;
+  std::shared_ptr<WebsocketClient> _ws_feed;
+  // TODO: move into the base class?
+  std::unique_ptr<RealtimeEventLoop> _connector_thread;
+  std::string _feed_url;
+  struct Subscription {
+    int id;
+    std::string request;
+    bool active;
+  };
+  std::mutex _subs_mtx;
+  std::map<std::string, Subscription> _subs;
+  int _ws_feed_msgcap_id_in;
+  int _ws_feed_msgcap_id_out;
+};
+
+} //namespace

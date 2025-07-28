@@ -40,7 +40,7 @@ const char* to_string(TickFormat);
 
 class BaseTickFileReader {
 public:
-  virtual void wind_forward(apex::Time t) = 0;
+  virtual void wind_forward(apex::Time) = 0;
   [[nodiscard]] virtual bool has_next_event() const = 0;
   [[nodiscard]] virtual apex::Time next_event_time() const = 0;
   virtual void consume_next_event() = 0;

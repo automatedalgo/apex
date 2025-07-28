@@ -128,11 +128,6 @@ void TardisFileReader::wind_forward(apex::Time t)
 }
 
 
-[[nodiscard]] apex::Time TardisFileReader::next_event_time() const
-{
-  return _parser->event_time();
-}
-
 
 void TardisFileReader::parse_next_event()
 {
@@ -151,6 +146,11 @@ void TardisFileReader::parse_next_event()
   _event_count++;
 }
 
+
+[[nodiscard]] apex::Time TardisFileReader::next_event_time() const
+{
+  return _parser->event_time();
+}
 
 void TardisFileReader::consume_next_event()
 {

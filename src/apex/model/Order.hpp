@@ -29,7 +29,7 @@ class Order;
 class Services;
 class OrderRouter;
 
-enum class Side { none = 0, buy, sell };
+enum class Side : signed int { none = 0, buy, sell };
 
 std::ostream& operator<<(std::ostream&, Side s);
 
@@ -119,15 +119,78 @@ struct OrderEvent {
 // }
 
 
-struct OrderParams {
+struct OrderParams {  // TODO: rename to NewOrder
   std::string symbol;
   ExchangeId exchange;
   Side side = Side::none;
   OrderType order_type = OrderType::limit;
-  TimeInForce time_in_force = TimeInForce::fok;
+  TimeInForce time_in_force = TimeInForce::fok; // TODO: rename tif
   double size = 0.0;
   double price = 0.0;
   std::string order_id;
+};
+
+
+struct MxCancelOrder {
+  std::string symbol;
+  ExchangeId exchange;
+  std::string order_id;
+  std::string exch_order_id;
+};
+
+
+struct MxCancelOrderAck {
+  std::string order_id;
+};
+
+
+struct MxCancelOrderRej {
+  std::string order_id;
+  std::string exch_error_code;
+  std::string exch_error_text;
+};
+
+
+struct MxSubmitOrderAck {
+  enum Flags {
+    possible_duplicated = 0x1
+  };
+  int flags;
+  ExchangeId exchange;
+  std::string order_id;
+  std::string exch_order_id;
+};
+
+struct MxSubmitOrderRej {
+  std::string order_id;
+  std::string exch_error_code;
+  std::string exch_error_text;
+};
+
+struct MxOrderExpired {
+  std::string exch_order_id;
+};
+
+struct MxOrderExecution {
+  enum MatchType {
+    unknown = 0,
+    maker = 1,
+    taker = 2,
+    auction = 3
+  };
+  enum Filled {
+    partial = 1,
+    filled = 2
+  };
+
+  MatchType match_type;
+  Filled fullfill;
+  double price;
+  double qty;
+  std::string exch_order_id;
+  std::string symbol;
+  Side side = Side::none;
+  Time time;  // transaction time
 };
 
 
@@ -158,6 +221,11 @@ public:
         std::function<void(void*)> user_data_delete_fn = {});
 
   ~Order();
+
+  struct Fill {
+    double size;
+    double price;
+  };
 
   void* user_data() { return _user_data; }
 
@@ -216,10 +284,10 @@ public:
 
   rx::observable<OrderEvent>& events() { return _events; }
 
-  // Engine's internal order ID
+  // Apex internal order ID
   const std::string& order_id() const { return _order_id; }
 
-  // The exchange's order ID
+  // Exchange order ID
   const std::string& exch_order_id() const { return _exch_order_id; }
   const std::string& ext_order_id() const { return _exch_order_id; }
 
@@ -230,6 +298,7 @@ public:
 
   Time sent_time() const { return _sent_time; }
   Time live_time() const { return _live_time; }
+  Time closed_time() const { return _closed_time; }
 
 
   // Elapse time since initial cancel request sent
@@ -239,22 +308,28 @@ public:
     return {};
   }
 
-
+  void apply(const MxSubmitOrderAck&);
+  void apply_order_rej();
   void apply(const OrderUpdate&);
   void apply_cancel_reject(std::string code, std::string text);
   void apply(const OrderFill&);
 
+  void apply_order_execution(double size, double price, bool filled);
 
   double filled_size() const { return _total_fill_qty; }
   double remain_size() const { return _size - filled_size(); }
   bool has_fills() const { return !_fills.empty(); }
 
-  OrderFill last_fill() const
+  Fill last_fill() const  // TODO: is this needed?
   {
     if (!_fills.empty())
       return _fills.back();
     else
       return {};
+  }
+
+  int cancel_reject_count() const {
+    return _cancel_reject_count;
   }
 
 private:
@@ -281,8 +356,10 @@ private:
   std::string _error_text;
   Time _sent_time;
   Time _live_time; // time order went live
+  Time _closed_time;
   double _total_fill_qty = 0.0;
-  std::list<OrderFill> _fills;
+  std::list<Fill> _fills;
+  int _cancel_reject_count = 0;
 };
 
 } // namespace apex

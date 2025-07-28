@@ -1,4 +1,5 @@
 #include <apex/infra/Reactor.hpp>
+#include <apex/core/Logger.hpp>
 
 #include <assert.h>
 #include <sys/types.h>
@@ -450,6 +451,7 @@ void Reactor::reactor_main_loop()
 /* Thread entry point */
 void Reactor::thread_main() {
   _thread_id = std::this_thread::get_id();
+  apex::Logger::instance().register_thread_id("reactor");
   reactor_main_loop();
 }
 

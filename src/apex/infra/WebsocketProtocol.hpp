@@ -19,7 +19,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/infra/DecodeBuffer.hpp>
 #include <apex/infra/HttpParser.hpp>
-#include <apex/util/utils.hpp>
+#include <apex/core/common.hpp>
 
 #include <atomic>
 #include <chrono>
@@ -140,7 +140,7 @@ public:
   typedef std::function<void()> t_initiate_cb;
 
   protocol(TcpSocket*, t_msg_cb, protocol_callbacks, connect_mode m,
-           size_t buf_initial_size = 1, size_t buf_max_size = 1024);
+           size_t buf_initial_size = 1, size_t buf_max_size = 4096);
 
   virtual ~protocol() = default;
 
@@ -166,9 +166,9 @@ public:
 protected:
   std::string fd() const;
 
-  TcpSocket* m_socket; /* non owning */
+  TcpSocket* _socket; /* non owning */
   t_msg_cb m_msg_processor;
-  protocol_callbacks m_callbacks;
+  protocol_callbacks _callbacks;
   DecodeBuffer m_buf;
 
 private:
@@ -226,6 +226,13 @@ public:
   [[nodiscard]] const char* name() const override { return NAME; }
   void send_msg(const char*, size_t) override;
 
+  bool is_open() const { return _state == state::open; }
+  bool is_opening() const { return _state == state::handling_http_request ||
+      _state == state::handling_http_response; }
+
+  void send_ping();
+  void send_pong(const std::string& payload = {});
+
 private:
   void process_frame_bytes(DecodeBuffer::read_pointer&);
 
@@ -235,8 +242,7 @@ private:
   static const char* to_header(serialiser_type);
   static int to_opcode(serialiser_type);
 
-  void send_ping();
-  void send_pong(const std::string& payload = {});
+
   void send_close(uint16_t, const std::string&);
   void send_impl(const websocketpp_msg&);
 

@@ -182,12 +182,12 @@ std::shared_ptr<Order> Bot::create_order(
 
 {
   if (!is_finite_non_zero(size))
-    throw std::runtime_error("cannot create order, size invalid or zero");
+    throw std::runtime_error(concat("cannot create order, size invalid or zero, ",
+                                    std::to_string(size)));
   if (!is_finite_non_zero(price))
     throw std::runtime_error("cannot create order, price invalid or zero");
   if (this->is_stopping())
-    throw std::runtime_error("cannot create order when bot is-stopping");
-
+    throw std::runtime_error("cannot create order when bot is stopping");
 
   auto order = _services->order_service()->create(
       _order_router, _instrument, side, size, price, tif,
@@ -319,8 +319,11 @@ double Bot::min_order_size(double price) const
 {
   if (price == 0.0)
     return _instrument.minimum_size;
-  auto min_notional_size = round_size(_instrument.minimum_notnl / price);
-  return std::max(min_notional_size, _instrument.minimum_size);
+  if (_instrument.has_min_notl()) {
+    auto min_notional_size = round_size(_instrument.minimum_notnl() / price);
+    return std::max(min_notional_size, _instrument.minimum_size);
+  }
+  return _instrument.minimum_size;
 }
 
 

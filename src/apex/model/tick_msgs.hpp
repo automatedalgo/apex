@@ -31,23 +31,31 @@ enum class TradeType { null = 0, single, aggr };
 
 static const double nan = std::numeric_limits<double>::quiet_NaN();
 
+
+struct PxHeader {
+  enum SymbolType {pxsym=1, ticker=2} source;
+  char symbol[32];
+};
+
 struct TickTrade {
   double price = nan;
   double qty = 0;
-  Time xt = {};
-  Time et = {};
-  Side aggr_side = Side::none;
+  Side side = Side::none;
   TradeType type = TradeType::null;
+  Time xt = {};  // execution time
+  Time et = {};  // event published
 
   [[nodiscard]] bool is_valid() const { return !std::isnan(price); }
 };
 
 // Represent a change to both sides of Level1 market data.
 struct TickTop {
-  double bid_price = nan;
-  double bid_qty = 0;
-  double ask_price = nan;
-  double ask_qty = 0;
+  double bid_price;
+  double bid_qty;
+  double ask_price;
+  double ask_qty;
+  Time xt;
+  Time et;
 };
 
 

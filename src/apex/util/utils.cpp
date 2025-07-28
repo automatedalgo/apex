@@ -23,6 +23,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <fstream>
 #include <memory>
+#include <regex>
 
 #include <openssl/hmac.h> // cryptography functions
 
@@ -50,6 +51,20 @@ std::vector<std::string> split(const std::string_view& s, char d)
     }
   }
   return items;
+}
+
+
+std::string expand(std::string_view sv)
+{
+  std::string s(sv);
+
+  if (s.empty())
+    return s;
+
+  if (s[0] == '~')
+    s = apex::concat(apex::user_home_dir().string(), s.substr(1));
+
+  return s;
 }
 
 
@@ -177,7 +192,8 @@ std::string slurp(const char* filename)
     f.read(&buf[0], buf.size());
     return buf;
   }
-  throw std::system_error(errno, std::system_category(), "file read failed");
+  throw std::system_error(errno, std::system_category(),
+                          concat("file read failed for '", filename, "'"));
 }
 
 
@@ -261,6 +277,9 @@ void write_json_message(const std::string& dir, const std::string& msgtype,
 
 static ScaledInt parse_scaled_int(const std::string& raw)
 {
+  if ((raw.find('e') != std::string::npos) || (raw.find('E') != std::string::npos))
+    throw std::runtime_error("ScaledInt does not support parsing scientific notation");
+
   const auto count_dp = std::count(raw.begin(), raw.end(), '.');
   if (count_dp > 1)
     throw std::runtime_error("too many decimal-points in strings");
@@ -413,41 +432,6 @@ void wait_for_sigint() {
   interrupt_code.get_future().wait();
 }
 
-std::ostream& operator<<(std::ostream& os, RunMode m)
-{
-  os << to_string(m);
-  return os;
-}
-
-std::string to_string(RunMode m)
-{
-  switch (m) {
-    case RunMode::paper:
-      return {"paper"};
-    case RunMode::live:
-      return {"live"};
-    case RunMode::backtest:
-      return {"backtest"};
-    default:
-      return {"unkown_run_mode"};
-  }
-}
-
-
-RunMode parse_run_mode(const std::string& s)
-{
-  if (s == "paper")
-    return RunMode::paper;
-  if (s == "live")
-    return RunMode::live;
-  if (s == "backtest")
-    return RunMode::backtest;
-
-  std::ostringstream oss;
-  oss << "invalid RunMode value '" << s << "'";
-  throw std::runtime_error(oss.str());
-}
-
 
 std::filesystem::path apex_home() {
   // the APEX_HOME environment variable can be used to customise where Apex
@@ -457,6 +441,66 @@ std::filesystem::path apex_home() {
   std::string default_root = "apex";
   std::filesystem::path result = (custom_base)? custom_base : apex::user_home_dir() / "apex";
   return result;
+}
+
+bool WebSocketUrlParts::is_wss() const {
+  return scheme == "wss";
+}
+
+bool WebSocketUrlParts::is_ws() const {
+  return scheme == "ws";
+}
+
+WebSocketUrlParts parse_websocket_url(const std::string& url) {
+  std::regex urlRegex(R"((ws|wss)://([^:/?#]+)(?::(\d+))?([^?#]*)?(?:\?([^#]*))?(?:#(.*))?)",
+                      std::regex::icase);
+  WebSocketUrlParts parts;
+
+  std::smatch matches;
+  if (std::regex_match(url, matches, urlRegex)) {
+    parts.scheme = str_tolower(matches[1].str());
+    parts.host = matches[2].str();
+
+    if (matches[3].matched)
+      parts.port = matches[3].str();
+
+    parts.path = matches[4].matched ? matches[4].str() : "/";
+
+    if (matches[5].matched)
+      parts.query = matches[5].str();
+
+    if (matches[6].matched)
+      parts.fragment = matches[6].str();
+  }
+  return parts;
+}
+
+
+std::string to_padded_str(const size_t i, const size_t target_len) {
+  if (target_len > 30)
+    throw std::range_error("to_padded_str given target_len out of range");
+
+  char buf[32] = {};
+  snprintf(buf, sizeof(buf), "%031lu", i);
+
+  auto len = strlen(buf);
+  char* ptr = buf;
+  while (len > target_len && *ptr == '0') {
+    ptr++;
+    len--;
+  }
+
+  if (len == target_len) {
+    // success - we managed to skip enough leading zeros
+    return std::string(ptr);
+  }
+  else {
+    // failure - even after skipping some leading zeros, the string length is
+    // too long
+    std::ostringstream oss;
+    oss << "cannot serialise integer " << i << " into a string of size " << target_len;
+    throw std::range_error(oss.str());
+  }
 }
 
 } // namespace apex

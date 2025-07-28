@@ -85,6 +85,8 @@ public:
 
   Instrument& get_instrument(struct InstrumentQuery);
 
+  Instrument& lookup(const std::string& symbol);
+
   [[nodiscard]] bool is_fx_rate_instrument(const Instrument&) const;
 
 private:

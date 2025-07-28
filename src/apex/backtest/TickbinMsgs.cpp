@@ -69,7 +69,7 @@ Serialiser::bytes Serialiser::serialise(Time capture_time, TickTrade& src) {
   msg.body.price = src.price;
   msg.body.qty = src.qty;
   msg.body.et = src.et.as_epoch_us().count();
-  msg.body.side = encode_side(src.aggr_side);
+  msg.body.side = encode_side(src.side);
   return {(char*) &msg,  ((char*)&msg) + sizeof(msg) };
 }
 
@@ -88,7 +88,7 @@ void Serialiser::deserialise(char * buf, TickTrade& tick) {
   tick.et = Time{std::chrono::microseconds{bin->body.et}};
   tick.price = bin->body.price;
   tick.qty = bin->body.qty;
-  tick.aggr_side = decode_side(bin->body.side);
+  tick.side = decode_side(bin->body.side);
 }
 
 }}

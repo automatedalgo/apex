@@ -176,7 +176,6 @@ std::pair<Time, BacktestEventSource*> BacktestEventLoop::find_earliest()
     }
   }
 
-
   return earliest;
 }
 
@@ -214,7 +213,6 @@ void BacktestEventLoop::run_loop(Time upto)
     update_current_time(find_earliest().first);
   else
     update_current_time(_from);
-
 
   LOG_INFO("starting backtest event loop");
   while (true) {

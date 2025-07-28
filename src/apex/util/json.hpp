@@ -63,6 +63,9 @@ inline std::string to_string(const json& value)
   }
 }
 
+// convert an interger into a 0 padded string
+std::string to_padded_str(const size_t i, const size_t target_len);
+
 /* Lookup in `msg` which is expected to be a JSON Object for provided key. */
 
 const json::array_t& get_array(const json& msg, const std::string& key);
@@ -71,26 +74,37 @@ const json::object_t& get_object(const json& msg, const std::string& key);
 
 double get_double_field(const json& msg, const std::string& key);
 
-const std::string& get_string_field(const json& msg, const std::string& key);
+const std::string& get_string_field(const json& msg, const std::string_view key);
 
 json::number_unsigned_t get_uint(const json& msg, const std::string& key);
 
-bool get_bool(const json& msg, const std::string& key);
+bool get_bool(const json& msg, const std::string& field);
 
-
-
-template <typename T> const T* get_ptr(const json& src, const char* fieldname)
+template <typename T>
+const T* get_ptr(const json& src, std::string_view field)
 {
   const T* rv = nullptr;
-  auto iter = src.find(fieldname);
+  auto iter = src.find(field);
   if (iter != std::end(src)) {
     rv = iter->get_ptr<decltype(rv)>();
   }
   return rv;
 }
 
-std::string json_describe_type(const json&);
+template<typename T>
+T& get_field(json& msg, std::string_view field) {
+  try {
+    if (auto iter = msg.find(field); iter != msg.end())
+      return (*iter).get_ref<T&>();
+    else
+      throw std::runtime_error("field not found");
+  }
+  catch (std::exception & e) {
+    THROW_PARSE_ERROR("json get_field fail on '" << field << "': "<< e.what());
+  }
+}
 
+std::string json_describe_type(const json&);
 
 json read_json_file(const std::string& path);
 

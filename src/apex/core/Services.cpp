@@ -24,6 +24,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/core/RefDataService.hpp>
 #include <apex/core/Services.hpp>
 #include <apex/infra/Reactor.hpp>
+#include <apex/infra/ssl.hpp>
 #include <apex/util/Config.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
 #include <apex/util/BacktestEventLoop.hpp>
@@ -32,6 +33,104 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 namespace apex
 {
+
+int MessageCaptureService::register_stream(std::string s) {
+  std::mutex _mutex;
+  _stream_ids.push_back({std::move(s), 0});
+  return std::size(_stream_ids)-1;
+}
+
+std::pair<int,int> MessageCaptureService::register_stream_id_pair(std::string s) {
+  std::mutex _mutex;
+  _stream_ids.push_back({s, MessageCaptureService::Direction::inbound});
+  _stream_ids.push_back({s, MessageCaptureService::Direction::outbound});
+  StreamIds ids {
+    (int)std::size(_stream_ids)-2,
+    (int)std::size(_stream_ids)-1
+  };
+  return std::pair<int,int>(ids.in, ids.out);
+}
+
+MessageCaptureService::MessageCaptureService()
+{
+  std::string filename = "/var/tmp/wirelog.txt";
+  _file.open(filename, std::ios::app);
+  LOG_INFO("opening file '" << filename << "'");
+  if (!_file)
+    throw std::runtime_error("failed to open file for appending: " + filename);
+
+  _stream_ids.push_back({"unknown", 0}); // meaning of stream_id 0
+
+  _file << "===== "
+        << "["<< Time::realtime_now().as_iso8601(Time::Resolution::micro, true) << "] "
+        << "[FILEOPEN]" << std::endl << std::endl;
+  _loop = std::make_unique<RealtimeEventLoop>(
+    [](){
+      return false;
+    },
+    [] {
+      apex::Logger::instance().register_thread_id("wirelog");
+    });
+
+  // start
+  auto interval = std::chrono::seconds(1);
+  _loop->dispatch(interval,
+                  [this, interval](){
+                    this->write_to_file(true);
+                    return interval;
+                  });
+}
+
+
+void MessageCaptureService::push_event(int stream_id, std::string_view sv)
+{
+  Msg msg {
+    stream_id,
+    Time::realtime_now(),
+    std::string(sv),
+    sv.size(),
+  };
+
+  {
+    std::lock_guard<std::mutex> guard(_mutex);
+    _queue.push(msg);
+  }
+  _loop->dispatch([this](){ this->write_to_file(false); });
+}
+
+
+void MessageCaptureService::write_to_file(bool do_flush)
+{
+  // event thread
+  while (true)
+  {
+    std::lock_guard<std::mutex> guard(_mutex);
+    if (_queue.empty())
+      return;
+
+    auto & front  = _queue.front();
+
+    auto direction = "";
+    if (_stream_ids[front.stream_id].second == Direction::inbound)
+      direction = "[IN] ";
+    if (_stream_ids[front.stream_id].second == Direction::outbound)
+      direction = "[OUT] ";
+
+    _file << "===== "
+          << "["<< Time::realtime_now().as_iso8601(Time::Resolution::micro, true) << "] "
+          << "[" << _stream_ids[front.stream_id].first << "] "
+          << direction
+          << "[" << front.rawlen << "] "
+          << std::endl;
+    _file << front.data;
+    _file << std::endl<< std::endl;
+    if (do_flush)
+      _file.flush();
+    _queue.pop();
+  }
+
+}
+
 
 std::unique_ptr<EventLoop> construct_event_loop(RunMode run_mode,
                                                 Time backtest_time_start) {
@@ -86,6 +185,10 @@ Services::Services(RunMode run_mode,
     _bt_evloop(dynamic_cast<BacktestEventLoop*>(_evloop.get())),
     _backtest_period(backtest_period)
 {
+
+  apex::SslConfig sslconf(true);
+  _ssl = std::make_unique<apex::SslContext>(sslconf);
+
 }
 
 
@@ -129,6 +232,8 @@ void Services::init_services(Config config)
 
   // service construction order is done in terms of those with the
   // least dependencies to those with most dependencies.
+
+  _message_capture_service = std::make_unique<MessageCaptureService>();
 
 
   if (_run_mode == RunMode::backtest) {
@@ -186,6 +291,11 @@ void Services::run() {
   else {
     apex::wait_for_sigint();
   }
+}
+
+
+SslContext* Services::ssl() {
+  return _ssl.get();
 }
 
 } // namespace apex

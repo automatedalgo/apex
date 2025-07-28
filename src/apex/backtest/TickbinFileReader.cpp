@@ -61,10 +61,11 @@ public:
 
   ~TickbinDecoder() = default;
 
-  virtual apex::Time get_next_event_time() const {
+  virtual apex::Time get_next_event_time() {
     tickbin::Header* head = reinterpret_cast<tickbin::Header*>(_head);
     std::chrono::microseconds event_time(head->capture_time);
-    return apex::Time(event_time);
+    _next = apex::Time(event_time);
+    return _next;
   }
 
   virtual bool has_next_event()  {
@@ -86,6 +87,7 @@ protected:
   char* _head;
   char* _start;
   char* _end;
+  Time _next;
 };
 
 
@@ -106,7 +108,7 @@ public:
     if (mktdata) {
       TickTop tick;
       tickbin::Serialiser::deserialise(_head, tick);
-      mktdata->apply(tick);
+      mktdata->apply(_next, tick);
       //LOG_INFO("tickL1 update: " << tick.ask_price);
     }
 
@@ -131,7 +133,7 @@ public:
     if (mktdata) {
       TickTrade tick;
       tickbin::Serialiser::deserialise(_head, tick);
-      mktdata->apply(tick);
+      mktdata->apply(_next, tick);
       // LOG_INFO("trade update: " << tick.price  << ", time: " << tick.et);
     }
 

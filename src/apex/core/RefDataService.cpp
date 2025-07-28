@@ -107,6 +107,19 @@ Instrument& RefDataService::get_instrument(InstrumentQuery q) {
 
 }
 
+
+Instrument& RefDataService::lookup(const std::string&  symbol)
+{
+  auto iter = _instruments.find(symbol);
+  if (iter != _instruments.end()) {
+    return iter->second;
+  }
+  else {
+    THROW("instrument not " << symbol);
+  }
+
+}
+
 Instrument& RefDataService::get_instrument(const std::string& symbol,
                                            const std::string& exchange,
                                            InstrumentType type)
@@ -145,18 +158,20 @@ std::vector<Instrument> RefDataService::get_fx_rate_instruments(
 void RefDataService::load_assets(const std::string& filename)
 {
   LOG_INFO("reading ref-data csv file " << QUOTE(filename));
-  io::CSVReader<12> in(filename);
+  io::CSVReader<14> in(filename);
 
   in.read_header(io::ignore_extra_column, "instId", "symbol", "type", "venue",
                  "baseAsset", "quoteAsset", "lotQty", "tickSize", "minNotional",
-                 "minQty", "baseAssetPrecision", "quoteAssetPrecision");
+                 "minQty", "baseAssetPrecision", "quoteAssetPrecision",
+                 "feed_symbol", "line_symbol");
 
   std::string instId, symbol, type, venue, baseAsset, quoteAsset, lotQty,
-      tickSize, minNotional, minQty, baseAssetPrecision, quoteAssetPrecision;
+    tickSize, minNotional, minQty, baseAssetPrecision, quoteAssetPrecision,
+    feed_symbol, line_symbol;
 
   while (in.read_row(instId, symbol, type, venue, baseAsset, quoteAsset,
                      lotQty, tickSize, minNotional, minQty, baseAssetPrecision,
-                     quoteAssetPrecision)) {
+                     quoteAssetPrecision, feed_symbol, line_symbol)) {
     auto iter = _instruments.find(instId);
 
     // create an Instrument object, even if already found
@@ -166,9 +181,9 @@ void RefDataService::load_assets(const std::string& filename)
           find_or_create_asset(venue, quoteAsset, quoteAssetPrecision);
       apex::InstrumentType instrument_type = apex::to_instrument_type(type);
       Instrument instrument =
-        Instrument(instrument_type, instId, base, quote, symbol, venue);
+        Instrument(instrument_type, instId, base, quote, symbol, feed_symbol, line_symbol, venue);
       instrument.minimum_size = std::atof(minQty.c_str());
-      instrument.minimum_notnl = std::atof(minNotional.c_str());
+      instrument.set_minimum_notnl(std::atof(minNotional.c_str()));
       instrument.tick_size = ScaledInt(tickSize);
       instrument.lot_size = ScaledInt(lotQty.c_str());
 

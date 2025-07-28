@@ -22,7 +22,11 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-MarketData::MarketData() = default;
+
+MarketData::MarketData()
+{
+}
+
 
 std::ostream& operator<<(std::ostream& os, MdStream& st)
 {
@@ -39,7 +43,7 @@ std::ostream& operator<<(std::ostream& os, MdStream& st)
 
 std::ostream& operator<<(std::ostream& os, const TickTrade& trade)
 {
-  os << trade.aggr_side << " " << trade.qty << " @ " << trade.price;
+  os << trade.side << " " << trade.qty << " @ " << trade.price;
   return os;
 }
 
@@ -49,9 +53,10 @@ void MarketData::subscribe_events(std::function<void(EventType)> fn)
 }
 
 
-void MarketData::apply(TickTrade& t)
+void MarketData::apply(Time ts, TickTrade& tick)
 {
-  this->_last = t;
+  this->_last = tick;
+  _ts_trade = ts;
   EventType mask = {};
   mask.value = EventType::trade;
   for (auto& item : _events_listeners) {
@@ -60,12 +65,13 @@ void MarketData::apply(TickTrade& t)
 }
 
 
-void MarketData::apply(TickTop& tick)
+void MarketData::apply(Time ts, TickTop& tick)
 {
   _l1_bid.price = tick.bid_price;
   _l1_bid.qty = tick.bid_qty;
   _l1_ask.price = tick.ask_price;
   _l1_ask.qty = tick.ask_qty;
+  _ts_l1 = ts;
 
   EventType mask = {};
   mask.value = EventType::top;
@@ -92,7 +98,7 @@ void Book::apply(TickBookSnapshot5& tick)
 }
 
 
-void MarketData::apply(TickBookSnapshot5& tick)
+void MarketData::apply(Time, TickBookSnapshot5& tick)
 {
   _book.apply(tick);
 
