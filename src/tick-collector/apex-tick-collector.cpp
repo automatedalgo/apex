@@ -17,30 +17,139 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/backtest/TickFileWriter.hpp>
 #include <apex/backtest/TickbinMsgs.hpp>
-#include <apex/gx/BinanceSession.hpp>
-#include <apex/gx/GxServer.hpp>
+#include <apex/core/Logger.hpp>
+#include <apex/core/RefDataService.hpp>
+#include <apex/core/Services.hpp>
 #include <apex/infra/Reactor.hpp>
-#include <apex/infra/SocketAddress.hpp>
-#include <apex/infra/ssl.hpp>
 #include <apex/util/Config.hpp>
-#include <apex/util/json.hpp>
 #include <apex/util/Error.hpp>
+#include <apex/util/RealtimeEventLoop.hpp>
+#include <apex/util/json.hpp>
+#include <apex/venues/binance/BinanceUsdFutFeedHandler.hpp>
 
+#include <chrono>
+#include <fstream>
+#include <functional>
+#include <list>
+#include <set>
 #include <unistd.h>
 #include <utility>
-#include <vector>
 #include <variant>
-#include <list>
-#include <fstream>
-#include <chrono>
-#include <functional>
+#include <vector>
 
 namespace apex {
 
+/* This is a MarketData-like object that can receive Tick messaages, but instead
+ * of maintaining a book, will pass the tick event to a tick collector for
+ * saving to file.
+ */
+struct MarketDataCapture {
+
+  MarketDataCapture(apex::Instrument inst)
+    : _inst(inst)
+  {
+  }
+  void set_collector_l1(std::function<void(Time, apex::TickTop&)> sink) {
+    _level1_sink = sink;
+  }
+  void set_collector_trade(std::function<void(Time, apex::TickTrade&)> sink) {
+    _trade_sink = sink;
+  }
+
+  void apply(Time t, apex::TickTop& tick) {
+    _level1_sink(t, tick);
+  };
+  void apply(Time t, apex::TickTrade& tick) {
+    _trade_sink(t, tick);
+  };
+
+  apex::Instrument _inst;
+
+  // tick sinks
+  std::function<void(Time, apex::TickTop&)> _level1_sink;
+  std::function<void(Time, apex::TickTrade&)> _trade_sink;
+};
+
+// Purpose of EmbeddedFeedHandler is proxy a direct FeedHandler instance so that
+// an Apex instance can connect direct direct to an exchange.
+// EmbeddedFeedHandler will perform the mapping from feed symbols (pxsym) to
+// MarketData instances.
+
+class EmbeddedFeedHandler {
+public:
+
+  using FHBuilder = std::function<std::shared_ptr<FeedHandler>(FeedHandlerCallbacks)>;
+
+  EmbeddedFeedHandler(ExchangeId eid,
+                      FHBuilder feed_builder)
+    : _eid(eid)
+  {
+    FeedHandlerCallbacks callbacks;
+    callbacks.on_trade = [this](std::string pxsym, TickTrade& tick) {
+      this->on_tick<TickTrade>(pxsym, tick);
+    };
+    callbacks.on_top = [this](std::string pxsym, TickTop& tick){
+      this->on_tick<TickTop>(pxsym, tick);
+    };
+    _fh = feed_builder(std::move(callbacks));
+  }
+
+
+  void subscribe_trades(std::string pxsym, MarketDataCapture* md) {
+    // TODO: should check if already exists, is the same
+
+    pxsym = str_tolower(pxsym);
+    {
+      std::lock_guard<std::mutex> guard(_mds_mtx);
+      _mds.insert({pxsym, md});
+    }
+    _fh->subscribe_trades(pxsym);
+  }
+
+  void subscribe_top(std::string pxsym, MarketDataCapture* md) {
+    // TODO: should check if already exists, is the same
+    pxsym = str_tolower(pxsym);
+    {
+      std::lock_guard<std::mutex> guard(_mds_mtx);
+      _mds.insert({pxsym, md});
+    }
+    _fh->subscribe_top(pxsym);
+  }
+
+  std::shared_ptr<FeedHandler>& feed() { return _fh; }
+
+private:
+
+  template<typename M>
+  void on_tick(std::string pxsym, M& tick) {
+    MarketDataCapture* md = nullptr;
+    {
+      std::lock_guard<std::mutex> guard(_mds_mtx);
+      if (auto iter = _mds.find(pxsym); iter != _mds.end())
+        md = iter->second;
+    }
+
+    if (md) {
+      md->apply(Time::realtime_now(), tick);
+    }
+    else {
+      LOG_WARN("subscription not found for '" << pxsym << "'");
+    }
+  }
+
+private:
+  ExchangeId _eid;
+  std::shared_ptr<FeedHandler> _fh;
+  std::mutex _mds_mtx;
+  std::map<std::string, MarketDataCapture*> _mds;
+};
+
+
 /* Capture ticks related to a single instrument and single stream/channel. As a
- base class this largely defines an interface that derived classes have to
- implement. */
-class BaseCollector {
+   base class this largely defines an interface that derived classes have to
+   implement. */
+class BaseCollector
+{
 public:
 
   static constexpr std::chrono::seconds stale_interval{60};
@@ -55,7 +164,6 @@ public:
     _descr(std::move(descr)),
     _info(std::move(info))
   {}
-
 
   virtual ~BaseCollector() = default;
 
@@ -72,12 +180,14 @@ public:
 
   // Time elapse since the most recent tick arrived
   [[nodiscard]] std::chrono::milliseconds duration_since_update() const {
+    std::lock_guard<std::mutex> guard(_mtx);
     return apex::Time::realtime_now().as_epoch_ms() - _last_data.as_epoch_ms() ;
   }
 
 protected:
   apex::Time _last_data; // time last data arrived
-  size_t _count = 0; // count of ticks collected
+  std::atomic<size_t> _count = 0; // count of ticks collected
+  mutable std::mutex _mtx;
 
 private:
   std::string _descr; // description, for logging purpose
@@ -88,25 +198,36 @@ private:
 /* Base class for tick-collectors that use a single data type for capturing
    ticks. */
 template<typename T>
-class BaseCollectorImpl : public BaseCollector {
+class BaseCollectorImpl : public BaseCollector
+{
 public:
 
   BaseCollectorImpl(std::string descr, apex::StreamInfo info)
     : BaseCollector(descr, info) {}
 
-  [[nodiscard]] size_t tick_count() const override { return this->_ticks.size(); }
+  [[nodiscard]] size_t tick_count() const override {
+    std::lock_guard<std::mutex> guard(_mtx);
+    return this->_ticks.size();
+  }
 
   [[nodiscard]] apex::TickFileBucketId earliest_tick_bucket_id() const override {
-    if (tick_count() == 0)
+    std::lock_guard<std::mutex> guard(_mtx);
+
+    if (this->_ticks.size() == 0)
       return apex::TickFileBucketId{};
 
     auto bucketid = apex::TickFileBucketId::from_time(_ticks.front().recv_time);
+    if (_ticks.front().recv_time == Time()) {
+      LOG_WARN("front tick has empty time");
+    }
     return bucketid;
   }
 
 
   size_t write_ticks_impl(TickbinFileWriter& file,
                           std::function<size_t(T&)> write_fn) {
+    std::lock_guard<std::mutex> guard(_mtx);
+
     size_t byte_count = 0;
     auto iter = this->_ticks.begin();
     while (iter != _ticks.end() &&
@@ -123,53 +244,56 @@ protected:
 };
 
 
-struct CapturedVariantTick {
-  apex::Time recv_time;
-  std::variant<apex::TickTop, apex::TickTrade> tick;
-};
+// struct CapturedVariantTick   WORK IN PROGRESS -- NOT YET THREAD SAFE
+// {
+//   apex::Time recv_time;
+//   std::variant<apex::TickTop, apex::TickTrade> tick;
+// };
 
-// VariantCollector is able to collect streams of heterogeneous tick types
-class VariantCollector : public BaseCollectorImpl<CapturedVariantTick> {
-public:
-  VariantCollector(std::string descr, apex::StreamInfo info)
-    : BaseCollectorImpl<CapturedVariantTick>(std::move(descr), std::move(info)) {
-  }
-
-
-  template<typename T>
-  void add_tick(apex::Time captured, const T& tick) {
-    _count++;
-    this->_last_data = apex::Time::realtime_now();
-    _ticks.push_back({captured, tick});
-  }
+// // VariantCollector is able to collect streams of heterogeneous tick types
+// class VariantCollector : public BaseCollectorImpl<CapturedVariantTick> {
+// public:
+//   VariantCollector(std::string descr, apex::StreamInfo info)
+//     : BaseCollectorImpl<CapturedVariantTick>(std::move(descr), std::move(info)) {
+//   }
 
 
-  template<typename T>
-  size_t write(apex::TickbinFileWriter& file, CapturedVariantTick& item) {
-    if (std::holds_alternative<T>(item.tick)) {
-      auto bytes = _serialiser.serialise(item.recv_time, std::get<T>(item.tick));
-      file.write_bytes(&bytes[0], bytes.size());
-      return bytes.size();
-    }
-    else
-      return 0;
-  }
+//   template<typename T>
+//   void add_tick(apex::Time captured, const T& tick) {
+//     LOG_INFO("adding tick");
+//     _count++;
+//     this->_last_data = captured;
+//     _ticks.push_back({captured, tick});
 
-  size_t write_to_file(apex::TickbinFileWriter& file) override {
-    auto write_fn= [&](CapturedVariantTick& item) ->size_t{
-      size_t bytes;
-      if ((bytes = this->write<apex::TickTop>(file, item)))
-        return bytes;
-      if ((bytes = this->write<apex::TickTrade>(file, item)))
-        return bytes;
-      throw std::runtime_error("cannot serialise collected tick, unsupported tick variant");
-    };
-    return this->write_ticks_impl(file, write_fn);
-  }
+//   }
 
-private:
-  apex::tickbin::Serialiser _serialiser;
-};
+
+//   template<typename T>
+//   size_t write(apex::TickbinFileWriter& file, CapturedVariantTick& item) {
+//     if (std::holds_alternative<T>(item.tick)) {
+//       auto bytes = _serialiser.serialise(item.recv_time, std::get<T>(item.tick));
+//       file.write_bytes(&bytes[0], bytes.size());
+//       return bytes.size();
+//     }
+//     else
+//       return 0;
+//   }
+
+//   size_t write_to_file(apex::TickbinFileWriter& file) override {
+//     auto write_fn= [&](CapturedVariantTick& item) ->size_t{
+//       size_t bytes;
+//       if ((bytes = this->write<apex::TickTop>(file, item)))
+//         return bytes;
+//       if ((bytes = this->write<apex::TickTrade>(file, item)))
+//         return bytes;
+//       throw std::runtime_error("cannot serialise collected tick, unsupported tick variant");
+//     };
+//     return this->write_ticks_impl(file, write_fn);
+//   }
+
+// private:
+//   apex::tickbin::Serialiser _serialiser;
+// };
 
 
 template <typename T>
@@ -187,10 +311,19 @@ public:
   SingleTypeCollector(std::string descr, apex::StreamInfo info)
     : BaseCollectorImpl<CapturedSingleTick<T> > (std::move(descr), info) {}
 
-  void add_tick(apex::Time captured, T& tick) {
-    this->_count++;
-    this->_last_data = apex::Time::realtime_now();
-    this->_ticks.push_back({captured, tick});
+  void add_tick(apex::Time captured_time, T& tick) {
+    CapturedSingleTick<T> captured_tick{captured_time, tick};
+
+    if (captured_time == Time()) {
+      LOG_ERROR("tick has empty time!");
+    }
+
+    {
+      std::lock_guard<std::mutex> guard(this->_mtx);
+      this->_count++;
+      this->_last_data = captured_time;
+      this->_ticks.push_back(captured_tick);
+    }
   }
 
   size_t write_to_file(apex::TickbinFileWriter& file) override {
@@ -216,33 +349,18 @@ public:
   // tick can arrive at different times based on how far away the tick
   // collector is from the exchange.
   TickCollectorService(apex::Services* services,
-                       std::string location)
+                       std::string_view location)
     : _services{services},
       _location(std::move(location)),
       _event_loop{_services->realtime_evloop()},
       _reactor{_services->reactor()}
   {
-    apex::SslConfig sslconf(true);
-    _ssl = std::make_unique<apex::SslContext>(sslconf);
   }
 
   void start();
   void check_collector_queues();
 
-  // add a new collector for a specified instrument
-  void add_collector(std::string symbol, apex::ExchangeId exchange_id, std::string stream) {
-    apex::Instrument inst = _services->ref_data_service()->get_instrument({std::move(symbol), exchange_id});
-    apex::StreamInfo info{inst, std::move(stream)};
-    this->add_stream_collector(info);
-  }
-
-  // add a stream-collector; this configures new object to capture a market-data
-  // stream (e.g. L1, Trades etc.) for a specific Instrument
-  void add_stream_collector(const apex::StreamInfo& info) {
-    if (_streams_to_add.find(info) != std::end(_streams_to_add))
-      throw std::runtime_error("cannot add duplicate collector");
-    _streams_to_add.insert(info);
-  }
+  void add_collector(std::string symbol, apex::ExchangeId, std::string stream);
 
   [[nodiscard]] const std::string& location() const { return _location; }
 
@@ -250,30 +368,44 @@ private:
   std::pair<std::filesystem::path, std::filesystem::path>
   build_tickbin_filename(apex::TickFileBucketId bucketid,
                          BaseCollector& collector);
-  void create_exchange_sessions();
+  void create_feed_handlers();
   void setup_collectors();
-  void setup_collector_l1(apex::BaseExchangeSession*, const apex::StreamInfo&);
-  void setup_collector_aggtrades(apex::BaseExchangeSession*, const apex::StreamInfo&);
 
   apex::Services* _services;
   std::string _location;
   apex::RealtimeEventLoop* _event_loop;
   apex::Reactor* _reactor;
-  std::unique_ptr<apex::SslContext> _ssl;
 
-  std::map<apex::ExchangeId, std::shared_ptr<apex::BaseExchangeSession>> _exchange_sessions;
+
+  std::map<apex::ExchangeId, std::shared_ptr<apex::EmbeddedFeedHandler>> _feeds;
 
   // container of tick collections pending creation
   std::set<apex::StreamInfo> _streams_to_add;
   std::vector<std::shared_ptr<BaseCollector>> _collectors;
+  std::map<Instrument, std::shared_ptr<MarketDataCapture>> _mds;
 };
+
+
+void TickCollectorService::add_collector(std::string symbol,
+                                         apex::ExchangeId exchange_id,
+                                         std::string stream)
+{
+
+  apex::Instrument inst = _services->ref_data_service()->get_instrument({std::move(symbol), exchange_id});
+  apex::StreamInfo info{inst, std::move(stream)};
+
+  if (_streams_to_add.find(info) == std::end(_streams_to_add))
+    _streams_to_add.insert(info);
+  else
+    throw std::runtime_error("cannot add duplicate collector");
+}
 
 
 std::pair<std::filesystem::path, std::filesystem::path>
 TickCollectorService::build_tickbin_filename(
   apex::TickFileBucketId bucketid,
-  BaseCollector& collector) {
-
+  BaseCollector& collector)
+{
   auto directory = _services->paths_config().tickdata / "bin1";
 
   char year[8] = {0};
@@ -295,6 +427,8 @@ TickCollectorService::build_tickbin_filename(
 
 void TickCollectorService::check_collector_queues()
 {
+  /* event thread */
+
   /* For all collector objects, check the contents of their tick queue, and
      decide if a write to disk is required. */
   for (auto& collector : _collectors) {
@@ -307,8 +441,10 @@ void TickCollectorService::check_collector_queues()
       collector->is_stale = false;
     }
 
-    if (!collector->tick_count())
+    if (collector->tick_count() == 0)
       continue;
+
+    auto this_write_count = collector->tick_count();
 
     auto bucketid = collector->earliest_tick_bucket_id();
 
@@ -324,73 +460,52 @@ void TickCollectorService::check_collector_queues()
                                  meta);
 
     auto byte_count = collector->write_to_file(file);
-    LOG_INFO("stream: " << collector->descr() << ", file: " << file.full_path()
+    LOG_INFO("stream: " << collector->descr()
+             << ", bucketid: " << bucketid.as_string()
+             << ", file: " << file.full_path()
              << ", wrote bytes: " << byte_count
+             << ", wrote ticks: " << this_write_count
              << ", total ticks: " << collector->total_tick_count());
   }
-}
-
-
-void TickCollectorService::setup_collector_aggtrades(apex::BaseExchangeSession* sp,
-                                                     const apex::StreamInfo& info) {
-  std::ostringstream oss;
-  oss << info.symbol() << "." << "aggtrades";
-
-  auto collector = std::make_shared<SingleTypeCollector<apex::TickTrade>>(oss.str(), info);
-
-  auto callback = [collector](apex::TickTrade tick) {
-    collector->add_tick(apex::Time::realtime_now(), tick);
-  };
-
-  // make subscriptions
-  apex::Symbol symbol;
-  symbol.native = info.symbol();
-  apex::subscription_options options(apex::StreamType::Trades);
-  sp->subscribe_trades(symbol, options, callback);
-
-  _collectors.push_back(std::move(collector));
-}
-
-
-void TickCollectorService::setup_collector_l1(apex::BaseExchangeSession* sp,
-                                              const apex::StreamInfo& info) {
-  std::ostringstream oss;
-  oss << info.symbol() << "." << "l1";
-  auto collector = std::make_shared<SingleTypeCollector<apex::TickTop>>(
-    oss.str(), info);
-
-  auto callback = [collector](apex::TickTop tick) {
-    collector->add_tick(apex::Time::realtime_now(), tick);
-  };
-
-  // make the subscriptions required to receive L1 market data model
-  apex::Symbol symbol;
-  symbol.native = info.symbol();
-  apex::subscription_options options;
-  sp->subscribe_top(symbol, options, callback);
-
-  _collectors.push_back(std::move(collector));
 }
 
 
 /* For the various instruments this service is configured to collect, create the
  * exchange sessions that will provide the underlying market data access.
  */
-void TickCollectorService::create_exchange_sessions() {
+void TickCollectorService::create_feed_handlers()
+{
   for (auto & item : _streams_to_add)  {
-    auto iter = _exchange_sessions.find(item.exchange_id());
-    if (iter == std::end(_exchange_sessions)) {
-      if (item.exchange_id() == apex::ExchangeId::binance) {
-        apex::BaseExchangeSession::EventCallbacks callbacks;
-        apex::BinanceSession::Params params;
-        auto sp = std::make_shared<apex::BinanceSession>(
-          callbacks, params, apex::RunMode::paper, _reactor, *_event_loop, _ssl.get());
-        _exchange_sessions.insert({apex::ExchangeId::binance, sp});
-        sp->start();
+    auto exch_id = item.exchange_id();
+
+    auto iter = _feeds.find(exch_id);
+    if (iter == std::end(_feeds)) {
+
+      switch (exch_id) {
+        case apex::ExchangeId::binance_usdfut: {
+          EmbeddedFeedHandler:: FHBuilder fh_builder;
+
+          fh_builder = [services=_services]
+            (FeedHandlerCallbacks callbacks) -> std::shared_ptr<FeedHandler> {
+            auto feed = std::make_shared<BinanceUsdFutFeedHandler>(
+              services,
+              services->run_mode(),
+              services->reactor(),
+              services->realtime_evloop(),
+              callbacks
+              );
+            return feed;
+          };
+          LOG_INFO("creating feed handler for " << exch_id);
+          auto fh = std::make_shared<EmbeddedFeedHandler>(exch_id, fh_builder);
+          _feeds[exch_id] = fh;
+          fh->feed()->start();
+          break;
+        }
+        default:
+          THROW("cannot setup tick collector for unsupported exchange '"
+                << item.exchange_id() << "'");
       }
-      else
-        THROW("cannot setup tick collector for unknown exchange '"
-              << item.channel << "'");
     }
   }
 }
@@ -398,25 +513,62 @@ void TickCollectorService::create_exchange_sessions() {
 
 void TickCollectorService::setup_collectors()
 {
-  for (auto & item : _streams_to_add)  {
-    auto iter = _exchange_sessions.find(item.exchange_id());
-    if (iter == std::end(_exchange_sessions)) {
-      THROW("no exchange session for '"<<item.exchange_id()<< "'");
-    }
-    auto sp = iter->second;
+  for (auto & info : _streams_to_add)
+  {
+    Instrument inst = info.instrument;
+    ExchangeId exch_id = info.exchange_id();
 
-    if (item.channel == "l1")
-      setup_collector_l1(sp.get(), item);
-    else if (item.channel == "aggtrades")
-      setup_collector_aggtrades(sp.get(), item);
+    // get or create a MarketDataCapture
+    std::shared_ptr<MarketDataCapture> md = _mds[inst];
+    if (!md) {
+      md = std::make_shared<MarketDataCapture>(inst);
+      _mds[inst] = md;
+    }
+
+    // get the feed (should have been created earlier)
+    auto iter = _feeds.find(exch_id);
+    if (iter == std::end(_feeds)) {
+      THROW("no feed handler for '"<< exch_id << "'");
+    }
+
+    // Create a tick-target - this is the object that will receive the ticks,
+    // and then pass them to a collector
+    std::shared_ptr<apex::EmbeddedFeedHandler> sp = iter->second;
+
+    std::string pxsym;
+    pxsym = apex::str_tolower(info.instrument.symbol());
+
+    if (info.channel == "l1") {
+      auto collector = std::make_shared<SingleTypeCollector<apex::TickTop>>(
+        apex::concat(exch_id, ".", info.symbol(), ".l1"), info);
+
+      _collectors.push_back(collector);
+
+      md->set_collector_l1([collector](Time t, TickTop& tick) {
+        collector->add_tick(t, tick);
+      });
+
+      sp->subscribe_top(pxsym, md.get());
+    }
+    else if (info.channel == "aggtrades") {
+      auto collector = std::make_shared<SingleTypeCollector<apex::TickTrade>>(
+        apex::concat(exch_id, ".", info.symbol(),".aggtrades"),
+        info);
+      _collectors.push_back(collector);
+
+      md->set_collector_trade([collector](Time t, TickTrade& tick) {
+        collector->add_tick(t, tick);
+      });
+
+      sp->subscribe_trades(pxsym, md.get());
+    }
     else
       THROW("cannot setup tick collector for unknown stream type '"
-            << item.channel << "'");
+            << info.channel << "'");
 
     usleep(1000 * 1000);
-
-    LOG_INFO("created tick-collector for " << item.exchange_id() << "/"
-                                           << item.channel << "/"<< item.symbol());
+    LOG_INFO("created tick-collector for " << info.exchange_id() << "/"
+                                           << info.channel << "/"<< info.symbol());
   }
 }
 
@@ -424,7 +576,7 @@ void TickCollectorService::setup_collectors()
 void TickCollectorService::start()
 {
   // create the exchange-session components required by the tick collectors
-  create_exchange_sessions();
+  create_feed_handlers();
 
   // create the tick-collectors, which will immediately start collecting
   setup_collectors();
@@ -447,14 +599,15 @@ void TickCollectorService::start()
       return save_internal;
     });
 }
-} // namespace
+
+} // namespace apex
 
 
 int main(int , char** )
 {
   try {
     // setup logging
-    // apex::Logger::instance().set_level(apex::Logger::debug);
+    apex::Logger::instance().set_level(apex::Logger::info);
     apex::Logger::instance().set_detail(true);
     apex::Logger::instance().register_thread_id("main");
 
@@ -468,25 +621,18 @@ int main(int , char** )
     apex::TickCollectorService tick_collector_svc(services.get(), location);
 
     // list of binance symbols to subscribe to
-    auto symbols = {"AAVEUSDT",
-        "ADAUSDT",
-        "ALGOUSDT",
-        "ATOMUSDT",
-        "BTCUSDT",
-        "DOGEUSDT",
-        "DOTUSDT",
-        "ETHUSDT",
-        "FILUSDT",
-        "LTCUSDT",
-        "MATICUSDT",
-        "SHIBUSDT",
-        "SOLUSDT",
-        "XRPUSDT"
-        };
+    auto symbols = {
+      "BNBUSDT",
+      "BTCUSDT",
+      "DOGEUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    };
 
     for (const auto & symbol : symbols) {
-      tick_collector_svc.add_collector(symbol, apex::ExchangeId::binance, "l1");
-      tick_collector_svc.add_collector(symbol, apex::ExchangeId::binance, "aggtrades");
+      tick_collector_svc.add_collector(symbol, apex::ExchangeId::binance_usdfut, "l1");
+      tick_collector_svc.add_collector(symbol, apex::ExchangeId::binance_usdfut, "aggtrades");
     }
 
     // start the collector service after the various streams have been
