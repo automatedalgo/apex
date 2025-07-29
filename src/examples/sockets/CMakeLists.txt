@@ -18,8 +18,6 @@ macro(Compile_Program example)
             "${example}.cpp"
             ${SRC_FILES}
             )
-    set_property(TARGET ${example} PROPERTY CXX_STANDARD 17)
-    set_property(TARGET ${example} PROPERTY CXX_STANDARD_REQUIRED ON)
     target_link_libraries(${example} PRIVATE ${EXTRA_LIBS} ${EXTRA_GCC_LIBS})
     install(TARGETS ${example})
 

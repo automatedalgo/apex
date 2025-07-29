@@ -19,8 +19,6 @@ macro(Compile_Program progname)
             "${progname}.cpp"
             ${SRC_FILES}
             )
-    set_property(TARGET ${progname} PROPERTY CXX_STANDARD 17)
-    set_property(TARGET ${progname} PROPERTY CXX_STANDARD_REQUIRED ON)
     target_link_libraries(${progname} PRIVATE ${EXTRA_LIBS} ${EXTRA_GCC_LIBS} sodium)
     install(TARGETS ${progname})
 

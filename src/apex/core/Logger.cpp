@@ -80,7 +80,7 @@ std::vector<std::string> create_banner() {
 }
 
 /* Constructor */
-Logger::Logger() : m_mask(mask_level_and_above(level::info)) {}
+Logger::Logger() : _mask(mask_level_and_above(level::info)) {}
 
 /* Destructor */
 Logger::~Logger() {}
@@ -96,7 +96,8 @@ int Logger::mask_level_and_above(level lvl)
 }
 
 
-void Logger::log_banner(RunMode mode) {
+void Logger::log_banner(RunMode mode,
+                        std::ostream* os) {
   std::string mode_name;
   switch (mode) {
     case RunMode::paper:
@@ -114,57 +115,25 @@ void Logger::log_banner(RunMode mode) {
   }
   if (!_banner_done) {
     auto banner = create_banner();
-    for (size_t i = 1; i < banner.size(); i++){
-      std::cout << banner[i];
-      if (i == 2) {
-        std::cout << "   mode: " << mode_name;
-      }
-      std::cout << "\n";
+
+    // decide logging handler
+    if (!os) {
+      if (_async_logfile_opened)
+        os = &_async_logfile;
+      else
+        os = &std::cout;
     }
+
+    for (size_t i = 1; i < banner.size(); i++){
+      *os << banner[i];
+      if (i == 2) {
+        *os << "   mode: " << mode_name;
+      }
+      *os << "\n";
+    }
+    os->flush();
     _banner_done = true;
   }
-}
-
-void Logger::write(Logger::level lvl, std::string msg, const char* file, int l)
-{
-  auto guard = std::scoped_lock(m_write_mutex);
-  auto parts = split(file, '/');    // TODO: keep empty tokens?
-  auto filename = *parts.rbegin();
-  auto const tid = apex::thread_id();
-
-  std::string timestamp;
-
-  Time t = _clock_fn? _clock_fn() : Time::realtime_now();
-  auto tm = t.tm_utc();
-  auto usec = t.usec();
-  char buf[256] = {0};
-  snprintf(buf, sizeof(buf), "%04d-%02d-%02d | %02d:%02d:%02d.%06lu",
-           tm.tm_year+1900,
-           tm.tm_mon + 1,
-           tm.tm_mday,
-           tm.tm_hour,
-           tm.tm_min,
-           tm.tm_sec,
-           usec.count());
-  std::cout << buf << "";
-
-  // _detailed_logging = false;
-  if (_detailed_logging) {
-    auto guard2 = std::scoped_lock(m_thread_ids_mutex);
-    auto iter = m_thread_ids.find(tid);
-    if (iter == std::end(m_thread_ids)) {
-      auto label = format_threadid(tid, "????");
-      std::cout << " " << label;
-      m_thread_ids[tid] = std::move(label);
-    } else {
-      std::cout << " " << iter->second;
-    }
-  }
-
-  std::cout << " " << level_str(lvl) << msg;
-  if (_detailed_logging)
-    std::cout << " (" << filename << ":" << l << ")";
-  std::cout << "\n";
 }
 
 
@@ -177,9 +146,9 @@ Logger& Logger::instance()
 
 void Logger::register_thread_id(std::string label)
 {
-  auto guard = std::scoped_lock(m_thread_ids_mutex);
+  auto guard = std::scoped_lock(_thread_ids_mutex);
   auto tid = apex::thread_id();
-  m_thread_ids[tid] = format_threadid(tid, label);
+  _thread_ids[tid] = format_threadid(tid, label);
 }
 
 void Logger::set_clock_source(std::function<Time(void)> fn)
@@ -225,27 +194,165 @@ void Logger::enable_async_mode() {
       [] {
         apex::Logger::instance().register_thread_id("asynclog");
       });
-
-
-
-    _async_thread -> dispatch(std::chrono::seconds{1}, [this]() {
-      this->drain_async_queue();
-      return std::chrono::seconds{1};
+    auto flush_internval = std::chrono::seconds(1);
+    _async_thread->dispatch(flush_internval, [flush_internval, this]() {
+      this->async_flush();
+      return flush_internval;
     });
+  }
+}
+
+
+bool Logger::is_async_mode() {
+  return _async_thread.get() != nullptr;
+}
+
+
+void Logger::async_flush() {
+  if (_async_logfile_opened) {
+    _async_logfile.flush();
+  }
+  else {
+    std::cout.flush();
   }
 }
 
 
 void Logger::drain_async_queue()
 {
-  std::list<std::string> async_queue;
+  decltype(_async_queue) q;
   {
-    auto guard = std::lock_guard(_async_mtx);
-
-    async_queue = std::move(_async_queue);
-    _async_queue.clear();
+    auto guard = std::scoped_lock(_async_mtx);
+    q = std::move(_async_queue);
   }
 
+  while (!q.empty()) {
+    auto & front = q.front();
+
+    if (_async_logfile_opened) {
+      write_to_stream(_async_logfile,
+                      front.ts,
+                      front.thread_id,
+                      front.level,
+                      front.message,
+                      front.abs_filename,
+                      front.lineno);
+
+    }
+    else {
+      write_to_stream(std::cout,
+                      front.ts,
+                      front.thread_id,
+                      front.level,
+                      front.message,
+                      front.abs_filename,
+                      front.lineno);
+    }
+    q.pop();
+  }
 }
 
+
+void Logger::write(Logger::level level, std::string_view msg,
+                   const char* file, int lineno)
+{
+  auto const tid = apex::thread_id();
+  Time log_ts = _clock_fn? _clock_fn() : Time::realtime_now();
+
+  // for non-async logging, need to take the write mutex
+  if (is_async_mode()) {
+    LogItem item {
+      log_ts,
+      tid,
+      level,
+      file,
+      lineno,
+      std::string(msg)
+    };
+    auto guard = std::scoped_lock(_async_mtx);
+    _async_queue.push(std::move(item));
+    _async_thread->dispatch([this](){
+      this->drain_async_queue();
+    });
+  }
+  else {
+    auto guard = std::scoped_lock(_write_mutex);
+    write_to_stream(std::cout,
+                    log_ts,
+                    tid,
+                    level,
+                    msg,
+                    file,
+                    lineno);
+  }
+}
+
+
+void Logger::write_to_stream(std::ostream& os,
+                             Time log_ts,
+                             long thread_id,
+                             Logger::level level,
+                             std::string_view msg,
+                             const char* abs_filename,
+                             int lineno)
+{
+
+  auto parts = split(abs_filename, '/');    // TODO: keep empty tokens?
+  auto filename = *parts.rbegin();
+
+  _detailed_logging = true;  // TODO: delete me
+
+  /* build the timestamp section of the log entry */
+
+  auto tm = log_ts.tm_utc();
+  auto usec = log_ts.usec();
+  char tmp[256] = {0};
+  snprintf(tmp, sizeof(tmp), "%04d-%02d-%02d | %02d:%02d:%02d.%06lu",
+           tm.tm_year+1900,
+           tm.tm_mon + 1,
+           tm.tm_mday,
+           tm.tm_hour,
+           tm.tm_min,
+           tm.tm_sec,
+           usec.count());
+
+  os << tmp << "";
+
+  /* build the thread ID part */
+
+  if (_detailed_logging) {
+    auto guard = std::scoped_lock(_thread_ids_mutex);
+    if (auto it = _thread_ids.find(thread_id); it == std::end(_thread_ids)) {
+      auto label = format_threadid(thread_id, "????");
+      os << " " << label;
+      _thread_ids[thread_id] = std::move(label);
+    } else {
+      os << " " << it->second;
+    }
+  }
+
+  /* log level & message */
+
+  os << " " << level_str(level) << msg;
+
+  /* for detailed logging, add the source code location */
+
+  if (_detailed_logging)
+    os << " (" << filename << ":" << lineno << ")";
+  os << "\n";
+}
+
+
+void Logger::enable_file_logging(std::string_view filename, bool append)
+{
+  std::ios_base::openmode mode = append ? std::ios::app : std::ios::trunc;
+  _async_logfile.open(std::string(filename), mode);
+  if (!_async_logfile.is_open()) {
+    std::cerr << "failed to open logflie '" << filename << "'" << std::endl;
+    exit(1);
+  }
+  else {
+    _async_logfile_opened = true;
+  }
+}
 } // namespace apex

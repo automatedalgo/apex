@@ -150,9 +150,6 @@ if (BUILD_STATIC_LIBS)
             ${LIB_3RDPTY_HTTPPARSER_SRC_FILES}
             ${LIB_3RDPTY_APACH_SRC_FILES})
 
-    set_property(TARGET apexcore_static PROPERTY CXX_STANDARD 17)
-    set_property(TARGET apexcore_static PROPERTY CXX_STANDARD_REQUIRED ON)
-
     set_target_properties(apexcore_static PROPERTIES OUTPUT_NAME apexcore)
 
     target_include_directories(apexcore_static
@@ -184,9 +181,6 @@ if (BUILD_SHARED_LIBS)
             ${LIB_APEX_SRC_FILES}
             ${LIB_3RDPTY_HTTPPARSER_SRC_FILES}
             ${LIB_3RDPTY_APACH_SRC_FILES})
-
-    set_property(TARGET apexcore_shared PROPERTY CXX_STANDARD 17)
-    set_property(TARGET apexcore_shared PROPERTY CXX_STANDARD_REQUIRED ON)
 
     # Set library output name
     set_target_properties(apexcore_shared PROPERTIES OUTPUT_NAME apexcore)

@@ -14,8 +14,6 @@ macro(Compile_Program filename)
     "${PROJECT_SOURCE_DIR}/src/tick-collector/${filename}.cpp"
     ${SRC_FILES}
     )
-  set_property(TARGET ${filename} PROPERTY CXX_STANDARD 17)
-  set_property(TARGET ${filename} PROPERTY CXX_STANDARD_REQUIRED ON)
   target_link_libraries(${filename} PRIVATE ${EXTRA_LIBS} ${EXTRA_GCC_LIBS} sodium)
 
   if (WIN32)

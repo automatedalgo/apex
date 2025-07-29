@@ -26,7 +26,8 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <sstream>
 #include <string>
 #include <memory>
-#include <list>
+#include <queue>
+#include <fstream>
 
 
 namespace apex
@@ -55,18 +56,18 @@ public:
 
   ~Logger();
 
-  bool wants_level(Logger::level l) const { return l & m_mask; }
+  bool wants_level(Logger::level l) const { return l & _mask; }
 
-  bool is_debug_enabled() const { return level::debug & m_mask; }
-  bool is_info_enabled() const { return level::info & m_mask; }
-  bool is_note_enabled() const { return level::note & m_mask; }
-  bool is_warn_enabled() const { return level::warn & m_mask; }
-  bool is_error_enabled() const { return level::error & m_mask; }
+  bool is_debug_enabled() const { return level::debug & _mask; }
+  bool is_info_enabled() const { return level::info & _mask; }
+  bool is_note_enabled() const { return level::note & _mask; }
+  bool is_warn_enabled() const { return level::warn & _mask; }
+  bool is_error_enabled() const { return level::error & _mask; }
 
   /* */
   void set_level(level l) { set_mask(mask_level_and_above(l)); }
 
-  void set_mask(int mask) { m_mask = mask; }
+  void set_mask(int mask) { _mask = mask; }
 
 
   void set_detail(bool want_detail) { _detailed_logging = want_detail; }
@@ -74,7 +75,7 @@ public:
   void set_is_configured(bool b=true) { _is_configured = b; }
   bool is_configured() const { return _is_configured; }
 
-  int get_mask() const { return m_mask; }
+  int get_mask() const { return _mask; }
 
   void set_clock_source(std::function<Time(void)>);
 
@@ -82,13 +83,17 @@ public:
 
   static void configure_from_config(Config);
 
-  void write(Logger::level, std::string, const char* file, int l);
+  void write(Logger::level, std::string_view, const char* file, int l);
 
   void register_thread_id(std::string);
 
-  void log_banner(RunMode);
+  void log_banner(RunMode, std::ostream* = nullptr);
 
   void enable_async_mode();
+  void enable_file_logging(std::string_view filename,
+                           bool append);
+
+  bool is_async_mode();
 
 private:
   Logger();
@@ -98,26 +103,43 @@ private:
   Logger& operator=(const Logger&) = delete;
 
   void drain_async_queue();
+  void async_flush();
+  void write_to_stream(std::ostream& os,
+                       Time log_ts,
+                       long thread_id,
+                       Logger::level lvl,
+                       std::string_view msg,
+                       const char* file,
+                       int l);
 
-  int m_mask;
-  std::mutex m_write_mutex;
+  int _mask;
+  std::mutex _write_mutex;
 
-  std::mutex m_thread_ids_mutex;
+  std::mutex _thread_ids_mutex;
   struct ThreadInfo {
     std::string label;
     std::string prefix;
   };
-  std::map<int, std::string> m_thread_ids;
+  std::map<int, std::string> _thread_ids;
   std::function<Time(void)> _clock_fn;
   bool _detailed_logging = false;
   bool _is_configured = true;
   bool _banner_done = false;
 
   // async logging
-
+  struct LogItem {
+    Time ts;
+    long thread_id;
+    Logger::level level;
+    const char* abs_filename;
+    int lineno;
+    std::string message;
+  };
   std::mutex _async_mtx;
-  std::unique_ptr<RealtimeEventLoop> _async_thread;
-  std::list<std::string> _async_queue;
+  std::unique_ptr<RealtimeEventLoop> _async_thread; // TODO: replace with jthread
+  std::queue<LogItem> _async_queue;
+  std::ofstream _async_logfile;
+  bool _async_logfile_opened = false;
 };
 
 
