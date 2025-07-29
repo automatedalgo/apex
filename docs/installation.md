@@ -38,6 +38,7 @@ On Ubuntu 22 & 24 you can run the following commands to install essential build 
     sudo apt install cmake
     sudo apt install libssl-dev
     sudo apt install zlib1g-dev
+    sudo apt install libsodium-dev
     sudo apt install automake
     sudo apt install libtool
     sudo apt install autoconf
