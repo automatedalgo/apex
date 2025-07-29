@@ -17,12 +17,12 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/infra/TcpSocket.hpp>
 #include <apex/infra/TcpConnector.hpp>
-#include <apex/infra/SocketAddress.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/util/utils.hpp>
 
-#include <uv.h>
-
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include <assert.h>
 
 static int BACKLOG = 50;

@@ -19,7 +19,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/comm/GxServerSession.hpp>
 #include <apex/core/Errors.hpp>
-#include <apex/infra/SocketAddress.hpp>
 #include <apex/model/StrategyId.hpp>
 #include <apex/util/Error.hpp>
 

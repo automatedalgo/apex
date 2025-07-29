@@ -22,8 +22,6 @@ list(APPEND LIB_APEX_SRC_FILES
         "util/Time.cpp"
         "util/json.hpp"
         "util/json.cpp"
-        "infra/SocketAddress.hpp"
-        "infra/SocketAddress.cpp"
         "util/StopFlag.hpp"
         "util/StopFlag.cpp"
         "util/EventLoop.cpp"
@@ -168,7 +166,6 @@ if (BUILD_STATIC_LIBS)
 
     target_link_libraries(apexcore_static
             PUBLIC
-            uv
             sodium
             curl
             protobuf3
@@ -209,7 +206,6 @@ if (BUILD_SHARED_LIBS)
 
     target_link_libraries(apexcore_shared
             PUBLIC
-            uv
             sodium
             curl
             protobuf3
