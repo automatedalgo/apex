@@ -105,7 +105,7 @@ void Bot::init(double initial_position)
   }
 
   auto timer_interval = 1000ms;
-  _services->evloop()->dispatch(timer_interval, [=]() {
+  _services->evloop()->dispatch(timer_interval, [this, timer_interval]() {
     try {
       this->on_timer();
     } catch (std::runtime_error& e) {
