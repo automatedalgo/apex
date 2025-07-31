@@ -24,6 +24,9 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <functional>
 #include <iostream>
 
+// Defined by glibc to provide the program name
+extern char *program_invocation_short_name;
+
 namespace apex
 {
 
@@ -343,16 +346,55 @@ void Logger::write_to_stream(std::ostream& os,
 }
 
 
-void Logger::enable_file_logging(std::string_view filename, bool append)
+std::string generate_auto_log_file_name(LogOpts &opts) 
 {
-  std::ios_base::openmode mode = append ? std::ios::app : std::ios::trunc;
-  _async_logfile.open(std::string(filename), mode);
-  if (!_async_logfile.is_open()) {
-    std::cerr << "failed to open logflie '" << filename << "'" << std::endl;
-    exit(1);
+  Time t = Time::realtime_now();
+  auto base_path = apex_home() / "log";
+
+  base_path /= std::string(program_invocation_short_name);
+
+  switch (opts.time) {
+    case LogOpts::Time::day :
+      base_path += t.strftime(".%Y%m%d");
+      break;
+    case LogOpts::Time::second :
+      base_path += t.strftime(".%Y%m%d-%H%M%S");
+      break;
+    case LogOpts::none:
+      break;
   }
-  else {
-    _async_logfile_opened = true;
+  base_path += ".log";
+
+  return base_path.string();
+}
+
+
+void Logger::set_opts(LogOpts opts)
+{
+  set_level(opts.level);
+  set_detail(opts.detail);
+
+  if (opts.async)
+    enable_async_mode();
+
+  // enable log file
+  std::string filename = opts.filename;
+  if (!filename.empty()) {
+    if (filename == "auto" && opts.auto_filename) {
+      filename = generate_auto_log_file_name(opts);
+    }
+    std::ios_base::openmode mode = (opts.mode == LogOpts::Mode::append) ? std::ios::app : std::ios::trunc;
+    _async_logfile.open(std::string(filename), mode);
+    if (!_async_logfile.is_open()) {
+      std::cerr << "failed to open logflie '" << filename << "'" << std::endl;
+      exit(1);
+    }
+    else {
+      _async_logfile_opened = true;
+      std::cout << "writing to log file: " << filename << std::endl;
+    }
   }
 }
+
+
 } // namespace apex

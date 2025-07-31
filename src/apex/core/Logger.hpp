@@ -32,8 +32,11 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 namespace apex
 {
+
 class Config;
 class RealtimeEventLoop;
+class LogOpts;
+
 
 class Logger
 {
@@ -56,6 +59,8 @@ public:
 
   ~Logger();
 
+  void set_opts(LogOpts);
+
   bool wants_level(Logger::level l) const { return l & _mask; }
 
   bool is_debug_enabled() const { return level::debug & _mask; }
@@ -64,11 +69,9 @@ public:
   bool is_warn_enabled() const { return level::warn & _mask; }
   bool is_error_enabled() const { return level::error & _mask; }
 
-  /* */
   void set_level(level l) { set_mask(mask_level_and_above(l)); }
 
   void set_mask(int mask) { _mask = mask; }
-
 
   void set_detail(bool want_detail) { _detailed_logging = want_detail; }
 
@@ -89,10 +92,6 @@ public:
 
   void log_banner(RunMode, std::ostream* = nullptr);
 
-  void enable_async_mode();
-  void enable_file_logging(std::string_view filename,
-                           bool append);
-
   bool is_async_mode();
 
 private:
@@ -102,6 +101,7 @@ private:
 
   Logger& operator=(const Logger&) = delete;
 
+  void enable_async_mode();
   void drain_async_queue();
   void async_flush();
   void write_to_stream(std::ostream& os,
@@ -143,13 +143,39 @@ private:
 };
 
 
-#define _APEX_LOGIMPL_(msg, LEVEL)                                      \
-  do {                                                                  \
-    apex::Logger& logger = apex::Logger::instance();                    \
-    if (logger.wants_level(LEVEL)) {                                    \
-      std::ostringstream _s;                                            \
-      _s << msg;                                                        \
-      logger.write(LEVEL, _s.str(), __FILE__, __LINE__);                \
+/* Logger options */
+struct LogOpts {
+  // file-name for log file, leave empty to disable log file, or put "auto" to
+  // auto generate a file-name
+  std::string filename = "";
+
+  // for an auto generated file-name, what resolution to use for time part
+  enum Time { none, day, second} time = LogOpts::second;
+
+  // file creation mode for log files
+  enum Mode { trunc, append } mode = LogOpts::trunc;
+
+  // initial logging level
+  Logger::level level = Logger::level::info;
+
+  // include source line & thread details
+  bool detail = false;
+
+  // enable asynchronous logging
+  bool async = false;
+
+  // support auto log file
+  bool auto_filename = true;
+};
+
+
+#define _APEX_LOGIMPL_(msg, LEVEL)                              \
+  do {                                                          \
+    apex::Logger& logger = apex::Logger::instance();            \
+    if (logger.wants_level(LEVEL)) {                            \
+      std::ostringstream _s;                                    \
+      _s << msg;                                                \
+      logger.write(LEVEL, _s.str(), __FILE__, __LINE__);        \
     }} while (0)
 
 
