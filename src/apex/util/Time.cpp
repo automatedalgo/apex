@@ -190,7 +190,7 @@ std::string Time::as_iso8601(Resolution resolution, bool simpler) const
       break;
   }
 
-  buf[sizeof buf] = '\0';
+  buf[sizeof(buf) -1] = '\0';
   return buf;
 }
 
