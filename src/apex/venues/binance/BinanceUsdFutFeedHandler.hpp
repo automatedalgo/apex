@@ -60,6 +60,8 @@ private:
   std::map<std::string, Subscription> _subs;
   int _ws_feed_msgcap_id_in;
   int _ws_feed_msgcap_id_out;
+
+  Time _time_last_ping;
 };
 
 } //namespace

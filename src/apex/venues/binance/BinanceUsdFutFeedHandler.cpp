@@ -150,8 +150,14 @@ void BinanceUsdFutFeedHandler::manage_connection()
 {
   /* feed management thread */
 
-  if (websock_is_open(_ws_feed))
-      return;
+  if (websock_is_open(_ws_feed)) {
+    // in an attempt to keep Binance from disconnect/stale, send pings
+    if ((Time::realtime_now() - _time_last_ping) > std::chrono::minutes(2)) {
+      _time_last_ping = Time::realtime_now();
+      _ws_feed->send_ping();
+    }
+    return;
+  }
 
   _ws_feed = connect_websocket(
     _feed_url,
@@ -161,6 +167,7 @@ void BinanceUsdFutFeedHandler::manage_connection()
     _event_loop,  // TODO: why is this needed?
     [this](const char* buf, size_t n){ this->process_raw_message(buf, n); });
 
+  _time_last_ping = Time::realtime_now();
 
   // clear the subscription states
   {
