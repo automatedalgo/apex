@@ -1,3 +1,20 @@
+/* Copyright 2024 Automated Algo (www.automatedalgo.com)
+
+This file is part of Automated Algo's "Apex" project.
+
+Apex is free software: you can redistribute it and/or modify it under the terms
+of the GNU Lesser General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+Apex is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with Apex. If not, see <https://www.gnu.org/licenses/>.
+*/
+
 #pragma once
 
 #include <stdio.h>
@@ -27,6 +44,7 @@ using on_listen_cb_t = std::function<void(Stream*, int)>;
 using on_write_cb_t = std::function<ssize_t()>;
 using on_connect_cb_t = std::function<void(Stream*, int)>;
 using on_read_cb_t = std::function<void(char*, ssize_t)>;
+
 /*
 Stream objects are deleted on main thread of their associated reactor.
 
@@ -36,10 +54,9 @@ invoke any of the user callbacks, with the exception of on_dispose_cb; if that
 is set, it shall be called, typically to inform (& unblock) the user that the
 Stream has been deleted.
 */
-
-#define NULL_FD (-1)
-
 struct Stream {
+
+  static constexpr int NULL_FD = -1;
 
   using on_accept_cb_t = std::function<void(int, struct sockaddr_in*)>;
 
@@ -63,7 +80,7 @@ struct Stream {
   void * user;
   int timeout;  // time in seconds
 
- explicit Stream(int fd = NULL_FD)
+  Stream(int fd, size_t recv_buf_len)
     : fd{fd},
       events(0),
       hangup(false),
@@ -76,19 +93,26 @@ struct Stream {
       write_err(0),
       on_connection_cb(nullptr),
       user(nullptr),
-      timeout(0)
+      timeout(0),
+      _recv_buf(recv_buf_len, 0)
   {
   }
 
+  char * recv_buf() { return _recv_buf.data(); }
+  size_t recv_space() const { return _recv_buf.size(); }
+
   ~Stream();
 
-  bool has_fd() const { return fd != NULL_FD; }
+  bool has_fd() const { return fd != Stream::NULL_FD; }
+
+private:
+  std::vector<char> _recv_buf;
 };
 
 
 class TcpStream : public Stream  {
 public:
-  explicit TcpStream(int fd = -1) : Stream(fd) {};
+  TcpStream(int fd, size_t recv_buf_len) : Stream(fd, recv_buf_len) {};
 };
 
 

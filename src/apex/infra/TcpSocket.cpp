@@ -25,12 +25,11 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <netdb.h>
 #include <assert.h>
 
-static int BACKLOG = 50;
+static constexpr int BACKLOG = 50;
 
 void abort_with_msg(const char* msg, const char* reason) {
   fprintf(stderr, "%s: %s\n", msg, reason);
   abort();
-
 }
 
 namespace apex
@@ -38,15 +37,21 @@ namespace apex
 
 TcpSocket::TcpSocket(Reactor* r)
   : _reactor(r),
-    _outbuf_n(0)
+    _outbuf_n(0),
+    _init_read_buf_len(DEFAULT_RECV_BUF_LEN)
 {
 }
 
 
-TcpSocket::TcpSocket(Reactor* r, int fd)
+/* This constructor is called when we are want to create a TcpSocket from an
+ * existing file descriptor.  Currently this situation is when we have accepted
+ * a new connection from a listen socket.
+ */
+TcpSocket::TcpSocket(Reactor* r, int fd, size_t read_buf_len)
   : _reactor(r),
-    _stream(std::make_unique<TcpStream>(fd)),
-    _outbuf_n(0)
+    _stream(std::make_unique<TcpStream>(fd, read_buf_len)),
+    _outbuf_n(0),
+    _init_read_buf_len(read_buf_len)
 {
   _stream->user = this;
   _stream->on_write_cb = [this]() -> ssize_t {
@@ -130,9 +135,8 @@ ssize_t TcpSocket::do_write()
     do {
       // use send() instead of write() to prevent SIGPIPE events
       n = ::send(_stream->fd, p, _outbuf_n, MSG_DONTWAIT|MSG_NOSIGNAL);
+      // LOG_DEBUG("fd: " << _stream->fd << ", nsend=" << n);
     } while (n == -1 && errno == EINTR);
-
-    // LOG_INFO("SENT: " << n);
 
     if (n > 0) {
       _outbuf_n -= n;
@@ -158,7 +162,7 @@ void TcpSocket::close()
 }
 
 int TcpSocket::fd() const {
-  return (_stream && _stream->has_fd())? _stream->fd : -1;
+  return (_stream && _stream->has_fd())? _stream->fd : Stream::NULL_FD;
 }
 
 
@@ -196,14 +200,15 @@ int TcpSocket::connect_errno() const {
 }
 
 
+/* This method transplants an external file descriptor into this TcpSocket.  The
+ * situation when this happens is when a connection attempt has been
+ * estabilshed, resulting in a useable file decriptor. */
 void TcpSocket::set_connected_fd(int fd, on_write_cb_t on_write_cb) {
   /* io-thread */
   assert(fd>=0);
   assert(!_stream);
 
-  // construct a Reactor handle, using the connected file descriptor
-
-  _stream = std::make_unique<TcpStream>(fd);
+  _stream = std::make_unique<TcpStream>(fd, _init_read_buf_len);
   _stream->user = this;
   _stream->on_write_cb = std::move(on_write_cb);
   _reactor->add_stream(_stream.get());
@@ -220,10 +225,8 @@ void TcpSocket::connect(std::string addr,
   this->_node = addr;
   this->_service = std::to_string(port);
 
-  auto completed_cb = [this, user_cb](int fd, int err) {
-    // std::cout << "ON_COMPLETED_CB: fd=" << fd << ", err=" << err << std::endl;
-
-    if (fd != NULL_FD) {
+  auto on_connected = [this, user_cb](int fd, int err) {
+    if (fd != Stream::NULL_FD) {
       auto on_write_cb = [this]() -> ssize_t {return this->do_write();};
       this->set_connected_fd(fd, on_write_cb);
     }
@@ -234,12 +237,11 @@ void TcpSocket::connect(std::string addr,
     // if user wants a callback, pass back the error, making sure that we have
     // an error code.
     if (user_cb)
-      user_cb((fd == NULL_FD)? (err>0? err: EPERM) : 0);
+      user_cb((fd == Stream::NULL_FD)? (err>0? err: EPERM) : 0);
   };
 
-
   // create the TcpConnector object, which will manage the connection process
-  _connector = std::make_unique<TcpConnector>(_reactor, std::move(completed_cb));
+  _connector = std::make_unique<TcpConnector>(_reactor, std::move(on_connected));
 
   // initiate connection
   _connector->connect(addr, port, timeout);
@@ -320,8 +322,10 @@ void TcpSocket::listen_impl(int port, create_sock_cb_t create_sock_cb)
       create_sock_cb(fd);
   };
 
-  // create TcpStream
-  _stream = std::make_unique<TcpStream>(sfd);
+  // create TcpStream for accepting connections (not data transfer) - the
+  // receive buffer len doesn't have to be large becuase this is not used for
+  // data transfer
+  _stream = std::make_unique<TcpStream>(sfd, 1024);
   _stream->user = this;
   _stream->on_write_cb = [this]() -> ssize_t {
     LOG_WARN("ignoring socket-write attempt for listening socket");
@@ -412,8 +416,10 @@ void TcpSocket::listen_impl(const std::string& node,
       create_sock_cb(fd);
   };
 
-  // create TcpStream
-  _stream = std::make_unique<TcpStream>(sfd);
+  // create TcpStream for accepting connections (not data transfer) - the
+  // receive buffer len doesn't have to be large becuase this is not used for
+  // data transfer
+  _stream = std::make_unique<TcpStream>(sfd, 1024);
   _stream->user = this;
   _stream->on_write_cb = [this]() -> ssize_t {
     LOG_WARN("ignoring socket-write attempt for listening socket");
@@ -432,7 +438,7 @@ void TcpSocket::listen(int port, on_accept_cb_t user_on_accept_cb)
 
   create_sock_cb_t create_sock_cb = [user_on_accept_cb, this](int fd){
     if (fd >= 0) {
-      auto sock = std::make_unique<TcpSocket>(this->_reactor, fd);
+      auto sock = std::make_unique<TcpSocket>(this->_reactor, fd, _init_read_buf_len);
       user_on_accept_cb(sock);
     }
   };
@@ -450,7 +456,7 @@ void TcpSocket::listen(const std::string& node,
 
   create_sock_cb_t create_sock_cb = [user_on_accept_cb, this](int fd){
     if (fd >= 0) {
-      auto sock = std::make_unique<TcpSocket>(this->_reactor, fd);
+      auto sock = std::make_unique<TcpSocket>(this->_reactor, fd, _init_read_buf_len);
       user_on_accept_cb(sock);
     }
   };

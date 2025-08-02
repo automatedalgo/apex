@@ -47,7 +47,8 @@ std::shared_ptr<WebsocketClient> connect_websocket(
   SslContext* ssl,
   RealtimeEventLoop* timer_thread,
   std::function<void(const char* buf, size_t n)> on_message,
-  SslSocket::Options = SslSocket::Options()
+  SslSocket::Options = SslSocket::Options(),
+  size_t recv_buf_len = 65536
   );
 
 /*

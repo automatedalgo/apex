@@ -66,8 +66,9 @@ SslSocket::SslSocket(SslContext* ssl_context, Reactor* r, Options opts)
 }
 
 
-SslSocket::SslSocket(SslContext* ssl_context, Reactor* r, int fd, Options opts)
-  : TcpSocket(r, fd),
+SslSocket::SslSocket(SslContext* ssl_context, Reactor* r, int fd,
+                     size_t recv_buf_len, Options opts)
+  : TcpSocket(r, fd, recv_buf_len),
     _ssl_context(ssl_context),
     _handshake_state(handshake_state_t::pending),
     _options(opts)
@@ -349,7 +350,7 @@ void SslSocket::connect(std::string addr,
 
   auto completed_cb = [this, user_cb](int fd, int err) {
                                 /* io-thread */
-    if (fd != NULL_FD) {
+    if (fd != Stream::NULL_FD) {
       auto on_write_cb = [this]() -> ssize_t {return this->ssl_do_write();};
       this->set_connected_fd(fd, on_write_cb);
 
@@ -359,7 +360,7 @@ void SslSocket::connect(std::string addr,
       this->ssl_handshake();
     }
     if (user_cb)
-      user_cb((fd == NULL_FD)? (err>0? err: EPERM) : 0);
+      user_cb((fd == Stream::NULL_FD)? (err>0? err: EPERM) : 0);
   };
 
   // create the TcpConnector object, which will manage the connection process
@@ -378,9 +379,10 @@ void SslSocket::listen(int port, ssl_on_accept_cb_t user_on_accept_cb)
   if (!user_on_accept_cb)
     throw std::runtime_error("cannot listen(), accept callback is empty");
 
-  create_sock_cb_t create_sock_cb = [user_on_accept_cb, this](int fd){
+  create_sock_cb_t create_sock_cb = [user_on_accept_cb, this](int fd) {
     if (fd >= 0) {
-      auto sock = std::make_unique<SslSocket>(_ssl_context, _reactor, fd);
+      auto sock = std::make_unique<SslSocket>(_ssl_context, _reactor,
+                                              fd, _init_read_buf_len);
       sock->_ssl_session = std::make_unique<SslSession>(_ssl_context,
                                                         connect_mode::accept);
       user_on_accept_cb(sock);

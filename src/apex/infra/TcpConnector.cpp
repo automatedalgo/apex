@@ -1,3 +1,20 @@
+/* Copyright 2024 Automated Algo (www.automatedalgo.com)
+
+This file is part of Automated Algo's "Apex" project.
+
+Apex is free software: you can redistribute it and/or modify it under the terms
+of the GNU Lesser General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+Apex is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with Apex. If not, see <https://www.gnu.org/licenses/>.
+*/
+
 #include "TcpSocket.hpp"
 #include "TcpConnector.hpp"
 // #include "utils.hpp"
@@ -72,7 +89,7 @@ TcpConnector::TcpConnector(Reactor* reactor, completed_cb_t cb) :
 {
   assert(_completed_cb);
 
-  _timer_stream = std::make_unique<Stream>(NULL_FD);
+  _timer_stream = std::make_unique<Stream>(Stream::NULL_FD, 0);
   _timer_stream->user_cb = [this](){try_next_addr();};
   _reactor->add_stream(_timer_stream.get());
 }
@@ -194,9 +211,11 @@ void TcpConnector::try_next_addr()
   }
 
   if (inprogress_fd != 1) {
-    // connect did not complete, but might complete sometime later, so we need
-    // to start polling for POLLIN events
-    _stream = std::make_unique<TcpStream>(inprogress_fd);
+    // Connect did not immediately complete, but might complete sometime later,
+    // so we need to start polling for POLLOUT events.  So we create a temporary
+    // TcpStream for this purpose, and if connection succeeds, the socket will
+    // transferred the callback.
+    _stream = std::make_unique<TcpStream>(inprogress_fd, 1024);
     _stream->events |= POLLOUT;
     _stream->timeout = _timeout_sec;
     _stream->on_connect_timeout_cb = [this](Stream* s, int err) {
@@ -213,14 +232,17 @@ void TcpConnector::try_next_addr()
       int const fd = this->_stream->fd;
       int so_error;
       socklen_t len = sizeof(so_error);
+
       if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &so_error, &len) < 0)
         assert_perror(errno); // TODO: replace with die()/throw/log
 
       if (so_error == 0) {
-        // socket connected
+        // socket connected - we will take the file description and use that for
+        // our TcpSocket.
+
         this->_stream->timeout = -1; // disable the timeout
 
-        this->_stream->fd = -1; // we are moving FD into socket object
+        this->_stream->fd = Stream::NULL_FD; // we are moving FD into socket object
 
         // dispose this stream we were using, fd moving to socket object
         _reactor->detach_stream_unique_ptr(_stream);
@@ -236,7 +258,7 @@ void TcpConnector::try_next_addr()
         _reactor->detach_stream_unique_ptr(_stream);
         _reactor->stream_user_cb(_timer_stream.get()); // sched. next attempt
       }
-      return -1; /* indicate socket is in error, so will be closed */
+      return -1; /* indicate socket is in error, so reactor will close */
     };
     _reactor->add_stream(_stream.get());
     return;
@@ -244,7 +266,7 @@ void TcpConnector::try_next_addr()
 
 no_more_addresses:
   // no more address to try, connect operation has completed with failure
-  _completed_cb(NULL_FD, _last_errno);
+  _completed_cb(Stream::NULL_FD, _last_errno);
   _completed = true;
 }
 

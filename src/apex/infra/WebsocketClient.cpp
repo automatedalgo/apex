@@ -33,7 +33,8 @@ std::shared_ptr<WebsocketClient> connect_websocket(
   SslContext* ssl,
   RealtimeEventLoop* timer_thread,
   std::function<void(const char* buf, size_t n)> on_message,
-  SslSocket::Options options
+  SslSocket::Options options,
+  size_t recv_buf_len
   )
 {
   auto url_parts = parse_websocket_url(addr);
@@ -68,6 +69,7 @@ std::shared_ptr<WebsocketClient> connect_websocket(
     options.sni_policy =  SslSocket::Options::use_addr;
     sock = std::make_unique<SslSocket>(ssl, reactor, ssl_options);
   }
+  sock->set_recv_buf_len(recv_buf_len);
 
   sock->connect(host, port, timeout_secs, connected_cb);
 

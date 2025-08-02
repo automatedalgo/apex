@@ -27,7 +27,7 @@ namespace apex
 struct SslSession;
 enum class sslstatus;
 class SslContext;
-  class SslSocket;
+class SslSocket;
 
 class Buffer;
 
@@ -49,13 +49,13 @@ public:
   /* Create an uninitialised socket */
   SslSocket(SslContext*, Reactor*, Options = Options());
 
-  /* Create from an existing file descriptor */
-  SslSocket(SslContext*, Reactor*, int fd, Options = Options());
+  /* Create from an existing file descriptor, eg, listen/accept */
+  SslSocket(SslContext*, Reactor*, int fd, size_t recv_buf_len, Options = Options());
 
   virtual ~SslSocket();
 
   virtual void connect(std::string addr, int port, int timeout,
-                       connect_complete_cb_t = nullptr);
+                       connect_complete_cb_t);
 
   /* Set this socket to listen */
   virtual void listen(int port, ssl_on_accept_cb_t on_accept_cb);

@@ -29,13 +29,12 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 namespace apex
 {
-
   class TcpConnector;
-  class TcpSocket;
-
 
   class TcpSocket {
   public:
+
+    static constexpr int DEFAULT_RECV_BUF_LEN = 10240; // 10K
 
     using on_accept_cb_t = std::function<void(std::unique_ptr<TcpSocket>&)>;
     using connect_complete_cb_t = std::function<void(int)>;
@@ -46,20 +45,18 @@ namespace apex
       no_space = 2
     };
 
-    // TODO: keep this?
-    /* Attempt to create a connected socket. This will block until connected.  */
-    TcpSocket(Reactor*, std::string addr, int port, int timeout_sec = 10);
-
     /* Create an uninitialised socket */
     explicit TcpSocket(Reactor*);
 
-    /* Create from an existing file-descriptor, used for listen/accept */
-    TcpSocket(Reactor*, int fd);
+    /* Create from an existing file-descriptor, used when a next file descriptor
+     * has arrived from a listening socket that has accepted a new
+     * connection. */
+    TcpSocket(Reactor*, int fd, size_t read_buf_len);
 
     virtual ~TcpSocket();
 
     virtual void connect(std::string addr, int port, int timeout,
-                         connect_complete_cb_t = nullptr);
+                         connect_complete_cb_t);
 
     /* Start listening for connections */
     virtual void listen(int port, on_accept_cb_t on_accept_cb);
@@ -94,14 +91,17 @@ namespace apex
     /* Get local port */
     int local_port() const;
 
-
     std::string node() const { return _node; }
     std::string service() const { return _service; }
+
+    /* Set the initial value for the socket receive buffer size.  Must be called
+     * before a connection is established. */
+    void set_recv_buf_len(size_t n) { _init_read_buf_len = n; }
 
   protected:
     using create_sock_cb_t = std::function<void(int)>;
     ssize_t do_write();
-    void set_connected_fd(int fd, on_write_cb_t on_write_cb);
+    void set_connected_fd(int, on_write_cb_t);
     void listen_impl(int port, create_sock_cb_t cb);
     void listen_impl(const std::string& node, const std::string& port, create_sock_cb_t cb);
     bool wants_write();
@@ -113,6 +113,8 @@ namespace apex
     std::mutex _outbuf_mtx;
     std::array<char, 1024*100> _outbuf;
     size_t _outbuf_n;
+
+    size_t _init_read_buf_len;
 
     std::string _node;
     std::string _service;

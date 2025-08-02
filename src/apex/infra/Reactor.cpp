@@ -176,7 +176,7 @@ void Reactor::reactor_main_loop()
   bool continue_loop = true;
   std::vector<pollfd> fds;
   std::vector<Stream*> streams;
-  char buf[10240] = {0};
+  char pipebuf[256];
   bool have_timers;
 
   while (continue_loop) {
@@ -218,7 +218,7 @@ void Reactor::reactor_main_loop()
         eventstr(osout, i->events);
         osout << "),]";
       }
-      std::cout << "reactor: into poll, #fds: " << fds.size() << " events: " << osout.str() << "\n";
+      LOG_DEBUG("reactor poll-in, #fds: " << fds.size() << " events: " << osout.str());
     }
 #endif
 
@@ -243,7 +243,7 @@ void Reactor::reactor_main_loop()
           osout << "]";
         }
       }
-      std::cout << "reactor: from poll, revents: " << osout.str() << "\n";
+      LOG_DEBUG("reactor poll-out, revents: " << osout.str());
     }
 #endif
 
@@ -272,7 +272,8 @@ void Reactor::reactor_main_loop()
           if (s->on_read_cb) { // want read
             int nread;
             do {
-              nread = ::read(s->fd, buf, sizeof(buf));
+              nread = ::read(s->fd, s->recv_buf(), s->recv_space());
+              // LOG_DEBUG("fd: " << s->fd << ", nread=" << nread);
             } while (nread == -1 && errno == EINTR);
 
             s->eof |= (nread == 0);
@@ -280,7 +281,7 @@ void Reactor::reactor_main_loop()
             if (nread >= 0) {
               /* read success */
               if (!s->disposing)
-                s->on_read_cb(buf, nread);
+                s->on_read_cb(s->recv_buf(), nread);
             }
             else {
               /* read error */
@@ -306,7 +307,6 @@ void Reactor::reactor_main_loop()
             if (!s->disposing)
               s->on_connection_cb(s, 0);
           }
-
         }
 
         has_err |= (revents & (POLLERR|POLLNVAL));
@@ -319,7 +319,7 @@ void Reactor::reactor_main_loop()
         if (has_err && !s->disposing) {
           // decide an error code
           int ec = std::max(std::max(s->read_err, s->write_err), 1);
-          s->on_read_cb(buf, -ec);
+          s->on_read_cb(0, -ec);
         }
       }
     } // end of polling
@@ -343,8 +343,8 @@ void Reactor::reactor_main_loop()
       assert(!(fds[0].revents & (POLLNVAL|POLLERR)));
       // drain all bytes in the interruption stream
       while (1) {
-        int r = ::read(_pipefd[0], buf, sizeof(buf));
-        if (r == sizeof(buf))
+        int r = ::read(_pipefd[0], pipebuf, sizeof(pipebuf));
+        if (r == sizeof(pipebuf))
           continue;
         if (r != -1)
           break;
@@ -415,7 +415,7 @@ void Reactor::reactor_main_loop()
         while (::close(s->fd) < 0)
           if (errno != EINTR)
             break;
-        s->fd = NULL_FD;
+        s->fd = Stream::NULL_FD;
       }
     }
 
