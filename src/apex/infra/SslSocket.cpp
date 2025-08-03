@@ -389,7 +389,7 @@ void SslSocket::listen(int port, ssl_on_accept_cb_t user_on_accept_cb)
     }
   };
 
-  this->listen_impl(port, create_sock_cb);
+  this->listen_impl("", std::to_string(port), create_sock_cb);
 }
 
 

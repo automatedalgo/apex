@@ -62,7 +62,7 @@ namespace apex
     virtual void listen(int port, on_accept_cb_t on_accept_cb);
 
     /* Start listening for connections */
-    virtual void listen(const std::string& node,
+    virtual void listen(const std::string& host,
                         const std::string& service,
                         on_accept_cb_t on_accept_cb);
 
@@ -102,7 +102,6 @@ namespace apex
     using create_sock_cb_t = std::function<void(int)>;
     ssize_t do_write();
     void set_connected_fd(int, on_write_cb_t);
-    void listen_impl(int port, create_sock_cb_t cb);
     void listen_impl(const std::string& node, const std::string& port, create_sock_cb_t cb);
     bool wants_write();
 
