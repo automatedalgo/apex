@@ -87,7 +87,8 @@ void ByBitFeedHandler::manage_connection()
                                  [this](const char* buf, size_t n){
                                    this->process_raw_message(buf, n);
                                  },
-                                 ssl_options
+                                 ssl_options,
+                                 1024*1024  // 1MB
       );
 
     // schedule a redo of subscriptions now that we have reconnected

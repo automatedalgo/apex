@@ -406,7 +406,10 @@ void BinanceUsdFutLineHandler::manage_connection()
         _reactor,
         _ssl,
         _event_loop,
-        [this](const char* buf, size_t n){ this->on_line_message(buf, n); });
+        [this](const char* buf, size_t n){ this->on_line_message(buf, n); },
+        SslSocket::Options{},
+        1024*1024  // 1MB
+       );
 
       if (!apex::websock_is_open(_ws_line))
         return;
