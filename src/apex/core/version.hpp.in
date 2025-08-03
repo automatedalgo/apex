@@ -1,0 +1,8 @@
+#pragma once
+
+/* This is a template file processed by CMake during build. */
+
+#define APEX_VERSION_MAJOR @apex_VERSION_MAJOR@
+#define APEX_VERSION_MINOR @apex_VERSION_MINOR@
+#define APEX_VERSION_PATCH @apex_VERSION_PATCH@
+#define APEX_VERSION "@apex_VERSION@"

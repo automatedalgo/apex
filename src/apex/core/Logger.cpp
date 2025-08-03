@@ -16,6 +16,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <apex/core/Logger.hpp>
+#include <apex/core/version.hpp>
 #include <apex/util/platform.hpp>
 #include <apex/util/utils.hpp>
 #include <apex/util/Config.hpp>
@@ -129,9 +130,11 @@ void Logger::log_banner(RunMode mode,
 
     for (size_t i = 1; i < banner.size(); i++){
       *os << banner[i];
-      if (i == 2) {
+      if (i == 2)
         *os << "   mode: " << mode_name;
-      }
+      if (i == 3)
+        *os << "    version: " << APEX_VERSION;
+
       *os << "\n";
     }
     os->flush();
@@ -346,7 +349,7 @@ void Logger::write_to_stream(std::ostream& os,
 }
 
 
-std::string generate_auto_log_file_name(LogOpts &opts) 
+std::string generate_auto_log_file_name(LogOpts &opts)
 {
   Time t = Time::realtime_now();
   auto base_path = apex_home() / "log";

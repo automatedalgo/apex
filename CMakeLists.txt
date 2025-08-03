@@ -1,9 +1,7 @@
 cmake_minimum_required(VERSION 3.13.0 FATAL_ERROR)
 
-set(APEX_VERSION_MAJOR 1)
-set(APEX_VERSION_MINOR 0)
-set(APEX_VERSION "${APEX_VERSION_MAJOR}.${APEX_VERSION_MINOR}")
-project(apex VERSION ${APEX_VERSION})
+
+project(apex VERSION 0.1.0)
 
 # Version number
 # Include extra cmake modules
@@ -103,6 +101,10 @@ configure_file(
         "${PROJECT_BINARY_DIR}/config.h"
 )
 
+configure_file(
+        "${PROJECT_SOURCE_DIR}/src/apex/core/version.hpp.in"
+        "${PROJECT_SOURCE_DIR}/src/apex/core/version.hpp"
+)
 
 # check websocketpp is available in the source tree
 set(websocketpp "${PROJECT_SOURCE_DIR}/3rdparty/websocketpp/websocketpp/message_buffer/message.hpp")
@@ -127,7 +129,6 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 # add the automatically determined parts of the RPATH
 # which point to directories outside the build tree to the install RPATH
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
 
 # add the binary tree to the search path for include files
 # so that we will find config.h

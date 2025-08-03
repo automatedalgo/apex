@@ -15,6 +15,7 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <apex/core/BacktestService.hpp>
 #include <apex/core/GatewayService.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/core/MarketDataService.hpp>
@@ -23,12 +24,12 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/core/PersistenceService.hpp>
 #include <apex/core/RefDataService.hpp>
 #include <apex/core/Services.hpp>
+#include <apex/core/version.hpp>
 #include <apex/infra/Reactor.hpp>
 #include <apex/infra/ssl.hpp>
+#include <apex/util/BacktestEventLoop.hpp>
 #include <apex/util/Config.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
-#include <apex/util/BacktestEventLoop.hpp>
-#include <apex/core/BacktestService.hpp>
 
 
 namespace apex
@@ -229,6 +230,7 @@ void Services::init_services(Config config)
   _config = config;
 
   LOG_NOTICE("apex run-mode: " << _run_mode);
+  LOG_NOTICE("apex version: " << APEX_VERSION);
 
   // service construction order is done in terms of those with the
   // least dependencies to those with most dependencies.
