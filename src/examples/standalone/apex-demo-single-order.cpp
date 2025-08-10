@@ -120,7 +120,7 @@ int main()
   try {
     // create core engine, configured for paper or live trading
     apex::Logger::instance().set_level(apex::Logger::info);
-    auto services = apex::Services::create(apex::RunMode::live);
+    auto services = apex::Services::create(apex::RunMode::paper);
 
     // ----------------------------------------------------------------------
     // CONFIGURE CORE SERVICES
