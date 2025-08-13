@@ -22,6 +22,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/util/RealtimeEventLoop.hpp>
 #include <apex/venues/binance/BinanceUsdFutFeedHandler.hpp>
 #include <apex/venues/binance/binance_common.hpp>
+#include <apex/util/TimeLog.hpp>
 
 #define BINANCE_SPOT_SUBSCRIBE_DELAY_MILLISEC 300
 
@@ -199,7 +200,10 @@ void BinanceUsdFutFeedHandler::process_bookticker(std::string pxsym, json& msg)
   tick.ask_qty = std::stod(get_string_field(msg, "A"));
   tick.bid_price = std::stod(get_string_field(msg, "b"));
   tick.bid_qty = std::stod(get_string_field(msg, "B"));
-  _callbacks.on_top(pxsym, tick);
+
+  _ws_feed->timelog().at_parsed.mark();
+
+  _callbacks.on_top(pxsym, tick, _ws_feed->timelog());
 }
 
 
@@ -214,13 +218,17 @@ void BinanceUsdFutFeedHandler::process_aggtrade(std::string pxsym, json& msg)
   tick.qty = std::stod(get_string_field(msg, "q"));
   tick.side = buyer_market_maker_to_aggrSide(get_bool(msg, "m"));
 
-  _callbacks.on_trade(pxsym, tick);
+  _ws_feed->timelog().at_parsed.mark();
+
+  _callbacks.on_trade(pxsym, tick, _ws_feed->timelog());
 }
 
 
 void BinanceUsdFutFeedHandler::process_raw_message(const char* buf, size_t n)
 {
   /* io-thread */
+
+  _ws_feed->timelog().at_message.mark();
 
   // if (auto mcap = _services->message_capture_service()) {
   //   mcap->push_event(_ws_feed_msgcap_id.in, std::string_view(buf, n));

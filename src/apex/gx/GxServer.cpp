@@ -19,6 +19,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/comm/GxServerSession.hpp>
 #include <apex/core/Errors.hpp>
+#include <apex/util/TimeLog.hpp>
 #include <apex/model/StrategyId.hpp>
 #include <apex/util/Error.hpp>
 
@@ -48,7 +49,8 @@ void ExchangeSubscription::activate()
   auto sp = shared_from_this();
   std::function<void(TickTrade)> callback = [sp](TickTrade tick) {
     // update local market-view, for later snapshot requests
-    sp->_market.apply(Time::realtime_now(), tick);
+    TimeLog tlog;
+    sp->_market.apply(Time::realtime_now(), tick, tlog);
 
     // broadcast the update to all connect server-sessions
     std::set<std::shared_ptr<GxServerSession>> drop_list;
@@ -87,7 +89,8 @@ void ExchangeSubscription::activate()
 
   _exchange_session->subscribe_trades(symbol, options, callback);
   _exchange_session->subscribe_top(symbol, options, [sp](TickTop tick) {
-    sp->_market.apply(Time::realtime_now(), tick);
+    TimeLog tl;
+    sp->_market.apply(Time::realtime_now(), tick, tl);
 
     // broadcast the update to all connect server-sessions
     for (auto& item : sp->_subscribers) {

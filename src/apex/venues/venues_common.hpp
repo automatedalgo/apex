@@ -43,6 +43,7 @@ class SslContext;
 class TickTop;
 class TickTrade;
 class WebsocketClient;
+class TimeLog;
 
 bool websock_is_open(const std::shared_ptr<WebsocketClient>& ws);
 
@@ -117,8 +118,8 @@ protected:
 
 
 struct FeedHandlerCallbacks {
-  std::function<void(const std::string &, TickTrade&)> on_trade;
-  std::function<void(const std::string &, TickTop&)> on_top;
+  std::function<void(const std::string&, TickTrade&, TimeLog&)> on_trade;
+  std::function<void(const std::string&, TickTop &, TimeLog&)> on_top;
 
   void assert_all_defined() const {
     assert(on_trade);

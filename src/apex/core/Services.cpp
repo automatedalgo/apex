@@ -17,6 +17,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/core/BacktestService.hpp>
 #include <apex/core/GatewayService.hpp>
+#include <apex/core/TimeLogService.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/core/MarketDataService.hpp>
 #include <apex/core/OrderRouterService.hpp>
@@ -52,9 +53,11 @@ std::pair<int,int> MessageCaptureService::register_stream_id_pair(std::string s)
   return std::pair<int,int>(ids.in, ids.out);
 }
 
+
 MessageCaptureService::MessageCaptureService()
 {
-  std::string filename = "/var/tmp/wirelog.txt";
+  // TODO: take from config, or, just a difference sensive default
+  std::string filename = "/var/tmp/apex-wirelog.txt";
   _file.open(filename, std::ios::app);
   LOG_INFO("opening file '" << filename << "'");
   if (!_file)
@@ -235,8 +238,10 @@ void Services::init_services(Config config)
   // service construction order is done in terms of those with the
   // least dependencies to those with most dependencies.
 
-  _message_capture_service = std::make_unique<MessageCaptureService>();
-
+  if (_run_mode != RunMode::backtest) {
+    _time_log_service = std::make_unique<TimeLogService>(this);
+    _message_capture_service = std::make_unique<MessageCaptureService>();
+  }
 
   if (_run_mode == RunMode::backtest) {
     _backtest_service = std::make_unique<BacktestService>(

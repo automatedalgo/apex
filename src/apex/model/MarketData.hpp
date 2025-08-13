@@ -25,6 +25,8 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
+class TimeLog;
+
 enum class MdStream : int {
   Null = 0,
   L1 = 1 << 0,        // top bid/ask
@@ -89,8 +91,8 @@ public:
 public:
   MarketData();
 
-  void apply(Time t, TickTrade&);
-  void apply(Time t, TickTop&);
+  void apply(Time t, TickTrade&, TimeLog&);
+  void apply(Time t, TickTop&, TimeLog&);
   void apply(Time t, TickBookSnapshot5&);
 
   void subscribe_events(std::function<void(EventType)>);

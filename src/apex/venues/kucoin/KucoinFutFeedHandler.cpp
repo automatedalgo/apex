@@ -174,6 +174,8 @@ void KucoinFutFeedHandler::process_raw_message(const char* buf, size_t n)
 {
   /* io-thread */
 
+  _ws_feed->timelog().at_message.mark();
+
   try {
     auto msg = json::parse(buf, buf + n);
 
@@ -240,7 +242,8 @@ void KucoinFutFeedHandler::process_trade(json& msg) {
   tick.et = Time(std::chrono::microseconds(ts_ms));
   tick.side = aggr_side;
 
-  _callbacks.on_trade(symbol, tick);
+  _ws_feed->timelog().at_parsed.mark();
+  _callbacks.on_trade(symbol, tick, _ws_feed->timelog());
 }
 
 

@@ -27,94 +27,22 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 using namespace apex;
 
-/*
-  Basic example of using the feed handler classes directly. This is useful
-  during development of feed handlers.
-*/
-extern char *program_invocation_name;
-extern char *program_invocation_short_name;
-
-
-/*
-
-Two approaches to an automatic filename:
-
-- has daily TS, appended
-- had high fideltiy timestamp, truncated
-
-
- */
-
-struct LogfileOpts {
-  enum Time { none, day, second} time = LogfileOpts::second;
-  enum Mode { trunc, append } mode = LogfileOpts::trunc;
-
-  static LogfileOpts append_daily() {
-    return {
-      .time=day,
-      .mode=append};
-  };
-  static LogfileOpts trunc_seconds() {
-    return {
-      .time=second,
-      .mode=trunc};
-  };
-};
-
-std::string default_logfile_name(LogfileOpts opts = LogfileOpts::trunc_seconds()) {
-  Time t = Time::realtime_now();
-  auto base_path = apex_home() / "log";
-
-  base_path /= std::string(program_invocation_short_name);
-
-  switch (opts.time) {
-    case LogfileOpts::day :
-      base_path += t.strftime(".%Y%m%d");
-      break;
-    case LogfileOpts::second :
-      base_path += t.strftime(".%Y%m%d-%H%M%S");
-      break;
-    case LogfileOpts::none:
-      break;
-  }
-  base_path += ".log";
-
-  return base_path.string();
-}
-
 int main()
 {
   try {
-
-
-    auto fn = default_logfile_name();
-    LOG_INFO("FN: " << fn);
-    return 0;
-    Logger::instance().enable_async_mode();
-    //Logger::instance().enable_file_logging("/var/tmp/apex-log.txt", true);
-
-
-    // std::cout << "auto: " << create_automatic_filename() << "\n";
-    // Time t = Time::realtime_now();
-
-    // std::cout << "Full name: " << program_invocation_name << std::endl;
-    // std::cout << "Short name: " << program_invocation_short_name << std::endl;
-    // std::cout <<
-
-    return 0;
 
     Logger::instance().set_level(Logger::info);
 
     // create core engine, configured for paper or live trading
     auto services = Services::create(RunMode::paper);
 
-    // list of our feed handers, place them in here to keep them alive
+    // list of our feed handers
     std::list<std::shared_ptr<FeedHandler>> feeds;
 
     // callbacks that will receive the market data updates - here we just log
     // them.
     FeedHandlerCallbacks callbacks;
-    callbacks.on_trade = [](std::string pxsym, TickTrade& t){
+    callbacks.on_trade = [](std::string pxsym, TickTrade& t, TimeLog&){
       LOG_INFO(pxsym
                << ": qty:" << format_double(t.qty, true, 6)
                << ", price:" << format_double(t.price, true, 6)
@@ -123,7 +51,7 @@ int main()
                << ", et: " << t.et
         );
     };
-    callbacks.on_top = [](std::string pxsym, TickTop& t){
+    callbacks.on_top = [](std::string pxsym, TickTop& t, TimeLog&){
       LOG_INFO(pxsym
                << ": bid:" << format_double(t.bid_price, true, 6)
                << ", ask:" << format_double(t.ask_price, true, 6));

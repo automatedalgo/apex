@@ -22,6 +22,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/core/OrderService.hpp>
 #include <apex/infra/TcpSocket.hpp>
 #include <apex/core/Logger.hpp>
+#include <apex/util/TimeLog.hpp>
 
 #include <netinet/in.h>
 
@@ -301,7 +302,8 @@ void GxClientSession::io_on_full_message(gx::Header* header, char* payload,
               return;
             }
           }
-          iter->second->apply(Time::realtime_now(), tick);
+          TimeLog tlog;
+          iter->second->apply( Time::realtime_now(), tick, tlog);
         } else {
           LOG_ERROR("received unexpected TickTrade event");
         }
@@ -344,7 +346,8 @@ void GxClientSession::io_on_full_message(gx::Header* header, char* payload,
           tick.ask_price = msg.ask_price();
 
           // apply the model-update
-          iter->second->apply(Time::realtime_now(), tick);
+          TimeLog tlog;
+          iter->second->apply(Time::realtime_now(), tick, tlog);
         } else {
           LOG_WARN("received unexpected TickTop event");
         }

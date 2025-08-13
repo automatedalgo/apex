@@ -85,10 +85,10 @@ public:
     : _eid(eid)
   {
     FeedHandlerCallbacks callbacks;
-    callbacks.on_trade = [this](std::string pxsym, TickTrade& tick) {
+    callbacks.on_trade = [this](std::string pxsym, TickTrade& tick, TimeLog&) {
       this->on_tick<TickTrade>(pxsym, tick);
     };
-    callbacks.on_top = [this](std::string pxsym, TickTop& tick){
+    callbacks.on_top = [this](std::string pxsym, TickTop& tick, TimeLog&){
       this->on_tick<TickTop>(pxsym, tick);
     };
     _fh = feed_builder(std::move(callbacks));
@@ -607,8 +607,14 @@ int main(int , char** )
 {
   try {
     // setup logging
-    apex::Logger::instance().set_level(apex::Logger::info);
-    apex::Logger::instance().set_detail(true);
+    apex::Logger::instance().set_opts({
+        .filename = "auto",
+        .time = apex::LogOpts::Time::second,
+        .mode = apex::LogOpts::Mode::trunc,
+        .level = apex::Logger::debug,
+        .detail = true,
+        .async = true
+      });
     apex::Logger::instance().register_thread_id("main");
 
     // Create core-services configured for paper trading, which provides

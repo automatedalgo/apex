@@ -178,6 +178,7 @@ void Reactor::reactor_main_loop()
   std::vector<Stream*> streams;
   char pipebuf[256];
   bool have_timers;
+  TimeLog::TimePoint at_io;
 
   while (continue_loop) {
     fds.clear();
@@ -223,6 +224,8 @@ void Reactor::reactor_main_loop()
 #endif
 
     int nfds = ::poll(&fds[0], fds.size(), timeout);
+
+    at_io.mark();
 
     if (nfds == -1 && errno != EINTR)
       abort(); // TODO: add msg & errostr here
@@ -277,6 +280,9 @@ void Reactor::reactor_main_loop()
             } while (nread == -1 && errno == EINTR);
 
             s->eof |= (nread == 0);
+
+            s->tlog.at_io = at_io;
+            s->tlog.at_read.mark();
 
             if (nread >= 0) {
               /* read success */

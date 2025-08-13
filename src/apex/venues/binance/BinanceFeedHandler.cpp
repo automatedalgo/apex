@@ -182,6 +182,8 @@ void BinanceFeedHandler::process_raw_message(const char* buf, size_t n)
 {
   /* io-thread */
 
+  _ws_feed->timelog().at_message.mark();
+
   // if (auto mcap = _services->message_capture_service()) {
   //   mcap->push_event(_ws_feed_msgcap_id.in, std::string_view(buf, n));
   // }
@@ -238,7 +240,8 @@ void BinanceFeedHandler::process_bookticker(std::string_view feed_sym, json& msg
   tick.bid_qty = std::stod(get_string_field(msg, "B"));
 
   std::string tmp(feed_sym); // TODO: try replace all callbacks with string_view
-  _callbacks.on_top(tmp, tick);
+  _ws_feed->timelog().at_parsed.mark();
+  _callbacks.on_top(tmp, tick, _ws_feed->timelog());
 }
 
 
@@ -254,8 +257,9 @@ void BinanceFeedHandler::process_aggtrade(std::string_view feed_sym, json& msg)
   tick.qty = std::stod(get_string_field(msg, "q"));
   tick.side = buyer_market_maker_to_aggrSide(get_bool(msg, "m"));
 
+  _ws_feed->timelog().at_parsed.mark();
   std::string tmp(feed_sym); // TODO: try replace all callbacks with string_view
-  _callbacks.on_trade(tmp, tick);
+  _callbacks.on_trade(tmp, tick, _ws_feed->timelog());
 }
 
 

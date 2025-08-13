@@ -123,6 +123,8 @@ void ByBitFeedHandler::manage_connection()
 void ByBitFeedHandler::process_raw_message(const char* buf, size_t n)
 {
   /* io-thread */
+  _ws_feed->timelog().at_message.mark();
+
   static std::string_view pubtrade("publicTrade.");
   try {
     auto msg = json::parse(buf, buf + n);
@@ -250,15 +252,18 @@ void ByBitFeedHandler::process_trade(std::string_view symbol,
       }
       else {
         // stop aggregation, so publish current aggr trade, and reseed
-        _callbacks.on_trade(std::string(symbol), aggr);
+        _ws_feed->timelog().at_parsed.mark();
+        _callbacks.on_trade(std::string(symbol), aggr, _ws_feed->timelog());
          aggr = tick;
       }
     }
   }
 
   // publish any final aggregated trade that exist after the loop
-  if (aggr.price != 0 && aggr.side != Side::none)
-    _callbacks.on_trade(std::string(symbol), aggr);
+  if (aggr.price != 0 && aggr.side != Side::none) {
+    _ws_feed->timelog().at_parsed.mark();
+    _callbacks.on_trade(std::string(symbol), aggr, _ws_feed->timelog());
+  }
 }
 
 

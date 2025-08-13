@@ -88,6 +88,8 @@ public:
     return (_socket)? _socket->fd() : -1;
   }
 
+  TimeLog& timelog() { return _socket->timelog(); }
+
 private:
   void io_on_read(char* src, size_t len);
 

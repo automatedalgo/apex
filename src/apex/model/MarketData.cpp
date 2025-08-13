@@ -15,6 +15,7 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <apex/util/TimeLog.hpp>
 #include <apex/model/MarketData.hpp>
 
 #include <ostream>
@@ -53,11 +54,14 @@ void MarketData::subscribe_events(std::function<void(EventType)> fn)
 }
 
 
-void MarketData::apply(Time ts, TickTrade& tick)
+void MarketData::apply(Time ts, TickTrade& tick, TimeLog& tl)
 {
   this->_last = tick;
   _ts_trade = ts;
   EventType mask = {};
+
+  tl.at_book.mark();
+
   mask.value = EventType::trade;
   for (auto& item : _events_listeners) {
     item(mask);
@@ -65,13 +69,15 @@ void MarketData::apply(Time ts, TickTrade& tick)
 }
 
 
-void MarketData::apply(Time ts, TickTop& tick)
+void MarketData::apply(Time ts, TickTop& tick, TimeLog& tl)
 {
   _l1_bid.price = tick.bid_price;
   _l1_bid.qty = tick.bid_qty;
   _l1_ask.price = tick.ask_price;
   _l1_ask.qty = tick.ask_qty;
   _ts_l1 = ts;
+
+  tl.at_book.mark();
 
   EventType mask = {};
   mask.value = EventType::top;

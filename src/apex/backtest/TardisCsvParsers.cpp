@@ -18,6 +18,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/backtest/TardisCsvParsers.hpp>
 #include <apex/model/MarketData.hpp>
 #include <apex/core/Logger.hpp>
+#include <apex/util/TimeLog.hpp>
 #include <apex/util/Error.hpp>
 
 #include <string_view>
@@ -295,7 +296,8 @@ void TardisCsvParserTrades::apply_event(MarketData* md)
   tick.xt = ts;
 
   // TODO: should simulate a delay somehow
-  md->apply(ts, tick);
+  TimeLog tl;
+  md->apply(ts, tick, tl);
 }
 
 } // namespace apex

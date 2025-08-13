@@ -18,6 +18,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/backtest/TickbinFileReader.hpp>
 #include <apex/backtest/TickbinMsgs.hpp>
 #include <apex/core/Logger.hpp>
+#include <apex/util/TimeLog.hpp>
 #include <apex/model/tick_msgs.hpp>
 #include <apex/model/MarketData.hpp>
 #include <apex/util/Error.hpp>
@@ -106,9 +107,10 @@ public:
     tickbin::Header* head = reinterpret_cast<tickbin::Header*>(_head);
 
     if (mktdata) {
+      TimeLog tlog;
       TickTop tick;
       tickbin::Serialiser::deserialise(_head, tick);
-      mktdata->apply(_next, tick);
+      mktdata->apply(_next, tick, tlog);
       //LOG_INFO("tickL1 update: " << tick.ask_price);
     }
 
@@ -128,12 +130,12 @@ public:
   void consume_next_event(MarketData* mktdata) override
   {
     // TODO: should use type ID here to cast to appropriate type
-
+    TimeLog tlog;
     tickbin::Header* head = reinterpret_cast<tickbin::Header*>(_head);
     if (mktdata) {
       TickTrade tick;
       tickbin::Serialiser::deserialise(_head, tick);
-      mktdata->apply(_next, tick);
+      mktdata->apply(_next, tick, tlog);
       // LOG_INFO("trade update: " << tick.price  << ", time: " << tick.et);
     }
 
@@ -154,7 +156,6 @@ TickbinFileReader::TickbinFileReader(std::filesystem::path fn,
     THROW("tickbin file not found " << fn);
   }
   LOG_INFO("reading tickbin file " << fn);
-  auto file = std::ifstream(fn, std::ios::binary);
 
   std::string fn_native = fn.native();
 

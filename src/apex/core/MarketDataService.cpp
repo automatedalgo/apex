@@ -16,15 +16,18 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <apex/comm/GxClientSession.hpp>
+#include <apex/core/BacktestService.hpp>
 #include <apex/core/GatewayService.hpp>
+#include <apex/core/Logger.hpp>
 #include <apex/core/MarketDataService.hpp>
 #include <apex/core/RefDataService.hpp>
-#include <apex/core/BacktestService.hpp>
 #include <apex/core/Services.hpp>
-#include <apex/core/Logger.hpp>
+#include <apex/core/Services.hpp>
+#include <apex/core/TimeLogService.hpp>
+#include <apex/util/TimeLog.hpp>
 #include <apex/model/MarketData.hpp>
-#include <apex/venues/binance/BinanceUsdFutFeedHandler.hpp>
 #include <apex/venues/binance/BinanceFeedHandler.hpp>
+#include <apex/venues/binance/BinanceUsdFutFeedHandler.hpp>
 
 
 namespace apex
@@ -42,15 +45,17 @@ public:
   using FHBuilder = std::function<std::shared_ptr<FeedHandler>(FeedHandlerCallbacks)>;
 
   EmbeddedFeedHandler(ExchangeId eid,
-                      FHBuilder feed_builder)
-    : _eid(eid)
+                      FHBuilder feed_builder,
+                      TimeLogService* tlog_svc)
+    : _eid(eid),
+      _tlog_svc(tlog_svc)
   {
     FeedHandlerCallbacks callbacks;
-    callbacks.on_trade = [this](const std::string &  pxsym, TickTrade& tick) {
-      this->on_tick<TickTrade>(pxsym, tick);
+    callbacks.on_trade = [this](const std::string &  pxsym, TickTrade& tick, TimeLog& tl) {
+      this->on_tick<TickTrade>(pxsym, tick, tl);
     };
-    callbacks.on_top = [this](const std::string & pxsym, TickTop& tick){
-      this->on_tick<TickTop>(pxsym, tick);
+    callbacks.on_top = [this](const std::string & pxsym, TickTop& tick, TimeLog& tl){
+      this->on_tick<TickTop>(pxsym, tick, tl);
     };
 
     _fh = feed_builder(std::move(callbacks));
@@ -83,7 +88,7 @@ public:
 private:
 
   template<typename T>
-  void on_tick(const std::string& feed_sym, T& tick) {
+  void on_tick(const std::string& feed_sym, T& tick, TimeLog& tl) {
     MarketData* md = nullptr;
     {
       std::lock_guard<std::mutex> guard(_mds_mtx);
@@ -92,10 +97,12 @@ private:
         md = iter->second;
     }
     if (md)
-      md->apply(Time::realtime_now(), tick);
+      md->apply(Time::realtime_now(), tick, tl);
     else {
       LOG_WARN("subscription not found for '" << feed_sym << "'");
     }
+    if (_tlog_svc)
+      _tlog_svc->push(tl);
   }
 
 private:
@@ -103,6 +110,7 @@ private:
   std::shared_ptr<FeedHandler> _fh;
   std::mutex _mds_mtx;
   std::map<std::string, MarketData*> _mds;
+  TimeLogService* const _tlog_svc;
 };
 
 
@@ -164,8 +172,9 @@ MarketData* MarketDataService::find_market_data(const Instrument& instrument)
 void MarketDataService::add_feed(FeedConfig config,
                                  std::list<std::string> venues)
 {
+  auto tlog_svc = _services->time_log_service();
   if (config.type == "BinanceUsdFut") {
-    EmbeddedFeedHandler:: FHBuilder fh_builder;
+    EmbeddedFeedHandler::FHBuilder fh_builder;
     fh_builder = [services=_services, config]
       (FeedHandlerCallbacks callbacks) -> std::shared_ptr<FeedHandler> {
       LOG_INFO("creating feed handler " << config.type);
@@ -181,7 +190,8 @@ void MarketDataService::add_feed(FeedConfig config,
 
     auto embed_fh = std::make_shared<EmbeddedFeedHandler>(
       ExchangeId::binance_usdfut,
-      fh_builder);
+      fh_builder,
+      tlog_svc);
 
     embed_fh->feed()->start();
 
@@ -210,7 +220,8 @@ void MarketDataService::add_feed(FeedConfig config,
 
     auto embed_fh = std::make_shared<EmbeddedFeedHandler>(
       ExchangeId::binance,
-      fh_builder);
+      fh_builder,
+      tlog_svc);
 
     embed_fh->feed()->start();
 

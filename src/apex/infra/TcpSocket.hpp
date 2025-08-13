@@ -98,6 +98,8 @@ namespace apex
      * before a connection is established. */
     void set_recv_buf_len(size_t n) { _init_read_buf_len = n; }
 
+    TimeLog& timelog() { return _stream->tlog; }
+
   protected:
     using create_sock_cb_t = std::function<void(int)>;
     ssize_t do_write();

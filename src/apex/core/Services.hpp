@@ -41,6 +41,7 @@ class GatewayService;
 class MarketDataService;
 class OrderRouterService;
 class BacktestService;
+class TimeLogService;
 class SslContext;
 
 struct BacktestPeriod {
@@ -152,6 +153,9 @@ public:
     return _message_capture_service.get();
   }
 
+  TimeLogService* time_log_service() {
+    return _time_log_service.get();
+  }
 
   Reactor* reactor() { return _reactor.get(); }
   EventLoop* evloop() { return _evloop.get(); }
@@ -188,11 +192,11 @@ private:
   std::unique_ptr<RefDataService> _ref_data_service;
   std::unique_ptr<PersistenceService> _persistence_service;
   std::unique_ptr<OrderService> _order_service;
-
   std::unique_ptr<GatewayService> _gateway_service;
   std::unique_ptr<MarketDataService> _market_data_service;
   std::unique_ptr<BacktestService> _backtest_service;
   std::unique_ptr<MessageCaptureService> _message_capture_service;
+  std::unique_ptr<TimeLogService> _time_log_service;
 
   BacktestPeriod _backtest_period;
 

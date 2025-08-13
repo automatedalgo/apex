@@ -35,6 +35,8 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <future>
 #include <semaphore.h>
 
+#include <apex/util/TimeLog.hpp>
+
 namespace apex {
 
 struct Stream;
@@ -79,6 +81,7 @@ struct Stream {
   std::function<void()> user_cb;
   void * user;
   int timeout;  // time in seconds
+  TimeLog tlog;
 
   Stream(int fd, size_t recv_buf_len)
     : fd{fd},

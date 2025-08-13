@@ -167,8 +167,10 @@ int SslSocket::ssl_do_read(char* src, size_t len)
      * decrypted data, which is then passed to user. */
     do {
       n = SSL_read(_ssl_session->ssl, buf, sizeof(buf));
-      if (n > 0)
+      if (n > 0) {
+        _stream->tlog.at_ssl.mark();
         _user_on_read(buf, n);
+      }
     } while (n > 0);
 
     sslstatus status = get_sslstatus(_ssl_session->ssl, n);
