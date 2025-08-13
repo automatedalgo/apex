@@ -288,7 +288,7 @@ void BinanceLineHandler::process_raw_message(const char* buf, size_t len)
   "status": 200
 }
          */
-        LOG_INFO("HANDLE userDataStream.subscribe:" << msg);
+        // TODO: handle userDataStream.subscribe
         return;
       }
 
