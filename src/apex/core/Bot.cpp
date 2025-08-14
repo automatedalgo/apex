@@ -198,7 +198,7 @@ std::shared_ptr<Order> Bot::create_order(
   order->events().subscribe([this](OrderEvent ev) {
     // update internal model
     if (ev.is_fill()) {
-      this->_position.apply_fill(ev.order->side(), ev.order->last_fill().size,
+      this->_position.apply_fill(ev.order->side(), ev.order->last_fill().qty,
                                  ev.order->last_fill().price);
       _services->persistence_service()->persist_instrument_positions(
           "XYZ", ev.order->instrument(), _position.net_qty());
@@ -214,7 +214,7 @@ std::shared_ptr<Order> Bot::create_order(
         this->_mkt,
         has_fx_rate()? fx_rate() : 0.0,
         ev.is_fill(),
-        ev.order->last_fill().size,
+        ev.order->last_fill().qty,
         ev.order->last_fill().price
         );
     }
@@ -232,8 +232,8 @@ std::shared_ptr<Order> Bot::create_order(
                    << ", qty:" << format_double(ev.order->size(), true)
                    << ", qdone:" << format_double(ev.order->filled_size(), true)
                    << ", xprice:" << format_double(fill.price, true)
-                   << ", xqty:" << format_double(fill.size, true)
-                   << ccy_value("xqtyUsd", fill.size, fill.price)
+                   << ", xqty:" << format_double(fill.qty, true)
+                   << ccy_value("xqtyUsd", fill.qty, fill.price)
                    << ", pos:" << _position.net_qty()
                    << ccy_value("posUsd", _position.net_qty(), ev.order->price())
                    << ", exchId:" << ev.order->exch_order_id()

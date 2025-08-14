@@ -223,14 +223,14 @@ public:
   ~Order();
 
   struct Fill {
-    double size;
+    double qty;
     double price;
+    explicit Fill(double qty = 0, double price = 0): qty(qty), price(price) {}
   };
 
   void* user_data() { return _user_data; }
 
   const std::string& symbol() const;
-
 
   [[nodiscard]] const Instrument& instrument() const { return _instrument; }
   [[nodiscard]] Side side() const { return _side; }
@@ -318,15 +318,9 @@ public:
 
   double filled_size() const { return _total_fill_qty; }
   double remain_size() const { return _size - filled_size(); }
-  bool has_fills() const { return !_fills.empty(); }
 
-  Fill last_fill() const  // TODO: is this needed?
-  {
-    if (!_fills.empty())
-      return _fills.back();
-    else
-      return {};
-  }
+  bool has_fills() const { return _last_fill.qty != 0.0; }
+  Fill last_fill() const { return _last_fill; }
 
   int cancel_reject_count() const {
     return _cancel_reject_count;
@@ -358,7 +352,7 @@ private:
   Time _live_time; // time order went live
   Time _closed_time;
   double _total_fill_qty = 0.0;
-  std::list<Fill> _fills;
+  Fill _last_fill;
   int _cancel_reject_count = 0;
 };
 

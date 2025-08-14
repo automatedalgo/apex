@@ -239,7 +239,7 @@ void Order::apply(const OrderUpdate& update)
 
 void Order::apply_order_execution(double size, double price, bool filled)
 {
-  _fills.push_back({size, price});
+  _last_fill = Fill(size, price);
   _total_fill_qty += size;
 
   if (!filled) {
@@ -259,7 +259,7 @@ void Order::apply_order_execution(double size, double price, bool filled)
 
 void Order::apply(const OrderFill& fill)
 {
-  _fills.push_back({fill.size, fill.price});
+  _last_fill = Fill(fill.size, fill.price);
   _total_fill_qty += fill.size;
 
   if (fill.is_fully_filled) {
