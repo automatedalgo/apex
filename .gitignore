@@ -36,6 +36,7 @@ BUILD-DEBUG/
 BUILD-RELEASE/
 cmake-build-debug/
 cmake-build-release/
+BUILD/
 
 # IDE files
 .idea/

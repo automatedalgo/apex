@@ -1,0 +1,21 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": { "major": 3, "minor": 13 },
+    "configurePresets": [
+        {
+            "name": "debug",
+            "displayName": "Debug (Make)",
+            "description": "Debug build using Make",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/BUILD/${presetName}",
+            "cacheVariables": {
+                "CMAKE_COLOR_DIAGNOSTICS": "ON",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "LIBCURL_DIR": "$env{HOME}/apex/deps/curl-7.83.1",
+                "LIBPROTOBUF3_DIR": "$env{HOME}/apex/deps/protobuf-3.19.4",
+                "CMAKE_CXX_COMPILER": "/usr/bin/g++"
+            }
+        }
+    ]
+}
