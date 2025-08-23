@@ -611,8 +611,8 @@ int main(int , char** )
         .filename = "auto",
         .time = apex::LogOpts::Time::second,
         .mode = apex::LogOpts::Mode::trunc,
-        .level = apex::Logger::debug,
-        .detail = true,
+        .level = apex::Logger::info,
+        .detail = false,
         .async = true
       });
     apex::Logger::instance().register_thread_id("main");
