@@ -37,7 +37,7 @@ public:
   explicit TimeLogService(Services* services);
   ~TimeLogService();
 
-  inline void push(TimeLog& tl) {
+  inline void store(TimeLog& tl) {
     _records[_idx & mask].tp[0] = tl.at_io.to_int();
     _records[_idx & mask].tp[1] = tl.at_read.to_int();
     _records[_idx & mask].tp[2] = tl.at_ssl.to_int();

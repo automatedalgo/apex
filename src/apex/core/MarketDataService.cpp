@@ -102,7 +102,7 @@ private:
       LOG_WARN("subscription not found for '" << feed_sym << "'");
     }
     if (_tlog_svc)
-      _tlog_svc->push(tl);
+      _tlog_svc->store(tl);
   }
 
 private:
