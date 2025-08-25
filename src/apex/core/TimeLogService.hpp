@@ -30,7 +30,7 @@ class Services;
 class TimeLogService
 {
 public:
-  static constexpr int bits = 21;  // 2 million rows
+  static constexpr int bits = 24;  // 16 million rows
   static constexpr int rows = 1 << bits;
   static constexpr int mask = (1 << bits)-1;
 

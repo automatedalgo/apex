@@ -35,6 +35,7 @@ struct Stats
   double mean = 0.0;
   double pct25= 0.0;
   double pct50 = 0.0;
+  double pct75 = 0.0;
   double pct90 = 0.0;
   double pct95 = 0.0;
   double pct99 = 0.0;
@@ -82,6 +83,7 @@ struct Series
 
     stats.pct25 = percentile(sorted, 0.25);
     stats.pct50 = percentile(sorted, 0.50);
+    stats.pct75 = percentile(sorted, 0.75);
     stats.pct90 = percentile(sorted, 0.9);
     stats.pct95 = percentile(sorted, 0.95);
     stats.pct99 = percentile(sorted, 0.99);
@@ -143,26 +145,26 @@ unsigned int calc_column_width(const Series& s, int dp) {
 void dump_frame(const Frame& f, int dp)
 {
   // calculate the width required by column, depending on their content
-  int padding = 1;
+  int left_padding = 1;
   std::vector<int> widths(f.columns()+1, 0);
 
-  widths[0] = 2 + padding;
+  widths[0] = 2 + left_padding;
   for (size_t i = 0; i < f.columns(); i++ )
-    widths[i+1] = calc_column_width(f.series[i], dp)+padding;
+    widths[i+1] = calc_column_width(f.series[i], dp)+left_padding;
 
   // build the horiz border
   std::ostringstream hb;
-  hb << "   " <<  std::setfill('-');
+  hb << "    " <<  std::setfill('-');
   for (size_t c=0; c < f.columns(); c++)
-    hb << (c==0? "+": "") << std::setw(widths[c]) << "" << "+";
+    hb << (c==0? "+": "") << std::setw(widths[c+1]+1) << "" << "+";
 
   std::cout << hb.str() << std::endl; // horiz border
 
   // header
-  for (size_t c=0; c < f.columns()+1; c++) {
+  for (size_t c=0; c < f.columns(); c++) {
     if (c==0)
-      std::cout << "|";
-    std::cout << std::setw(widths[c]) << f[c].name << "|";
+      std::cout << "    |";
+    std::cout << std::setw(widths[c+1]) << f[c].name << " |";
   }
   std::cout << std::endl;
 
@@ -171,12 +173,12 @@ void dump_frame(const Frame& f, int dp)
   // rows
   std::cout << std::setfill(' ');
   for (size_t r=0; r < f.rows(); r++) {
-    std::cout << " t"<< r ;
+    std::cout << " t"<< (r+1);
     for (size_t c=0; c < f.columns(); c++) {
       if (c==0)
-        std::cout << "|";
-      std::cout << std::setw(widths[c]) << format_double(f.iloc(r,c), false, dp)
-                << "|";
+        std::cout << " |";
+      std::cout << std::setw(widths[c+1]) << format_double(f.iloc(r,c), false, dp)
+                << " |";
     }
     std::cout << std::endl;
   }
@@ -253,6 +255,7 @@ int main(int argc, char** argv)
     if (show_stats) {
       Series min("min");
       Series p50("p50");
+      Series p75("p75");
       Series p90("p90");
       Series p95("p95");
       Series p99("p99");
@@ -261,6 +264,7 @@ int main(int argc, char** argv)
         auto stats = nonzero[c].summary();
         min.push_back(stats.min/1000.0);
         p50.push_back(stats.pct50/1000.0);
+        p75.push_back(stats.pct75/1000.0);
         p90.push_back(stats.pct90/1000.0);
         p95.push_back(stats.pct95/1000.0);
         p99.push_back(stats.pct99/1000.0);
@@ -269,9 +273,8 @@ int main(int argc, char** argv)
 
       //  display the results
       Frame frame;
-      frame.append(min, p50, p90, p95, p99, max);
+      frame.append(min, p50, p75, p90, p95, p99, max);
       dump_frame(frame, 1);
-      std::cout << "rows: " << rows_used << std::endl;
     }
 
     // print all data

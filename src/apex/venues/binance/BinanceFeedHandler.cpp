@@ -41,9 +41,11 @@ BinanceFeedHandler::BinanceFeedHandler(Services* services,
 {
   _callbacks.assert_all_defined();
 
-  // if (auto msgcap = _services->message_capture_service()) {
-  //   _ws_feed_msgcap_id = msgcap->register_stream_id_pair("binance-ufut-mktdata");
-  // }
+  if (auto mcap = _services->message_capture_service()) {
+    std::tie(_ws_msgcap_id_in, _ws_msgcap_id_out)
+      = mcap->register_stream_id_pair("binance-feed");
+  }
+
 
   _connector_thread = std::make_unique<RealtimeEventLoop>(
     [](){
@@ -135,7 +137,7 @@ void BinanceFeedHandler::do_subscriptions()
         std::string request = sub.second.request;
         LOG_INFO("sending subscription: " << request);
         if (auto mcap = _services->message_capture_service()) {
-          mcap->push_event(_ws_feed_msgcap_id_out, request);
+          mcap->push_event(_ws_msgcap_id_out, request);
         }
         usleep(BINANCE_SPOT_SUBSCRIBE_DELAY_MILLISEC * 1000);
         _ws_feed->send(request);
@@ -185,7 +187,7 @@ void BinanceFeedHandler::process_raw_message(const char* buf, size_t n)
   _ws_feed->timelog().at_message.mark();
 
   // if (auto mcap = _services->message_capture_service()) {
-  //   mcap->push_event(_ws_feed_msgcap_id.in, std::string_view(buf, n));
+  //   mcap->push_event(_ws_msgcap_id.in, std::string_view(buf, n));
   // }
 
   auto msg = json::parse(buf, buf + n);

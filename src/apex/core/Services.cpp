@@ -88,6 +88,8 @@ MessageCaptureService::MessageCaptureService()
 
 void MessageCaptureService::push_event(int stream_id, std::string_view sv)
 {
+  assert(stream_id >= 0);  // assume -1 is initial value
+
   Msg msg {
     stream_id,
     Time::realtime_now(),
@@ -132,7 +134,6 @@ void MessageCaptureService::write_to_file(bool do_flush)
       _file.flush();
     _queue.pop();
   }
-
 }
 
 

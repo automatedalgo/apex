@@ -83,10 +83,10 @@ static std::string sign_message(const std::string& payload,
 
 
 BinanceLineHandler::BinanceLineHandler(Services * services,
-                                                   Reactor* reactor,
-                                                   RealtimeEventLoop* event_loop,
-                                                   LineHandlerCallbacks callbacks,
-                                                   OrderRouterConfig config)
+                                       Reactor* reactor,
+                                       RealtimeEventLoop* event_loop,
+                                       LineHandlerCallbacks callbacks,
+                                       OrderRouterConfig config)
   : _services(services),
     _event_loop(event_loop),
     _reactor(reactor),

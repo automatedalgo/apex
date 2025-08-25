@@ -59,8 +59,8 @@ private:
   };
   std::mutex _subs_mtx;
   std::map<std::string, Subscription> _subs;
-  int _ws_feed_msgcap_id_in;
-  int _ws_feed_msgcap_id_out;
+  int _ws_msgcap_id_in = -1;
+  int _ws_msgcap_id_out = -1;
 };
 
 } //namespace

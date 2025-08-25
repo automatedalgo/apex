@@ -32,7 +32,7 @@ std::string generate_auto_file_name()
   auto base_path = apex_home() / "log";
   base_path /= std::string(program_invocation_short_name);
   base_path += t.strftime(".%Y%m%d-%H%M%S");
-  base_path += ".tlog";
+  base_path += ".timelog";
   return base_path.string();
 }
 
