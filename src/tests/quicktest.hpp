@@ -74,6 +74,10 @@ void raise_error(const char* msg, const char* file, int line);
   std::cout << quicktest::colour_cyan() << #X << ": " << X               \
             << quicktest::colour_none() << std::endl
 
+#define PRINT(X)                                                      \
+  std::cout << quicktest::colour_cyan() << #X << ": " << X            \
+       << quicktest::colour_none() << std::endl
+
 #define REQUIRE(X)                                                             \
   do {                                                                         \
     bool b{X};                                                          \

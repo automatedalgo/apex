@@ -30,5 +30,7 @@ endmacro()
 
 Compile_Program(test_runner)
 Compile_Program(test_sockets)
+Compile_Program(test_config)
 add_test(TEST test_runner)
 add_test(TEST test_sockets)
+add_test(TEST test_config)
