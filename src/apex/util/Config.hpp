@@ -171,9 +171,22 @@ struct ConfigParser<int> : public BaseConfigParser<int> {
 
 template<>
 struct ConfigParser<unsigned int>: public BaseConfigParser<unsigned int> {
-
   void parse(json j) {
     this->result = j.get<unsigned int>();
+  }
+};
+
+template<>
+struct ConfigParser<long>: public BaseConfigParser<long> {
+  void parse(json j) {
+    this->result = j.get<long>();
+  }
+};
+
+template<>
+struct ConfigParser<unsigned long>: public BaseConfigParser<unsigned long> {
+  void parse(json j) {
+    this->result = j.get<unsigned long>();
   }
 };
 
@@ -209,13 +222,6 @@ template<>
 struct ConfigParser<std::string> : public BaseConfigParser<std::string> {
   void parse(json j) {
     this->result = j.get<std::string>();
-  }
-};
-
-template<>
-struct ConfigParser<unsigned long> : public BaseConfigParser<unsigned long> {
-  void parse(json j) {
-    this->result = j.get<unsigned long>();
   }
 };
 
@@ -304,6 +310,28 @@ struct ConfigWriter<int> {
 };
 
 template<>
+struct ConfigWriter<unsigned int> {
+  json to_json(const unsigned int& obj) {
+    return json(obj);
+  }
+};
+
+template<>
+struct ConfigWriter<long> {
+  json to_json(const long& obj) {
+    return json(obj);
+  }
+};
+
+template<>
+struct ConfigWriter<unsigned long> {
+  json to_json(const unsigned long& obj) {
+    return json(obj);
+  }
+};
+
+
+template<>
 struct ConfigWriter<bool> {
   json to_json(const bool& obj) {
     return json(obj);
@@ -313,13 +341,6 @@ struct ConfigWriter<bool> {
 template<>
 struct ConfigWriter<char> {
   json to_json(const char& obj) {
-    return json(obj);
-  }
-};
-
-template<>
-struct ConfigWriter<unsigned long> {
-  json to_json(const unsigned long& obj) {
     return json(obj);
   }
 };

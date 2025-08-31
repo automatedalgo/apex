@@ -76,6 +76,7 @@ struct Exchange {
 struct AllTypes {
   string _string;
   int _int;
+  unsigned int _unsigned_int;
   double _double;
   float _float;
   char _char;
@@ -86,11 +87,12 @@ struct AllTypes {
     FIELD_DEF_INIT( AllTypes );
     FIELD_DEF_OPTIONAL( _string, "" );
     FIELD_DEF_OPTIONAL( _int, 0 );
+    FIELD_DEF_OPTIONAL( _unsigned_int, 0 );
     FIELD_DEF_OPTIONAL( _double, 0 );
     FIELD_DEF_OPTIONAL( _float, 0 );
     FIELD_DEF_OPTIONAL( _char, ' ' );
-//    FIELD_DEF_OPTIONAL( _unsigned_long, 0 );
-//    FIELD_DEF_OPTIONAL( _signed_long, 0 );
+    FIELD_DEF_OPTIONAL( _unsigned_long, 0 );
+    FIELD_DEF_OPTIONAL( _signed_long, 0 );
     FIELD_DEF_RETURN();
   }
   bool operator==(const AllTypes&) const = default;
@@ -109,8 +111,9 @@ struct TcpTransport
   vector<map<string, Exchange>> exchanges;
 
   static auto schema() {
-    FIELD_DEF_INIT( TcpTransport )
-      FIELD_DEF_REQUIRED( addr );
+    FIELD_DEF_INIT( TcpTransport );
+    FIELD_DEF_OPTIONAL( all_types, AllTypes{} );
+    FIELD_DEF_REQUIRED( addr );
     FIELD_DEF_OPTIONAL( port, "18000" );
     FIELD_DEF_REQUIRED( options );
     FIELD_DEF_OPTIONAL( max_notional, 500000 );
