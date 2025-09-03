@@ -71,7 +71,7 @@ struct Series
     stats.min = values[0];
     stats.max = values[0];
     stats.mean = 0.0;
-    for (size_t i = 0; i < values.size(); i++) {
+    for (size_t i = 0, size = values.size(); i < size; i++) {
       stats.mean += values[i];
       stats.min = std::min(stats.min, values[i]);
       stats.max = std::max(stats.max, values[i]);
@@ -254,26 +254,30 @@ int main(int argc, char** argv)
     // for each latency measurement, calc distribution states
     if (show_stats) {
       Series min("min");
+      Series p25("p25");
       Series p50("p50");
       Series p75("p75");
       Series p90("p90");
       Series p95("p95");
       Series p99("p99");
       Series max("max");
+      Series mean("mean");
       for (size_t c = 1; c < std::size(nonzero); c++) {
         auto stats = nonzero[c].summary();
         min.push_back(stats.min/1000.0);
+        p25.push_back(stats.pct25/1000.0);
         p50.push_back(stats.pct50/1000.0);
         p75.push_back(stats.pct75/1000.0);
         p90.push_back(stats.pct90/1000.0);
         p95.push_back(stats.pct95/1000.0);
         p99.push_back(stats.pct99/1000.0);
         max.push_back(stats.max/1000.0);
+        mean.push_back(stats.mean/1000.0);
     }
 
       //  display the results
       Frame frame;
-      frame.append(min, p50, p75, p90, p95, p99, max);
+      frame.append(min, p25, p50, p75, p90, p95, p99, max, mean);
       dump_frame(frame, 1);
     }
 
