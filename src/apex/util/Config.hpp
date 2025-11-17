@@ -157,7 +157,7 @@ struct ConfigParser : public BaseConfigParser<T>
     }
 
     if (!keys.empty())
-      throw ConfigParseError(std::format("unexpected config key '{}'",
+      throw ConfigParseError(std::format("found unexpected config key '{}'",
                                          *keys.begin()));
   }
 };
@@ -418,7 +418,7 @@ struct FieldDefImpl : public FieldDef<T>
     }
     catch (std::exception& e) {
       throw ConfigParseError(
-        std::format("parse failed on '{}', {}", this->name, e.what()));
+        std::format("config parse failed on '{}', {}", this->name, e.what()));
     }
   }
 };
