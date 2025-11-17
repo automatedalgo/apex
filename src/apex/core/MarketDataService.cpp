@@ -200,7 +200,7 @@ void MarketDataService::add_feed(FeedConfig config,
       if (_feeds.find(venue_exch_id) != std::end(_feeds))
         throw ConfigError(concat("venue alread added: ", venue));
       _feeds[venue_exch_id] = embed_fh;
-      LOG_INFO("feed handler " << config.type << " provides venue " << venue);
+      LOG_INFO("feed handler " << config.type << " provides venue '" << venue << "'");
     }
   }
   else if (config.type == "Binance") {
@@ -230,7 +230,7 @@ void MarketDataService::add_feed(FeedConfig config,
       if (_feeds.find(venue_exch_id) != std::end(_feeds))
         throw ConfigError(concat("venue alread added: ", venue));
       _feeds[venue_exch_id] = embed_fh;
-      LOG_INFO("feed handler " << config.type << " provides venue " << venue);
+      LOG_INFO("feed handler " << config.type << " provides venue '" << venue << "'");
     }
 
   }
