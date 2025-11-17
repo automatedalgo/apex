@@ -20,6 +20,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/util/Config.hpp>
 #include <apex/util/Time.hpp>
 #include <apex/core/common.hpp>
+#include <apex/infra/ReactorConfig.hpp>
 
 #include <memory>
 #include <filesystem>
@@ -107,13 +108,37 @@ public:
 };
 
 
+struct SerivcesConfig {
+
+  std::string run_mode;
+
+  ReactorConfig reactor;
+
+  static auto schema() {
+    FIELD_DEF_INIT( SerivcesConfig );
+    FIELD_DEF_REQUIRED(run_mode);
+    FIELD_DEF_OPTIONAL(reactor, ReactorConfig{} );
+    FIELD_DEF_RETURN();
+  }
+};
+
+
 /* Responsible for creating and providing access to the various core
  * components and services required by all apex application components. */
 class Services
 {
 public:
+  /* Utility method used to create and init services with minimal config */
+  static std::unique_ptr<Services> create(RunMode run_mode,
+                                          BacktestPeriod backtest_period={});
+  static std::unique_ptr<Services> create(const SerivcesConfig&);
+
+
+  explicit Services(const SerivcesConfig&);
+
   explicit Services(RunMode run_mode,
                     BacktestPeriod backtest_period={});
+
   ~Services();
 
   static const char* build_datetime();
@@ -124,9 +149,6 @@ public:
 
   const PathsConfig& paths_config() const { return _paths_config; }
 
-  /* Utility method used to create and init services with minimal config */
-  static std::unique_ptr<Services> create(RunMode run_mode,
-                                          BacktestPeriod backtest_period={});
 
   OrderService* order_service() { return _order_service.get(); }
 
@@ -182,6 +204,7 @@ public:
 
 private:
   RunMode _run_mode;
+  BacktestPeriod _backtest_period;
   Config _config;
   PathsConfig _paths_config;
   Time _startup_time;
@@ -197,9 +220,6 @@ private:
   std::unique_ptr<BacktestService> _backtest_service;
   std::unique_ptr<MessageCaptureService> _message_capture_service;
   std::unique_ptr<TimeLogService> _time_log_service;
-
-  BacktestPeriod _backtest_period;
-
   std::unique_ptr<SslContext> _ssl;
 };
 

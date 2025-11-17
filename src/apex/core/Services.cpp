@@ -180,20 +180,32 @@ static Time calc_startup_time(RunMode run_mode,
 }
 
 
+Services::Services(const SerivcesConfig& config)
+  : _run_mode(parse_run_mode(config.run_mode)),
+    _backtest_period(BacktestPeriod{}),
+    _paths_config{default_paths_config()},
+    _startup_time(calc_startup_time(_run_mode, _backtest_period)),
+    _reactor(std::make_unique<Reactor>(config.reactor)),
+    _evloop(construct_event_loop(_run_mode, _backtest_period.from)),
+    _bt_evloop(dynamic_cast<BacktestEventLoop*>(_evloop.get()))
+{
+  apex::SslConfig sslconf(true);
+  _ssl = std::make_unique<apex::SslContext>(sslconf);
+}
+
+
 Services::Services(RunMode run_mode,
                    BacktestPeriod backtest_period)
   : _run_mode(run_mode),
+    _backtest_period(backtest_period),
     _paths_config{default_paths_config()},
-    _startup_time(calc_startup_time(run_mode, backtest_period)),
+    _startup_time(calc_startup_time(_run_mode,_backtest_period )),
     _reactor(std::make_unique<Reactor>()),
-    _evloop(construct_event_loop(run_mode, backtest_period.from)),
-    _bt_evloop(dynamic_cast<BacktestEventLoop*>(_evloop.get())),
-    _backtest_period(backtest_period)
+    _evloop(construct_event_loop(_run_mode, _backtest_period.from)),
+    _bt_evloop(dynamic_cast<BacktestEventLoop*>(_evloop.get()))
 {
-
   apex::SslConfig sslconf(true);
   _ssl = std::make_unique<apex::SslContext>(sslconf);
-
 }
 
 
@@ -216,6 +228,14 @@ std::unique_ptr<Services> Services::create(apex::RunMode run_mode,
   services->init_services();
   return services;
 }
+
+std::unique_ptr<Services> Services::create(const SerivcesConfig& config) {
+  apex::Logger::instance().register_thread_id("main");
+  auto services = std::make_unique<Services>(config);
+  services->init_services();
+  return services;
+}
+
 
 void Services::init_services(Config config)
 {

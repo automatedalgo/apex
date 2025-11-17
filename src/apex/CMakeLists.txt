@@ -69,6 +69,7 @@ list(APPEND LIB_APEX_SRC_FILES
         "infra/HttpParser.hpp"
         "infra/Reactor.cpp"
         "infra/Reactor.hpp"
+        "infra/ReactorConfig.hpp"
         "infra/SslSocket.cpp"
         "infra/SslSocket.hpp"
         "infra/TcpConnector.cpp"

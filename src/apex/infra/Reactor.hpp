@@ -17,6 +17,10 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include <apex/util/TimeLog.hpp>
+#include <apex/util/Config.hpp>
+#include <apex/infra/ReactorConfig.hpp>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,8 +38,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <functional>
 #include <future>
 #include <semaphore.h>
-
-#include <apex/util/TimeLog.hpp>
 
 namespace apex {
 
@@ -122,7 +124,7 @@ public:
 class Reactor
 {
 public:
-  Reactor();
+  Reactor(ReactorConfig config = {});
   ~Reactor();
 
   void add_stream(Stream*);
@@ -175,6 +177,7 @@ public:
 private:
   void push_command(Command);
 
+  ReactorConfig _config;
   std::vector<Stream*> _streams;
   std::queue<Command> _commands;
   std::mutex _commands_mtx;

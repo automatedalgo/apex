@@ -52,8 +52,9 @@ Stream::~Stream() {
 }
 
 
-Reactor::Reactor()
-  : _pipefd{-1}
+Reactor::Reactor(ReactorConfig config)
+  : _pipefd{-1},
+    _config(std::move(config))
 {
   // create the interrupt pipe
   _pipefd[0] = -1;  // pipefd[0] refers to the read end of the pipe
@@ -223,7 +224,7 @@ void Reactor::reactor_main_loop()
     }
 #endif
 
-    int nfds = ::poll(&fds[0], fds.size(), timeout);
+    int nfds = ::poll(&fds[0], fds.size(), _config.spin? 0: timeout);
 
     at_io.mark();
 
