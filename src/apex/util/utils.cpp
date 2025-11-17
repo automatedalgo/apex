@@ -503,4 +503,35 @@ std::string to_padded_str(const size_t i, const size_t target_len) {
   }
 }
 
+
+std::string read_file(const std::string& path)
+{
+  std::error_code ec;
+  auto size = std::filesystem::file_size(path, ec);
+  if (ec) {
+    throw std::runtime_error(
+      std::format("cannot get file size '{}': ({}) {} ",
+                  path, ec.value(), ec.message()));
+  }
+
+  std::ifstream in(path, std::ios::binary);
+  if (!in) {
+    ec = std::error_code(errno, std::generic_category());
+    throw std::runtime_error(
+      std::format("cannot open file '{}': ({}) {} ",
+                  path, ec.value(), ec.message()));
+  }
+
+  std::string buffer(size, '\0');
+
+  if (!in.read(&buffer[0], static_cast<std::streamsize>(size))) {
+    ec = std::error_code(errno, std::generic_category());
+    throw std::runtime_error(
+      std::format("error reading file '{}': ({}) {} ",
+                  path, ec.value(), ec.message()));
+  }
+
+  return buffer;
+}
+
 } // namespace apex

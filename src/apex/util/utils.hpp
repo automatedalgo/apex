@@ -267,5 +267,7 @@ std::string concat(Args&&... args) {
   return oss.str();
 }
 
+/* Read entire file */
+std::string read_file(const std::string& path);
 
 } // namespace apex
