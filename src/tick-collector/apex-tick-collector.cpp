@@ -36,8 +36,56 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <utility>
 #include <variant>
 #include <vector>
+#include <format>
+#include <filesystem>
 
 namespace apex {
+
+struct LoggerParams {
+  std::string level = "info";
+  bool detail = false;
+  bool async = true;
+
+  static auto schema() {
+    FIELD_DEF_INIT( LoggerParams );
+    FIELD_DEF_OPTIONAL( level, "info" );
+    FIELD_DEF_OPTIONAL( detail, false );
+    FIELD_DEF_OPTIONAL( async, true );
+    FIELD_DEF_RETURN();
+  }
+
+  Logger::level to_level() const {
+    return Logger::string_to_level(level);
+  }
+};
+
+struct ExchangeParams {
+  std::string id;
+  static auto schema() {
+    FIELD_DEF_INIT( ExchangeParams );
+    FIELD_DEF_REQUIRED( id );
+    FIELD_DEF_RETURN();
+  }
+
+  ExchangeId exchange_id() const {
+    return to_exchange_id(id);
+  }
+};
+
+struct TickCollectorParams {
+  LoggerParams logger;
+  std::vector <std::string> symbols;
+  std::string location;
+  ExchangeParams exchange;
+  static auto schema() {
+    FIELD_DEF_INIT( TickCollectorParams );
+    FIELD_DEF_OPTIONAL( logger, LoggerParams{} );
+    FIELD_DEF_OPTIONAL( location, "" );
+    FIELD_DEF_REQUIRED( symbols );
+    FIELD_DEF_REQUIRED( exchange );
+    FIELD_DEF_RETURN();
+  }
+};
 
 /* This is a MarketData-like object that can receive Tick messaages, but instead
  * of maintaining a book, will pass the tick event to a tick collector for
@@ -349,11 +397,12 @@ public:
   // tick can arrive at different times based on how far away the tick
   // collector is from the exchange.
   TickCollectorService(apex::Services* services,
-                       std::string_view location)
+                       TickCollectorParams params)
     : _services{services},
-      _location(std::move(location)),
+      _location(params.location),
       _event_loop{_services->realtime_evloop()},
-      _reactor{_services->reactor()}
+      _reactor{_services->reactor()},
+      _params(params)
   {
   }
 
@@ -375,7 +424,7 @@ private:
   std::string _location;
   apex::RealtimeEventLoop* _event_loop;
   apex::Reactor* _reactor;
-
+  TickCollectorParams _params;
 
   std::map<apex::ExchangeId, std::shared_ptr<apex::EmbeddedFeedHandler>> _feeds;
 
@@ -603,17 +652,71 @@ void TickCollectorService::start()
 } // namespace apex
 
 
-int main(int , char** )
+apex::TickCollectorParams load_config(const std::string& filename)
 {
+  auto raw_data =  apex::read_file(filename);
+
   try {
+    // parse to JSON object
+    json raw_config = json::parse(raw_data,
+                                  /* callback */ nullptr,
+                                  /* allow exceptions */ true,
+                                  /* ignore_comments */ true);
+
+    // parse to parameters object
+    apex::ConfigParser<apex::TickCollectorParams> parser;
+    parser.parse(raw_config);
+    return parser.result;
+  }
+  catch (json::parse_error& e)
+  {
+    throw apex::ConfigError(apex::concat("error parsing JSON config file '",
+                                         filename,
+                                         "' json parse error: ",
+                                         e.what()));
+  }
+}
+
+int main(int argc, char** argv)
+{
+  std::string filename;
+  try {
+    for (int i = 1; i < argc; i++) {
+      if (std::string_view(argv[i]) == "--config") {
+        i++;
+        if (i < argc)
+          filename = argv[i];
+        else
+          throw std::runtime_error("missing argument to --config");
+      }
+    }
+    if (filename.empty())
+      throw std::runtime_error("provide config file, using --config option");
+  }
+  catch (std::exception & e) {
+    std::cout << e.what() << std::endl;
+    return 1;
+  }
+
+  apex::TickCollectorParams params;
+  try {
+    params = load_config(filename);
+  }
+  catch (std::exception& e) {
+    std::cerr << e.what() << "\n";
+    return 1;
+  }
+
+  try
+  {
     // setup logging
     apex::Logger::instance().set_opts({
         .filename = "auto",
         .time = apex::LogOpts::Time::second,
         .mode = apex::LogOpts::Mode::trunc,
-        .level = apex::Logger::info,
-        .detail = false,
-        .async = true
+        .level = params.logger.to_level(),
+        .detail = params.logger.detail,
+        .async = params.logger.async
       });
     apex::Logger::instance().register_thread_id("main");
 
@@ -623,22 +726,12 @@ int main(int , char** )
     auto services = apex::Services::create(apex::RunMode::paper);
 
     // capture location of the collection;
-    auto location = "london";
-    apex::TickCollectorService tick_collector_svc(services.get(), location);
+    apex::TickCollectorService tick_collector_svc(services.get(), params);
 
-    // list of binance symbols to subscribe to
-    auto symbols = {
-      "BNBUSDT",
-      "BTCUSDT",
-      "DOGEUSDT",
-      "ETHUSDT",
-      "SOLUSDT",
-      "XRPUSDT"
-    };
-
-    for (const auto & symbol : symbols) {
-      tick_collector_svc.add_collector(symbol, apex::ExchangeId::binance_usdfut, "l1");
-      tick_collector_svc.add_collector(symbol, apex::ExchangeId::binance_usdfut, "aggtrades");
+    auto exch_id = params.exchange.exchange_id();
+    for (const auto & symbol : params.symbols) {
+      tick_collector_svc.add_collector(symbol, exch_id, "l1");
+      tick_collector_svc.add_collector(symbol, exch_id, "aggtrades");
     }
 
     // start the collector service after the various streams have been
