@@ -1,0 +1,23 @@
+{
+    // core engine services
+    "services": {
+        "run_mode": "paper",
+
+        // main socket reactor
+        "reactor": {
+            "spin" : false  /* spin on socket IO */
+        }
+    },
+
+    // strategy config
+    "strategy" : {
+        "id" : "LAT01",
+        "exchange" : "binance_usdfut",
+        "universe" : [
+            "BTCUSDT",
+            "ETHUSDT",
+            "SOLUSDT",
+            "ADAUSDT"
+        ]
+    }
+}

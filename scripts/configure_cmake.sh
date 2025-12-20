@@ -27,6 +27,8 @@ rm -rf "${BUILD_DIR}/"
 mkdir -p "$_"
 cd "$_"
 
+# To enable memory allocation tracker:   -DAPEX_ALLOC_TRACKER=1
+
 set -x
 cmake   \
   -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \

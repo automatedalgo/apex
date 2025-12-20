@@ -31,6 +31,7 @@ option(BUILD_EXAMPLES "Build example apps" ON)
 option(BUILD_UTILS "Build utility apps" ${DEFAULT_BUILD_UTILS})
 option(BUILD_TESTS "Build test apps" OFF)
 
+option(APEX_ALLOC_TRACKER "Enable memory allocation tracking" 0)
 
 include(GNUInstallDirs)
 set(INSTALL_BIN_DIR "${CMAKE_INSTALL_BINDIR}" CACHE PATH "Installation directory for executables")
@@ -154,3 +155,9 @@ add_subdirectory(src/tests)
 add_subdirectory(src/tools)
 
 #include(cmake/MakeDebPackages.cmake)
+
+if(APEX_ALLOC_TRACKER)
+    message(STATUS "APEX_ALLOC_TRACKER is ON")
+else()
+    message(STATUS "APEX_ALLOC_TRACKER is OFF")
+endif()
