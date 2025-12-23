@@ -23,10 +23,15 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/venues/binance/BinanceUsdFutFeedHandler.hpp>
 #include <apex/venues/binance/binance_common.hpp>
 #include <apex/util/TimeLog.hpp>
+#include <simdjson/simdjson.h>
 
 #define BINANCE_SPOT_SUBSCRIBE_DELAY_MILLISEC 300
 
 namespace apex {
+
+struct ParserImpl {
+  simdjson::ondemand::parser parser;
+};
 
 BinanceUsdFutFeedHandler::BinanceUsdFutFeedHandler(Services* services,
                                                    RunMode run_mode,
@@ -37,7 +42,8 @@ BinanceUsdFutFeedHandler::BinanceUsdFutFeedHandler(Services* services,
                     services,
                     run_mode, reactor,
                     event_loop),
-    _callbacks(std::move(callbacks))
+    _callbacks(std::move(callbacks)),
+    _impl{std::make_unique<ParserImpl>()}
 {
   _callbacks.assert_all_defined();
 
@@ -189,88 +195,65 @@ void BinanceUsdFutFeedHandler::manage_connection()
 }
 
 
-void BinanceUsdFutFeedHandler::process_bookticker(std::string pxsym, json& msg)
-{
-  /* io-thread */
-
-  TickTop tick;
-
-  tick.xt = from_binance_timestamp(get_uint(msg, "T"));
-  tick.et = from_binance_timestamp(get_uint(msg, "E"));
-  tick.ask_price = std::stod(get_string_field(msg, "a"));
-  tick.ask_qty = std::stod(get_string_field(msg, "A"));
-  tick.bid_price = std::stod(get_string_field(msg, "b"));
-  tick.bid_qty = std::stod(get_string_field(msg, "B"));
-
-  _ws_feed->timelog().at_parsed.mark();
-
-  _callbacks.on_top(pxsym, tick, _ws_feed->timelog());
-}
-
-
-void BinanceUsdFutFeedHandler::process_aggtrade(std::string pxsym, json& msg)
-{
-  /* io-thread */
-
-  TickTrade tick;
-  tick.xt = from_binance_timestamp(get_uint(msg, "T"));
-  tick.et = from_binance_timestamp(get_uint(msg, "E"));
-  tick.price = std::stod(get_string_field(msg, "p"));
-  tick.qty = std::stod(get_string_field(msg, "q"));
-  tick.side = buyer_market_maker_to_aggrSide(get_bool(msg, "m"));
-
-  _ws_feed->timelog().at_parsed.mark();
-
-  _callbacks.on_trade(pxsym, tick, _ws_feed->timelog());
-}
-
-
 void BinanceUsdFutFeedHandler::process_raw_message(const char* buf, size_t n)
 {
   /* io-thread */
 
   _ws_feed->timelog().at_message.mark();
 
-  // if (auto mcap = _services->message_capture_service()) {
-  //   mcap->push_event(_ws_feed_msgcap_id.in, std::string_view(buf, n));
-  // }
+  simdjson::error_code error;
 
-  auto msg = json::parse(buf, buf + n);
+  // note: buf must have already been padded by SIMDJSON_PADDING bytes
+  simdjson::ondemand::document doc = _impl->parser.iterate(buf, n);
 
   try {
-    if (msg.is_object()) {
+    simdjson::ondemand::object root;
+    error = doc.get_object().get(root);
+    if (error)
+      throw error;
 
-      if (auto data = msg.find("data"); data != msg.end()) {
-        auto & stream = get_field<std::string>(msg, "stream");
+    std::string_view stream;
+    error = root["stream"].get(stream);
+    if (error == simdjson::error_code::NO_SUCH_FIELD)
+      return;
+    if (error)
+      throw error;
 
-        size_t pos = stream.find('@');
-        if (pos != std::string::npos) {
-          std::string feed_sym = stream.substr(0, pos);
-          auto & msg_type = get_field<std::string>(*data, "e");
+    simdjson::ondemand::object data;
+    error = root["data"].get(data);
+    if (error)
+      throw error;
 
-          if (msg_type == "aggTrade") {
-            process_aggtrade(feed_sym, *data);
-            return;
-          }
-          if (msg_type == "bookTicker") {
-            process_bookticker(feed_sym, *data);
-            return;
-          }
-        }
+    auto pos = stream.find('@');
+    if (pos == std::string_view::npos)
+      return;
+
+    std::string feed_sym = std::string{stream.substr(0, pos)};
+    std::string_view msg_type = stream.substr(pos + 1);
+
+    if (msg_type == "aggTrade") {
+      auto [tick, err] = parse_binanceusdfut_aggtrade(data);
+      if (!err) {
+        _ws_feed->timelog().at_parsed.mark();
+        _callbacks.on_trade(feed_sym, tick, _ws_feed->timelog());
       }
-
-      if (msg.contains("id"))
-        return;  // ignore
+      else {
+        LOG_WARN("failed to parse aggTrade");
+      }
     }
-    else
-      throw std::runtime_error("expected JSON object");
-
-    throw std::runtime_error(concat("message not handled: ",
-                                    std::string_view(buf, n)));
+    else if (msg_type == "bookTicker") {
+      auto [tick, err] = parse_binanceusdfut_bookticker(data);
+      if (!err) {
+        _ws_feed->timelog().at_parsed.mark();
+        _callbacks.on_top(feed_sym, tick, _ws_feed->timelog());
+      }
+      else {
+        LOG_WARN("failed to parse bookTicker");
+      }
+    }
   }
-  catch (std::exception& e) {
-    LOG_ERROR("process message failed, " << e.what()
-              << ", data: " << std::string_view(buf, n));
+  catch (simdjson::error_code ec) {
+    LOG_WARN("json parse error: " << simdjson::error_message(ec));
   }
 }
 

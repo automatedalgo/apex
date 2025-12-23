@@ -149,6 +149,10 @@ list(APPEND LIB_APEX_SRC_FILES
 file(GLOB LIB_3RDPTY_HTTPPARSER_SRC_FILES ${PROJECT_SOURCE_DIR}/3rdparty/http_parser/*.c)
 file(GLOB LIB_3RDPTY_APACH_SRC_FILES ${PROJECT_SOURCE_DIR}/3rdparty/apache/*.c)
 
+list(APPEND 3RDPTY_SIMDJSON
+  "${PROJECT_SOURCE_DIR}/3rdparty/simdjson/simdjson.h"
+  "${PROJECT_SOURCE_DIR}/3rdparty/simdjson/simdjson.cpp")
+
 ##
 ## Static library
 ##
@@ -156,7 +160,9 @@ if (BUILD_STATIC_LIBS)
     add_library(apexcore_static STATIC
             ${LIB_APEX_SRC_FILES}
             ${LIB_3RDPTY_HTTPPARSER_SRC_FILES}
-            ${LIB_3RDPTY_APACH_SRC_FILES})
+            ${LIB_3RDPTY_APACH_SRC_FILES}
+            ${3RDPTY_SIMDJSON}
+          )
 
     set_target_properties(apexcore_static PROPERTIES OUTPUT_NAME apexcore)
 
@@ -188,7 +194,8 @@ if (BUILD_SHARED_LIBS)
     add_library(apexcore_shared SHARED
             ${LIB_APEX_SRC_FILES}
             ${LIB_3RDPTY_HTTPPARSER_SRC_FILES}
-            ${LIB_3RDPTY_APACH_SRC_FILES})
+            ${LIB_3RDPTY_APACH_SRC_FILES}
+            ${3RDPTY_SIMDJSON})
 
     # Set library output name
     set_target_properties(apexcore_shared PROPERTIES OUTPUT_NAME apexcore)

@@ -31,6 +31,15 @@
 #include <websocketpp/common/memory.hpp>
 #include <websocketpp/frame.hpp>
 
+/* Because the messages produced by the websocket parsing are fed into SIMDJSON,
+ * we need to ensure there is sufficient padding at the end of the string (a
+ * requirement of SIMDJSON). So whenever space is reserved for a message of
+ * known size the reserved size is increased by the padding amount. */
+constexpr int inline WSCPP_SIMDJSON_PADDING = 64;
+
+
+inline static int msg_count = 0;
+
 #include <string>
 
 namespace websocketpp {
@@ -111,8 +120,8 @@ public:
       , m_fin(true)
       , m_terminal(false)
       , m_compressed(false)
-    {
-        m_payload.reserve(size);
+  {
+      m_payload.reserve(size + WSCPP_SIMDJSON_PADDING);
     }
 
     /// Return whether or not the message has been prepared for sending
@@ -273,7 +282,7 @@ public:
      * @param len The length of new payload in bytes.
      */
     void set_payload(void const * payload, size_t len) {
-        m_payload.reserve(len);
+        m_payload.reserve(len + WSCPP_SIMDJSON_PADDING);
         char const * pl = static_cast<char const *>(payload);
         m_payload.assign(pl, pl + len);
     }
@@ -296,7 +305,7 @@ public:
      * @param len The length of payload in bytes
      */
     void append_payload(void const * payload, size_t len) {
-        m_payload.reserve(m_payload.size()+len);
+        m_payload.reserve(m_payload.size()+len+WSCPP_SIMDJSON_PADDING);
         m_payload.append(static_cast<char const *>(payload),len);
     }
 
