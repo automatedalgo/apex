@@ -207,4 +207,12 @@ AllocTracker::~AllocTracker() {
 
 } // namespace apex
 
+#else
+
+namespace apex
+{
+#warning "Warning; AllocTracker using dummy implementation"
+AllocTracker::AllocTracker(const char*, bool): _id(0){}
+AllocTracker::~AllocTracker() {}
+}
 #endif

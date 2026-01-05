@@ -25,6 +25,8 @@ namespace apex {
 
 class WebsocketClient;
 
+struct ParserImpl;
+
 class BinanceUsdFutFeedHandler : public FeedHandlerImpl<BinanceUsdFutFeedHandler>
 {
 public:
@@ -41,8 +43,6 @@ public:
 private:
 
   void process_raw_message(const char*, size_t);
-  void process_aggtrade(std::string, json&);
-  void process_bookticker(std::string, json&);
   void manage_connection();
   void do_subscriptions();
 
@@ -62,6 +62,7 @@ private:
   int _ws_msgcap_id_out;
 
   Time _time_last_ping;
+  std::unique_ptr<ParserImpl> _impl;
 };
 
 } //namespace

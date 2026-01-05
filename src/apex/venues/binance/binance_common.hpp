@@ -18,15 +18,20 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
 #include <apex/model/Order.hpp>
-#include <apex/util/json.hpp>
+#include <apex/model/tick_msgs.hpp>
+#include <simdjson/simdjson.h>
 
 namespace apex
 {
 Side buyer_market_maker_to_aggrSide(bool buyer_is_maker);
 
-Time from_binance_timestamp(json::number_unsigned_t i);
+Time from_binance_timestamp(unsigned long i);
 
 std::string to_binance(TimeInForce tif);
 
 const char* to_binance(Side s);
+
+std::pair<TickTrade, int> parse_binanceusdfut_aggtrade(simdjson::ondemand::object&);
+std::pair<TickTop, int> parse_binanceusdfut_bookticker(simdjson::ondemand::object&);
+
 }

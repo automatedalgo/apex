@@ -29,7 +29,7 @@ Side buyer_market_maker_to_aggrSide(bool buyer_is_maker)
 }
 
 
-Time from_binance_timestamp(json::number_unsigned_t i)
+Time from_binance_timestamp(unsigned long i)
 {
   int ms = i % 1000;
   int sec = (i - ms) / 1000;
@@ -62,5 +62,96 @@ std::string to_binance(TimeInForce tif)
       return "?";
   }
 }
+
+
+std::pair<TickTrade, int> parse_binanceusdfut_aggtrade(simdjson::ondemand::object& msg)
+{
+  std::pair<TickTrade, int> rv{};
+  std::string tmp;
+
+  for (auto field : msg) {
+    char c = field.key()[0];
+    switch (c) {
+      case 'q':  {
+        rv.second |= (field.value().get(tmp) != simdjson::error_code::SUCCESS);
+        rv.first.qty = std::stod(tmp);
+        break;
+      }
+      case 'p': {
+        rv.second |= (field.value().get(tmp) != simdjson::error_code::SUCCESS);
+        rv.first.price = std::stod(tmp);
+        break;
+      }
+      case 'm': {
+        bool v{false};
+        rv.second |= (field.value().get(v) != simdjson::error_code::SUCCESS);
+        rv.first.side = buyer_market_maker_to_aggrSide(v);
+        break;
+      }
+      case 'T': {
+        uint64_t v{};
+        rv.second |= (field.value().get(v) != simdjson::error_code::SUCCESS);
+        rv.first.xt = from_binance_timestamp(v);
+        break;
+      }
+      case 'E': {
+        uint64_t v{};
+        rv.second |= (field.value().get(v) != simdjson::error_code::SUCCESS);
+        rv.first.et = from_binance_timestamp(v);
+        break;
+      }
+    }
+  }
+
+  return rv;
+}
+
+
+std::pair<TickTop, int> parse_binanceusdfut_bookticker(simdjson::ondemand::object& msg)
+{
+  std::pair<TickTop, int> rv{};
+  std::string tmp;
+
+  for (auto field : msg) {
+    char c = field.key()[0];
+    switch (c) {
+      case 'a':  {
+        rv.second |= (field.value().get(tmp) != simdjson::error_code::SUCCESS);
+        rv.first.ask_price = std::stod(tmp);
+        break;
+      }
+      case 'A': {
+        rv.second |= (field.value().get(tmp) != simdjson::error_code::SUCCESS);
+        rv.first.ask_qty = std::stod(tmp);
+        break;
+      }
+      case 'b': {
+        rv.second |= (field.value().get(tmp) != simdjson::error_code::SUCCESS);
+        rv.first.bid_price = std::stod(tmp);
+        break;
+      }
+      case 'B': {
+        rv.second |= (field.value().get(tmp) != simdjson::error_code::SUCCESS);
+        rv.first.bid_qty = std::stod(tmp);
+        break;
+      }
+      case 'T': {
+        uint64_t v{};
+        rv.second |= (field.value().get(v) != simdjson::error_code::SUCCESS);
+        rv.first.xt = from_binance_timestamp(v);
+        break;
+      }
+      case 'E': {
+        uint64_t v{};
+        rv.second |= (field.value().get(v) != simdjson::error_code::SUCCESS);
+        rv.first.et = from_binance_timestamp(v);
+        break;
+      }
+    }
+  }
+
+  return rv;
+}
+
 
 }

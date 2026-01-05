@@ -74,6 +74,16 @@ public:
     LOG_INFO("order live: " << order.order_id());
   }
 
+  /*
+  virtual void on_tick_trade(apex::MarketData::EventType) {
+    LOG_INFO(ticker() << ": on-trade " << last_price());
+  }
+
+  virtual void on_tick_book(apex::MarketData::EventType) {
+    LOG_INFO(ticker() << ": on-top " << market().bid() << " | " << market().ask());
+  }
+  */
+
   void on_timer() override
   {
     using namespace std::chrono_literals;
@@ -204,19 +214,8 @@ LatencyExampleBotConfig parse_args(int argc, char** argv)
 }
 
 
-std::shared_ptr<std::string> sp;
-
-int do_alloc(int r =1) {
-  for (int i = 0; i < r; i++)
-    sp = std::make_shared<std::string>("hh");
-  return sp->length();
-}
-
-
 int main(int argc, char** argv)
 {
-  // return test0();
-
   try {
     auto config = parse_args(argc, argv);
 
