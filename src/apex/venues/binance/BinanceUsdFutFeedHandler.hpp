@@ -19,13 +19,10 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/model/Order.hpp>
 #include <apex/venues/venues_common.hpp>
-#include <apex/util/json.hpp>
 
 namespace apex {
 
 class WebsocketClient;
-
-struct ParserImpl;
 
 class BinanceUsdFutFeedHandler : public FeedHandlerImpl<BinanceUsdFutFeedHandler>
 {
@@ -62,6 +59,7 @@ private:
   int _ws_msgcap_id_out;
 
   Time _time_last_ping;
+struct ParserImpl;
   std::unique_ptr<ParserImpl> _impl;
 };
 

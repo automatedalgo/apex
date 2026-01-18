@@ -19,7 +19,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/model/Order.hpp>
 #include <apex/venues/venues_common.hpp>
-#include <apex/util/json.hpp>
 
 namespace apex {
 
@@ -42,8 +41,6 @@ public:
 private:
 
   void process_raw_message(const char*, size_t);
-  void process_aggtrade(std::string_view, json&);
-  void process_bookticker(std::string_view, json&);
   void manage_connection();
   void do_subscriptions();
 
@@ -61,6 +58,8 @@ private:
   std::map<std::string, Subscription> _subs;
   int _ws_msgcap_id_in = -1;
   int _ws_msgcap_id_out = -1;
+  struct ParserImpl;
+  std::unique_ptr<ParserImpl> _impl;
 };
 
 } //namespace

@@ -453,7 +453,7 @@ void WebsocketProtocol::process_frame_bytes(DecodeBuffer::read_pointer& rd)
         // TODO: is user throws, what should
         /* user callback of raw data */
         msg->get_raw_payload().append(WSCPP_SIMDJSON_PADDING, '\0'); // padding for simdjson
-        m_msg_processor(msg->get_payload().data(), msg->get_payload().size());
+        m_msg_processor(msg->get_payload().data(), msg->get_payload().size()-WSCPP_SIMDJSON_PADDING);
       }
     } else {
       // control message
