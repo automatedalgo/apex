@@ -18,7 +18,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/infra/Reactor.hpp>
 #include <apex/infra/TcpSocket.hpp>
 #include <apex/infra/WebsocketProtocol.hpp>
-#include <apex/infra/WebsocketppImpl.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
 #include <apex/util/json.hpp>
 #include <apex/core/Logger.hpp>
