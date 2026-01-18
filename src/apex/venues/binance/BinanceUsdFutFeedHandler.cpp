@@ -29,7 +29,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 namespace apex {
 
-struct ParserImpl {
+struct BinanceUsdFutFeedHandler::ParserImpl {
   simdjson::ondemand::parser parser;
 };
 
@@ -203,8 +203,9 @@ void BinanceUsdFutFeedHandler::process_raw_message(const char* buf, size_t n)
 
   simdjson::error_code error;
 
-  // note: buf must have already been padded by SIMDJSON_PADDING bytes
-  simdjson::ondemand::document doc = _impl->parser.iterate(buf, n);
+  // note: buf must have already been padded by SIMDJSON_PADDING bytes, so that
+  // it is safe to read beyond length `n`
+  simdjson::ondemand::document doc = _impl->parser.iterate(buf, n, n+64);
 
   try {
     simdjson::ondemand::object root;

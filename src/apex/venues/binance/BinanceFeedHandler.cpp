@@ -22,22 +22,28 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/util/RealtimeEventLoop.hpp>
 #include <apex/venues/binance/BinanceFeedHandler.hpp>
 #include <apex/venues/binance/binance_common.hpp>
+#include <simdjson/simdjson.h>
 
 #define BINANCE_SPOT_SUBSCRIBE_DELAY_MILLISEC 300
 
 namespace apex {
 
+struct BinanceFeedHandler::ParserImpl {
+  simdjson::ondemand::parser parser;
+};
+
 
 BinanceFeedHandler::BinanceFeedHandler(Services* services,
-                                                   RunMode run_mode,
-                                                   Reactor* reactor,
-                                                   RealtimeEventLoop* event_loop,
-                                                   FeedHandlerCallbacks callbacks)
+                                       RunMode run_mode,
+                                       Reactor* reactor,
+                                       RealtimeEventLoop* event_loop,
+                                       FeedHandlerCallbacks callbacks)
   : FeedHandlerImpl(ExchangeId::binance_usdfut,
                     services,
                     run_mode, reactor,
                     event_loop),
-    _callbacks(std::move(callbacks))
+    _callbacks(std::move(callbacks)),
+    _impl{std::make_unique<ParserImpl>()}
 {
   _callbacks.assert_all_defined();
 
@@ -152,7 +158,7 @@ void BinanceFeedHandler::manage_connection()
   /* feed management thread */
 
   if (websock_is_open(_ws_feed))
-      return;
+    return;
 
   _ws_feed = connect_websocket(
     _feed_url,
@@ -180,88 +186,137 @@ void BinanceFeedHandler::manage_connection()
   });
 }
 
+
+std::pair<TickTop, int> parse_bookticker(simdjson::ondemand::object& msg)
+{
+  std::pair<TickTop, int> rv{};
+  std::string tmp;
+
+  for (auto field : msg) {
+    char c = field.key()[0];
+    switch (c) {
+      case 'a':  {
+        rv.second |= (field.value().get(tmp) != simdjson::error_code::SUCCESS);
+        rv.first.ask_price = std::stod(tmp);
+        break;
+      }
+      case 'A': {
+        rv.second |= (field.value().get(tmp) != simdjson::error_code::SUCCESS);
+        rv.first.ask_qty = std::stod(tmp);
+        break;
+      }
+      case 'b': {
+        rv.second |= (field.value().get(tmp) != simdjson::error_code::SUCCESS);
+        rv.first.bid_price = std::stod(tmp);
+        break;
+      }
+      case 'B': {
+        rv.second |= (field.value().get(tmp) != simdjson::error_code::SUCCESS);
+        rv.first.bid_qty = std::stod(tmp);
+        break;
+      }
+    }
+  }
+
+  return rv;
+}
+
+
+std::pair<TickTrade, int> parse_binance_aggtrade(simdjson::ondemand::object& msg)
+{
+  std::pair<TickTrade, int> rv{};
+  std::string tmp;
+
+  for (auto field : msg) {
+    char c = field.key()[0];
+    switch (c) {
+      case 'q':  {
+        rv.second |= (field.value().get(tmp) != simdjson::error_code::SUCCESS);
+        rv.first.qty = std::stod(tmp);
+        break;
+      }
+      case 'p': {
+        rv.second |= (field.value().get(tmp) != simdjson::error_code::SUCCESS);
+        rv.first.price = std::stod(tmp);
+        break;
+      }
+      case 'm': {
+        bool v{false};
+        rv.second |= (field.value().get(v) != simdjson::error_code::SUCCESS);
+        rv.first.side = buyer_market_maker_to_aggrSide(v);
+        break;
+      }
+      case 'T': {
+        uint64_t v{};
+        rv.second |= (field.value().get(v) != simdjson::error_code::SUCCESS);
+        rv.first.xt = from_binance_timestamp(v);
+        break;
+      }
+      case 'E': {
+        uint64_t v{};
+        rv.second |= (field.value().get(v) != simdjson::error_code::SUCCESS);
+        rv.first.et = from_binance_timestamp(v);
+        break;
+      }
+    }
+  }
+  return rv;
+}
+
+
 void BinanceFeedHandler::process_raw_message(const char* buf, size_t n)
 {
   /* io-thread */
 
   _ws_feed->timelog().at_message.mark();
 
-  // if (auto mcap = _services->message_capture_service()) {
-  //   mcap->push_event(_ws_msgcap_id.in, std::string_view(buf, n));
-  // }
+  simdjson::error_code error;
 
-  auto msg = json::parse(buf, buf + n);
+  // note: buf must have already been padded by SIMDJSON_PADDING bytes, so that
+  // it is safe to read beyond length `n`
+  simdjson::ondemand::document doc = _impl->parser.iterate(buf, n, n+64);
 
   try {
-    if (msg.is_object()) {
-      if (auto data = msg.find("data"); data != msg.end()) {
-        auto & stream = get_field<std::string>(msg, "stream");
-        size_t pos = stream.find('@');
-        if (pos != std::string::npos) {
-          std::string_view feed_sym = std::string_view(stream).substr(0, pos);
-          std::string_view msg_type = std::string_view(stream).substr(pos+1);
-          // auto & msg_type = get_field<std::string>(*data, "e");
+    simdjson::ondemand::object root;
+    error = doc.get_object().get(root);
+    if (error)
+      throw error;
 
-          if (msg_type == "aggTrade") {
-            process_aggtrade(feed_sym, *data);
-            return;
-          }
-          if (msg_type == "bookTicker") {
-            process_bookticker(feed_sym, *data);
-            return;
-          }
-        }
-      }
+    std::string_view stream;
+    error = root["stream"].get(stream);
+    if (error == simdjson::error_code::NO_SUCH_FIELD)
+      return;
+    if (error)
+      throw error;
 
-    if (msg.contains("id"))
-      return;  // ignore
+    simdjson::ondemand::object data;
+    error = root["data"].get(data);
+    if (error)
+      throw error;
+
+    auto pos = stream.find('@');
+    if (pos == std::string_view::npos)
+      return;
+
+    std::string feed_sym = std::string{stream.substr(0, pos)};
+    std::string_view msg_type = stream.substr(pos + 1);
+
+    if (msg_type == "aggTrade") {
+      auto [tick, err] = parse_binance_aggtrade(data);
+      _ws_feed->timelog().at_parsed.mark();
+      _callbacks.on_trade(feed_sym, tick, _ws_feed->timelog());
     }
-    else
-      throw std::runtime_error("expected JSON object");
-
-    throw std::runtime_error(concat("message not handled: ",
-                                    std::string_view(buf, n)));
+    else if (msg_type == "bookTicker") {
+      auto [tick, err] = parse_bookticker(data);
+      if (!err) {
+        _ws_feed->timelog().at_parsed.mark();
+        _callbacks.on_top(feed_sym, tick, _ws_feed->timelog());
+      }
+    }
   }
-  catch (std::exception& e) {
-    LOG_WARN("process message failed, " << e.what()
-             << ", message: " << std::string_view(buf, n));
+  catch (simdjson::error_code ec) {
+    LOG_WARN("json parse error: " << simdjson::error_message(ec));
   }
-}
-
-void BinanceFeedHandler::process_bookticker(std::string_view feed_sym, json& msg)
-{
-  /* io-thread */
-
-  TickTop tick;
-
-  // tick.xt -- Binance doesn't have 'T' field
-  // tick.et  -- Binance doesn't have 'E' field
-  tick.ask_price = std::stod(get_string_field(msg, "a"));
-  tick.ask_qty = std::stod(get_string_field(msg, "A"));
-  tick.bid_price = std::stod(get_string_field(msg, "b"));
-  tick.bid_qty = std::stod(get_string_field(msg, "B"));
-
-  std::string tmp(feed_sym); // TODO: try replace all callbacks with string_view
-  _ws_feed->timelog().at_parsed.mark();
-  _callbacks.on_top(tmp, tick, _ws_feed->timelog());
-}
-
-
-void BinanceFeedHandler::process_aggtrade(std::string_view feed_sym, json& msg)
-{
-  /* io-thread */
-
-  TickTrade tick;
-
-  tick.xt = from_binance_timestamp(get_uint(msg, "T"));
-  tick.et = from_binance_timestamp(get_uint(msg, "E"));
-  tick.price = std::stod(get_string_field(msg, "p"));
-  tick.qty = std::stod(get_string_field(msg, "q"));
-  tick.side = buyer_market_maker_to_aggrSide(get_bool(msg, "m"));
-
-  _ws_feed->timelog().at_parsed.mark();
-  std::string tmp(feed_sym); // TODO: try replace all callbacks with string_view
-  _callbacks.on_trade(tmp, tick, _ws_feed->timelog());
 }
 
 
