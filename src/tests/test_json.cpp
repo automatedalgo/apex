@@ -18,7 +18,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include "quicktest.hpp"
 #include <simdjson/simdjson.h>
 #include <apex/venues/binance/binance_common.hpp>
-#include <websocketpp/message_buffer/message.hpp>
 
 #include <iostream>
 #include <string_view>
@@ -27,7 +26,6 @@ using namespace std;
 using namespace apex;
 using namespace simdjson;
 
-static_assert(simdjson::SIMDJSON_PADDING == WSCPP_SIMDJSON_PADDING);
 
 TEST_CASE("parse_bookticker")
 {
