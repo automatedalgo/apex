@@ -120,6 +120,8 @@ list(APPEND LIB_APEX_SRC_FILES
   "util/Time.hpp"
   "util/TimeLog.cpp"
   "util/TimeLog.hpp"
+  "util/RingBuffer.cpp"
+  "util/RingBuffer.hpp"
   "util/json.cpp"
   "util/json.hpp"
   "util/platform.cpp"
