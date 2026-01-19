@@ -107,7 +107,7 @@ TEST_CASE("parse_via_lookup")
 
     std::string_view ticker = stream.substr(0, pos);
     std::string_view msgtype = stream.substr(pos + 1);
-    REQUIRE(stream == "solusdt");
+    REQUIRE(ticker == "solusdt");
     REQUIRE(msgtype == "aggTrade");
 
     simdjson::ondemand::object data;
