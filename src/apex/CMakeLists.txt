@@ -80,8 +80,6 @@ list(APPEND LIB_APEX_SRC_FILES
   "infra/WebsocketClient.hpp"
   "infra/WebsocketProtocol.cpp"
   "infra/WebsocketProtocol.hpp"
-  "infra/WebsocketppImpl.cpp"
-  "infra/WebsocketppImpl.hpp"
   "infra/ssl.cpp"
   "infra/ssl.hpp"
   "model/Account.cpp"

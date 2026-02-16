@@ -29,16 +29,11 @@ namespace apex
 {
 
 class TcpSocket;
-class UvErr;
 class WebsocketProtocol;
-class protocol;
 class RealtimeEventLoop;
 class WebsocketClient;
 
-
-
 /* Utility function to synchronously establish a websocket */
-
 
 std::shared_ptr<WebsocketClient> connect_websocket(
   const std::string& addr, // eg, "wss://cryptoexchange.com/api"
@@ -61,12 +56,12 @@ public:
   using OnOpenCallback = std::function<void()>;
   using OnErrorCallback = std::function<void()>;
   using OnCloseCallback = std::function<void()>;
-  using MsgCallback = std::function<void(const char*, size_t)>;
+  using OnDataCallback = std::function<void(const char*, size_t)>;
 
   WebsocketClient(RealtimeEventLoop&,
                   std::unique_ptr<TcpSocket> sock,
                   std::string path,
-                  MsgCallback msg_cb,
+                  OnDataCallback on_data,
                   OnOpenCallback on_open,
                   OnCloseCallback on_close);
 
@@ -75,11 +70,8 @@ public:
   void send(std::string_view);
   void send(const char*, size_t);
   void send(const char*);
-  void send(const std::string&);
 
   bool is_open() const { return _is_open; }
-
-  void sync_close();
 
   void send_ping();
   void send_pong();
@@ -91,14 +83,10 @@ public:
   TimeLog& timelog() { return _socket->timelog(); }
 
 private:
-  void io_on_read(char* src, size_t len);
-
-  void io_on_error(int ec);
 
   RealtimeEventLoop& _event_loop;
   std::unique_ptr<TcpSocket> _socket;
-  WebsocketProtocol* _proto;
-  std::unique_ptr<protocol> new_proto;
+  WebsocketProtocol* _proto{};
   std::string _path;
   OnCloseCallback _on_close;
   bool _is_open;

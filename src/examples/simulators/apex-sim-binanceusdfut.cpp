@@ -18,7 +18,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/infra/Reactor.hpp>
 #include <apex/infra/TcpSocket.hpp>
 #include <apex/infra/WebsocketProtocol.hpp>
-#include <apex/infra/WebsocketppImpl.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
 #include <apex/util/json.hpp>
 #include <apex/core/Logger.hpp>
@@ -392,7 +391,7 @@ public:
     _sock->start_read([sockptr=_sock.get(), this](char* buf, ssize_t n) {
       /* io-thread */
       if (n > 0) {
-        this->_protocol->io_on_read(buf, n);
+        this->_protocol->on_read(buf, n);
       }
       else {
         LOG_ERROR("socket disconnected");

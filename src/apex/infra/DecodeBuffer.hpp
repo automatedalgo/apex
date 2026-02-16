@@ -24,8 +24,8 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-/* Represent a buffer of bytes that have been read off a socket and
- * are awaiting decode. */
+/* Represent a buffer of bytes that have been read off a socket and are awaiting
+ * decode. */
 class DecodeBuffer
 {
 public:
@@ -57,36 +57,40 @@ public:
     size_t _consumed;
   };
 
-  DecodeBuffer(size_t initial_size, size_t max_size);
+  DecodeBuffer(size_t initial_size, size_t max_size, size_t padding = 64);
 
-  /** size of data present in the buffer ready to be processed */
+  /* size of data present in the buffer ready to be processed */
   size_t avail() const { return _bytes_avail; }
 
-  /** current space for new data */
-  size_t space() const { return _mem.size() - _bytes_avail; }
+  /* current space for new data */
+  size_t space() const { return buffer_size() - _bytes_avail; }
 
-  /** current DecodeBuffer capacity */
-  size_t capacity() const { return _mem.size(); }
-
-  /** pointer to data */
+  /* pointer to data */
   char* data() { return _mem.data(); }
 
-  /** copy in new bytes, growing internal space if necessary */
+  /* copy in new bytes, growing internal space if necessary */
   size_t consume(const char* src, size_t len);
 
-  /** obtain a read pointer */
+  /* obtain a read pointer */
   read_pointer read_ptr() { return {_mem.data(), _bytes_avail}; }
 
   void discard(const read_pointer&);
 
-  void update_max_size(size_t);
+  size_t pad_size() const { return _pad_size; }
+
+  void clear() { _bytes_avail = 0; }
+
+  /* current buffer capacity (this is the max data that can be held) */
+  size_t buffer_size() const { return _mem.size() - _pad_size;}
 
 private:
   void grow_by(size_t len);
+  void reset_padding();
 
+  size_t _bytes_avail;
   std::vector<char> _mem;
   size_t _max_size;
-  size_t _bytes_avail;
+  size_t _pad_size;
 };
 
 } // namespace apex
