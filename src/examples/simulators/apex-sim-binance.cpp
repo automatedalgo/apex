@@ -729,7 +729,7 @@ public:
     _sock->start_read([sockptr=_sock.get(), this](char* buf, ssize_t n) {
       /* io-thread */
       if (n > 0) {
-        this->_protocol->io_on_read(buf, n);
+        this->_protocol->on_read(buf, n);
       }
       else {
         LOG_ERROR("socket disconnected");

@@ -30,31 +30,7 @@ namespace apex
 {
 
 class HttpParser;
-class WebsocketppImpl;
-struct websocketpp_msg;
 class TcpSocket;
-
-
-enum class serialiser_type { none = 0x00, json = 0x01 };
-
-enum class protocol_type { none = 0x00, websocket = 0x01 };
-
-
-constexpr inline int operator&(int lhs, serialiser_type rhs)
-{
-  return lhs & static_cast<int>(rhs);
-}
-
-constexpr inline int operator|(serialiser_type lhs, serialiser_type rhs)
-{
-  return (int)(static_cast<int>(lhs) | static_cast<int>(rhs));
-}
-
-constexpr inline int operator|(protocol_type lhs, protocol_type rhs)
-{
-  return (int)(static_cast<int>(lhs) | static_cast<int>(rhs));
-}
-
 
 /** Exception thrown during IO processing of a new connection. This is an
  * unrecoverable error that prevents the correct construction of a protocol
@@ -66,23 +42,6 @@ class handshake_error : public std::runtime_error
 {
 public:
   explicit handshake_error(const std::string& msg)
-    : std::runtime_error(msg.c_str())
-  {
-  }
-};
-
-
-/** Exception thrown due to any sort of malformed protocol message.  Generally
- * this error is thrown when the peer has failed to respect the terms of the
- * message-level protocol. Some examples: missinng mandatory arguments in
- * messages; values that have incorrect primitive type or container type (eg an
- * object where an array was expected).  This exception can be thrown during
- * initial message processing on the IO thread, or later during deferred
- * processing on the EV thread.  Shall result in a connection drop. */
-class protocol_error : public std::runtime_error
-{
-public:
-  explicit protocol_error(const std::string& msg)
     : std::runtime_error(msg.c_str())
   {
   }
@@ -105,7 +64,6 @@ class protocol
 {
 public:
   struct options {
-    int serialisers; /* mask of enum serialiser_type bits */
 
     std::chrono::milliseconds ping_interval; /* 0 for no heartbeats */
 
@@ -120,8 +78,7 @@ public:
     int max_missed_pings;
 
     options()
-      : serialisers((int)serialiser_type::json),
-        ping_interval(protocol_constants::default_ping_interval_ms),
+      : ping_interval(protocol_constants::default_ping_interval_ms),
         pong_min_interval(protocol_constants::default_pong_min_interval_ms),
         max_missed_pings(protocol_constants::default_max_missed_pings)
     {
@@ -139,40 +96,18 @@ public:
   typedef std::function<void(const char*, size_t)> t_msg_cb;
   typedef std::function<void()> t_initiate_cb;
 
-  protocol(TcpSocket*, t_msg_cb, protocol_callbacks, connect_mode m,
-           size_t buf_initial_size = 1, size_t buf_max_size = 4096);
+  protocol(TcpSocket*, t_msg_cb, protocol_callbacks,
+           size_t buf_initial_size = 1, size_t buf_max_size = 65536);
 
   virtual ~protocol() = default;
-
-  /* Initiate the protocol closure handshake.  Returns false if the protocol
-   * state doesn't support closure handshake or if already closed, so allowing
-   * the caller to proceed with wamp session closure.  Otherwise returns true,
-   * to indicate that closure handshake will commence and will be completed
-   * later.  */
-  virtual bool initiate_close() = 0;
-
-  virtual void on_timer() {}
-
-  virtual void io_on_read(char*, size_t) = 0;
-
-  virtual void initiate(t_initiate_cb) = 0;
-
-  virtual const char* name() const = 0;
-
-  virtual void send_msg(const char*, size_t) = 0;
-
-  [[nodiscard]] connect_mode mode() const { return m_mode; }
 
 protected:
   std::string fd() const;
 
   TcpSocket* _socket; /* non owning */
-  t_msg_cb m_msg_processor;
+  t_msg_cb _on_data_cb;
   protocol_callbacks _callbacks;
-  DecodeBuffer m_buf;
-
-private:
-  connect_mode m_mode;
+  DecodeBuffer _buf;
 };
 
 
@@ -181,16 +116,13 @@ class WebsocketProtocol : public protocol
 public:
   struct options : public protocol::options {
 
-    /** Default serialiser for client initiated connection */
-    static const int default_client_serialiser = (int)serialiser_type::json;
-
-    explicit options(std::string __request_uri = "/")
+    explicit options(std::string request_uri = "/")
       : host_header(host_header_mode::automatic),
-        request_uri(std::move(__request_uri))
+        request_uri(std::move(request_uri))
     {
     }
 
-    /** Construct from a base class instance */
+    /* Construct from a base class instance */
     explicit options(const protocol::options& rhs)
       : protocol::options(rhs), host_header(host_header_mode::automatic)
     {
@@ -199,54 +131,47 @@ public:
     enum class host_header_mode { automatic = 0, custom, omit } host_header;
     std::string custom_host_header;
 
-    /** Value of the Request-URI to use in HTTP GET request */
+    /* Value of the Request-URI to use in HTTP GET request */
     std::string request_uri;
 
-    /** Additional HTTP headers to place in the GET request */
+    /* Additional HTTP headers to place in the GET request */
     std::vector<std::pair<std::string, std::string>> extra_headers;
   };
 
-  static constexpr const char* NAME = "websocket";
+  WebsocketProtocol(TcpSocket*,
+                    t_msg_cb,
+                    protocol::protocol_callbacks,
+                    connect_mode _mode,
+                    options);
 
-  static constexpr const int HEADER_SIZE = 4; /* "GET " */
-  static constexpr const char* MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+  // start & stop
+  void initiate(t_initiate_cb);
+  bool initiate_close();
 
-  static constexpr const char* WAMPV2_JSON_SUBPROTOCOL = "wamp.2.json";
+  // events into the protocol
+  void on_read(char* src, size_t len);
+  void on_timer();
 
-  static constexpr const char* RFC6455 = "13";
+  // send
+  void send_msg(const char*, size_t);
+  void send_ping();
+  void send_pong(std::string_view sv = {});
 
-  WebsocketProtocol(TcpSocket*, t_msg_cb, protocol::protocol_callbacks,
-                    connect_mode _mode, options);
-
-  bool initiate_close() override;
-  void on_timer() override;
-  void io_on_read(char*, size_t) override;
-  void initiate(t_initiate_cb) override;
-
-  [[nodiscard]] const char* name() const override { return NAME; }
-  void send_msg(const char*, size_t) override;
-
+  // state
   bool is_open() const { return _state == state::open; }
   bool is_opening() const { return _state == state::handling_http_request ||
       _state == state::handling_http_response; }
 
-  void send_ping();
-  void send_pong(const std::string& payload = {});
-
 private:
-  void process_frame_bytes(DecodeBuffer::read_pointer&);
+
+  uint64_t process_frame_bytes(DecodeBuffer::read_pointer&);
+  uint64_t process_http_request(DecodeBuffer::read_pointer&);
+  uint64_t process_http_response(DecodeBuffer::read_pointer&);
 
   const std::string& header_field(const char*) const;
 
-
-  static const char* to_header(serialiser_type);
-  static int to_opcode(serialiser_type);
-
-
   void send_close(uint16_t, const std::string&);
-  void send_impl(const websocketpp_msg&);
 
-  // TODO: add the mutex
   enum class state {
     invalid,
     handling_http_request,  // server
@@ -255,21 +180,13 @@ private:
     closing,
     closed,
   } _state = state::invalid;
-
-  t_initiate_cb _initiate_cb;
-
+  t_initiate_cb _on_open_cb;
   std::unique_ptr<HttpParser> _http_parser;
-
   options _options;
-
   std::string _expected_accept_key;
-
-  std::unique_ptr<WebsocketppImpl> _websock_impl;
-
   std::chrono::time_point<std::chrono::steady_clock> _last_pong;
-
   std::atomic<int> _missed_pings;
+  std::mt19937 _rng;
 };
-
 
 } // namespace apex
