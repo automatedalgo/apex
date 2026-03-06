@@ -17,7 +17,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/core/BacktestService.hpp>
 #include <apex/core/GatewayService.hpp>
-#include <apex/core/TimeLogService.hpp>
+#include <apex/core/LiteMem.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/core/MarketDataService.hpp>
 #include <apex/core/OrderRouterService.hpp>
@@ -25,6 +25,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/core/PersistenceService.hpp>
 #include <apex/core/RefDataService.hpp>
 #include <apex/core/Services.hpp>
+#include <apex/core/TimeLogService.hpp>
 #include <apex/core/version.hpp>
 #include <apex/infra/Reactor.hpp>
 #include <apex/infra/ssl.hpp>
@@ -180,6 +181,28 @@ static Time calc_startup_time(RunMode run_mode,
 }
 
 
+LiteMem ssh_mem_alloc{102400};
+
+void* my_malloc(size_t size,
+                const char * file,
+                int line) {
+  LOG_INFO("ssh-alloc request, n: "<< size
+           << ", from " << file << ":" << line);
+  return ssh_mem_alloc.alloc(size);
+}
+
+void* my_realloc(void* ptr, size_t size,
+                const char * ,
+                int ) {
+  //LOG_INFO("realloc request for " << size);
+  return ssh_mem_alloc.realloc(ptr, size);
+}
+
+void my_free(void* ptr, const char *, int ) {
+  //LOG_INFO("free request, p: " << ptr);
+  return ssh_mem_alloc.free(ptr);
+}
+
 Services::Services(const SerivcesConfig& config)
   : _run_mode(parse_run_mode(config.run_mode)),
     _backtest_period(BacktestPeriod{}),
@@ -189,6 +212,11 @@ Services::Services(const SerivcesConfig& config)
     _evloop(construct_event_loop(_run_mode, _backtest_period.from)),
     _bt_evloop(dynamic_cast<BacktestEventLoop*>(_evloop.get()))
 {
+  // Hook OpenSSL memory functions
+   // if (!CRYPTO_set_mem_functions(my_malloc, my_realloc, my_free)) {
+   //   throw std::runtime_error("Failed to set custom OpenSSL allocators");
+   // }
+
   apex::SslConfig sslconf(true);
   _ssl = std::make_unique<apex::SslContext>(sslconf);
 }
