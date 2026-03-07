@@ -19,7 +19,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/util/TimeLog.hpp>
 #include <apex/util/Config.hpp>
-#include <apex/infra/ReactorConfig.hpp>
+#include <apex/net/ReactorConfig.hpp>
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -20,7 +20,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/util/Config.hpp>
 #include <apex/util/Time.hpp>
 #include <apex/core/common.hpp>
-#include <apex/infra/ReactorConfig.hpp>
+#include <apex/net/ReactorConfig.hpp>
 
 #include <memory>
 #include <filesystem>

@@ -17,8 +17,8 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <apex/infra/DecodeBuffer.hpp>
-#include <apex/infra/HttpParser.hpp>
+#include <apex/net/DecodeBuffer.hpp>
+#include <apex/net/HttpParser.hpp>
 #include <apex/core/common.hpp>
 
 #include <atomic>

@@ -20,8 +20,8 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/core/Services.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
 #include <apex/model/tick_msgs.hpp>
-#include <apex/infra/WebsocketClient.hpp>
-#include <apex/infra/ssl.hpp>
+#include <apex/net/WebsocketClient.hpp>
+#include <apex/net/ssl.hpp>
 
 #include <curl/curl.h>
 

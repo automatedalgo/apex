@@ -15,10 +15,10 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/infra/SslSocket.hpp>
-#include <apex/infra/TcpConnector.hpp>
+#include <apex/net/SslSocket.hpp>
+#include <apex/net/TcpConnector.hpp>
 #include <apex/core/Logger.hpp>
-#include <apex/infra/ssl.hpp>
+#include <apex/net/ssl.hpp>
 #include <apex/util/utils.hpp>
 
 #include <cassert>

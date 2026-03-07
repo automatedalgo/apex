@@ -17,10 +17,10 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include "quicktest.hpp"
 
-#include <apex/infra/SslSocket.hpp>
-#include <apex/infra/TcpConnector.hpp>
-#include <apex/infra/TcpSocket.hpp>
-#include <apex/infra/ssl.hpp>
+#include <apex/net/SslSocket.hpp>
+#include <apex/net/TcpConnector.hpp>
+#include <apex/net/TcpSocket.hpp>
+#include <apex/net/ssl.hpp>
 
 #include <iostream>
 #include <future>

@@ -17,7 +17,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/core/Logger.hpp>
 #include <apex/core/Services.hpp>
-#include <apex/infra/WebsocketClient.hpp>
+#include <apex/net/WebsocketClient.hpp>
 #include <apex/util/JsonWriter.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
 #include <apex/venues/binance/BinanceLineHandler.hpp>

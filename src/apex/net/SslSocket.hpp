@@ -17,7 +17,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <apex/infra/TcpSocket.hpp>
+#include <apex/net/TcpSocket.hpp>
 
 #include <list>
 

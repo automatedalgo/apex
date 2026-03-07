@@ -26,8 +26,8 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/core/RefDataService.hpp>
 #include <apex/core/Services.hpp>
 #include <apex/core/version.hpp>
-#include <apex/infra/Reactor.hpp>
-#include <apex/infra/ssl.hpp>
+#include <apex/net/Reactor.hpp>
+#include <apex/net/ssl.hpp>
 #include <apex/util/BacktestEventLoop.hpp>
 #include <apex/util/Config.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>

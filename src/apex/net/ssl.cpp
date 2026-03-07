@@ -15,7 +15,7 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/infra/ssl.hpp>
+#include <apex/net/ssl.hpp>
 #include <apex/core/Logger.hpp>
 
 namespace apex

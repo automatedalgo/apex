@@ -15,7 +15,7 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/infra/WebsocketClient.hpp>
+#include <apex/net/WebsocketClient.hpp>
 #include <apex/venues/venues_common.hpp>
 #include <apex/core/Services.hpp>
 #include <apex/util/EventLoop.hpp>

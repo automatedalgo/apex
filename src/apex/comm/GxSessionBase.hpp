@@ -18,10 +18,10 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
 #include <apex/comm/GxWireFormat.pb.h>
-#include <apex/infra/DecodeBuffer.hpp>
+#include <apex/net/DecodeBuffer.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
-#include <apex/infra/Reactor.hpp>
-#include <apex/infra/TcpSocket.hpp>
+#include <apex/net/Reactor.hpp>
+#include <apex/net/TcpSocket.hpp>
 #include <apex/core/Logger.hpp>
 
 #include <memory>

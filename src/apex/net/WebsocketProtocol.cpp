@@ -15,9 +15,9 @@
    with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/infra/WebsocketProtocol.hpp>
-#include <apex/infra/HttpParser.hpp>
-#include <apex/infra/TcpSocket.hpp>
+#include <apex/net/WebsocketProtocol.hpp>
+#include <apex/net/HttpParser.hpp>
+#include <apex/net/TcpSocket.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/util/platform.hpp>
 #include <apex/util/utils.hpp>

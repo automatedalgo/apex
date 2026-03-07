@@ -20,7 +20,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/model/MarketData.hpp>
 #include <apex/model/Order.hpp>
 #include <apex/core/OrderService.hpp>
-#include <apex/infra/TcpSocket.hpp>
+#include <apex/net/TcpSocket.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/util/TimeLog.hpp>
 

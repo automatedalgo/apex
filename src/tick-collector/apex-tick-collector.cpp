@@ -20,7 +20,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/core/Logger.hpp>
 #include <apex/core/RefDataService.hpp>
 #include <apex/core/Services.hpp>
-#include <apex/infra/Reactor.hpp>
+#include <apex/net/Reactor.hpp>
 #include <apex/util/Config.hpp>
 #include <apex/util/Error.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>

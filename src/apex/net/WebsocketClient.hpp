@@ -17,9 +17,9 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <apex/infra/SslSocket.hpp>
-#include <apex/infra/TcpSocket.hpp>
-#include <apex/infra/WebsocketProtocol.hpp>
+#include <apex/net/SslSocket.hpp>
+#include <apex/net/TcpSocket.hpp>
+#include <apex/net/WebsocketProtocol.hpp>
 
 #include <functional>
 #include <iostream>

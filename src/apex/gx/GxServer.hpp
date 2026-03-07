@@ -20,7 +20,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/gx/ExchangeSession.hpp>
 #include <apex/model/MarketData.hpp>
 #include <apex/comm/GxServerSession.hpp>
-#include <apex/infra/ssl.hpp>
+#include <apex/net/ssl.hpp>
 
 #include <memory>
 #include <utility>

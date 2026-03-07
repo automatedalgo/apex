@@ -15,7 +15,7 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/infra/DecodeBuffer.hpp>
+#include <apex/net/DecodeBuffer.hpp>
 
 #include <cstring>
 #include <stdexcept>

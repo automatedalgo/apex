@@ -17,7 +17,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <apex/infra/Reactor.hpp>
+#include <apex/net/Reactor.hpp>
 
 #include <future>
 #include <iostream>
