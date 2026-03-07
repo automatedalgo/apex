@@ -19,7 +19,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/net/DecodeBuffer.hpp>
 #include <apex/net/HttpParser.hpp>
-#include <apex/core/common.hpp>
+#include <apex/net/common.hpp>
 
 #include <atomic>
 #include <chrono>

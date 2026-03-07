@@ -17,33 +17,11 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <ostream>
-#include <string>
-
 namespace apex
 {
 
-enum class RunMode {
-  paper = 1,     // paper trading
-  live = 2,      // live trading
-  backtest = 3   // backtest
-};
+/* The connection mode of a socket or connection */
+enum class connect_mode { connect, accept };
 
-inline const char* to_string(RunMode m)
-{
-  switch (m) {
-    case RunMode::paper:
-      return "paper";
-    case RunMode::live:
-      return "live";
-    case RunMode::backtest:
-      return "backtest";
-    default:
-      return "invalid";
-  }
-}
-
-std::ostream& operator<<(std::ostream&, RunMode);
-RunMode parse_run_mode(std::string_view s);
 
 } // namepace

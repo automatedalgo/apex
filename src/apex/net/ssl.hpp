@@ -17,8 +17,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <apex/core/common.hpp>
-
+#include <apex/net/common.hpp>
 
 #include <openssl/bio.h>
 #include <openssl/err.h>

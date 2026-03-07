@@ -61,6 +61,7 @@ list(APPEND LIB_APEX_SRC_FILES
   "gx/ExchangeSession.hpp"
   "gx/GxServer.cpp"
   "gx/GxServer.hpp"
+  "net/common.hpp"
   "net/DecodeBuffer.cpp"
   "net/DecodeBuffer.hpp"
   "net/HttpParser.cpp"
