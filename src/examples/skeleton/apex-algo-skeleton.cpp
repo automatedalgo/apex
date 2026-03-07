@@ -18,7 +18,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/model/Account.hpp>
 #include <apex/core/Bot.hpp>
 #include <apex/util/Config.hpp>
-#include <apex/comm/GxClientSession.hpp>
+#include <apex/core/Logger.hpp>
 #include <apex/core/OrderRouter.hpp>
 #include <apex/model/Order.hpp>
 #include <apex/core/Services.hpp>

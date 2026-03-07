@@ -19,7 +19,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/core/Bot.hpp>
 #include <apex/util/Config.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
-#include <apex/comm/GxClientSession.hpp>
+#include <apex/core/Logger.hpp>
 #include <apex/core/OrderRouter.hpp>
 #include <apex/core/Services.hpp>
 #include <apex/core/Strategy.hpp>

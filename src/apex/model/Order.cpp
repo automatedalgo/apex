@@ -16,7 +16,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <apex/model/Order.hpp>
-#include <apex/comm/GxClientSession.hpp>
+#include <apex/core/Logger.hpp>
 #include <apex/core/OrderRouter.hpp>
 #include <apex/core/Services.hpp>
 #include <apex/util/Error.hpp>

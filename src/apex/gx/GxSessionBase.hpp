@@ -17,7 +17,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <apex/comm/GxWireFormat.pb.h>
+#include <apex/gx/GxWireFormat.pb.h>
 #include <apex/net/DecodeBuffer.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
 #include <apex/net/Reactor.hpp>

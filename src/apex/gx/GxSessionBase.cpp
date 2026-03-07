@@ -15,7 +15,7 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/comm/GxSessionBase.hpp>
+#include <apex/gx/GxSessionBase.hpp>
 
 namespace apex
 {

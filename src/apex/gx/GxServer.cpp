@@ -17,7 +17,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/gx/GxServer.hpp>
 
-#include <apex/comm/GxServerSession.hpp>
+#include <apex/gx/GxServerSession.hpp>
 #include <apex/core/Errors.hpp>
 #include <apex/util/TimeLog.hpp>
 #include <apex/model/StrategyId.hpp>

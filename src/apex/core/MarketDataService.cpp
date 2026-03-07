@@ -15,7 +15,7 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/comm/GxClientSession.hpp>
+#include <apex/gx/GxClientSession.hpp>
 #include <apex/core/BacktestService.hpp>
 #include <apex/core/GatewayService.hpp>
 #include <apex/core/Logger.hpp>

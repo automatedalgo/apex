@@ -17,7 +17,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/core/GatewayService.hpp>
 #include <apex/util/Config.hpp>
-#include <apex/comm/GxClientSession.hpp>
+#include <apex/gx/GxClientSession.hpp>
 #include <apex/core/Services.hpp>
 
 namespace apex
