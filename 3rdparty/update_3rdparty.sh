@@ -11,23 +11,6 @@
 set -eu
 
 ##
-## websocketpp
-##
-
-websocketpp_ver=0.7.0
-echo '***' fetching websocketpp_ver $websocketpp_ver '***'
-echo
-tarfile=websocketpp-${websocketpp_ver}.tar.gz
-test -f $tarfile || wget https://github.com/zaphoyd/websocketpp/archive/${websocketpp_ver}.tar.gz  -O $tarfile
-
-if [ -f ${tarfile} ]; then
-    tar xfz  ${tarfile}   --transform "s/^websocketpp-${websocketpp_ver}/websocketpp/"
-else
-  echo failed to download websocketpp ... please try manually
-fi
-
-
-##
 ## msgpack
 ##
 
