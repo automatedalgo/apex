@@ -19,7 +19,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/model/ExchangeId.hpp>
 #include <apex/model/Order.hpp>
-#include <apex/core/common.hpp>
+#include <apex/core/RunMode.hpp>
 #include <apex/core/OrderRouter.hpp>
 
 
