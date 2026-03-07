@@ -24,7 +24,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/core/Services.hpp>
 #include <apex/core/Strategy.hpp>
 #include <apex/core/StrategyMain.hpp>
-#include <apex/demo/DemoMakerBot.hpp>
+#include "DemoMakerBot.hpp"
 
 
 #include <memory>

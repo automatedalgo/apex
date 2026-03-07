@@ -15,7 +15,7 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/demo/DemoMakerBot.hpp>
+#include "DemoMakerBot.hpp"
 
 #include <apex/core/Logger.hpp>
 #include <apex/core/Services.hpp>

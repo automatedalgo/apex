@@ -58,8 +58,6 @@ list(APPEND LIB_APEX_SRC_FILES
   "core/TimeLogService.hpp"
   "core/common.cpp"
   "core/common.hpp"
-  "demo/DemoMakerBot.cpp"
-  "demo/DemoMakerBot.hpp"
   "gx/ExchangeSession.hpp"
   "gx/GxServer.cpp"
   "gx/GxServer.hpp"
