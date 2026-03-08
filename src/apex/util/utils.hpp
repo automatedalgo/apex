@@ -23,8 +23,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <mutex>
 #include <string>
 #include <optional>
-
-#include <math.h>
+#include <cmath>
 
 #ifndef STRINGIFY
 #define STRINGIFY(n) STRINGIFY_HELPER(n)

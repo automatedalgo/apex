@@ -17,10 +17,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
-namespace apex
-{
-
-namespace error
+namespace apex::error
 {
 
 // internal reject, no exchange
@@ -44,6 +41,5 @@ inline const char* const e0200 = "e0200";
 // GX logon reject
 inline const char* const e0201 = "e0201";
 
+} // namespace apex::error
 
-} // namespace error
-} // namespace apex

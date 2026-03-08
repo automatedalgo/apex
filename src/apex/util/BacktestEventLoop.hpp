@@ -31,7 +31,7 @@ public:
   virtual Time get_next_event_time() = 0;
   virtual void consume_next_event() = 0;
   virtual void init_backtest_time_range(Time start, Time end) = 0;
-  virtual ~BacktestEventSource() {}
+  virtual ~BacktestEventSource() = default;
 };
 
 
@@ -39,7 +39,7 @@ class BacktestEventLoop : public EventLoop
 {
 public:
   explicit BacktestEventLoop(Time backtest_time_start);
-  ~BacktestEventLoop();
+  ~BacktestEventLoop() override;
 
   void dispatch(std::function<void()> fn) override;
   void dispatch(std::chrono::milliseconds interval,

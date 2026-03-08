@@ -20,7 +20,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 /* Utility class to track memory allocations used within a scope.  Works by
- * overridding new operator, so generally don't use this for normal production
+ * overriding new operator, so generally don't use this for normal production
  * builds, because it slows down memory access for entire program.
  */
 class AllocTracker {

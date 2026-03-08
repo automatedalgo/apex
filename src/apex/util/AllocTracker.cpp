@@ -212,6 +212,6 @@ AllocTracker::~AllocTracker() {
 namespace apex
 {
 AllocTracker::AllocTracker(const char*, bool): _id(0){}
-AllocTracker::~AllocTracker() {}
+AllocTracker::~AllocTracker() = default;
 }
 #endif

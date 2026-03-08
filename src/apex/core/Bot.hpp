@@ -49,7 +49,7 @@ public:
   [[nodiscard]] bool has_pending_orders() const { return !_pending_orders.empty(); }
 
 
-  void add_new_order(std::shared_ptr<apex::Order> order)
+  void add_new_order(const std::shared_ptr<apex::Order> & order)
   {
     auto wp = order->weak_from_this();
     _pending_orders.insert(order);
