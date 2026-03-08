@@ -15,14 +15,14 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <apex/core/Core.hpp>
 #include <apex/core/Logger.hpp>
-#include <apex/core/Services.hpp>
-#include <apex/net/WebsocketClient.hpp>
 #include <apex/model/tick_msgs.hpp>
+#include <apex/net/WebsocketClient.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
+#include <apex/util/TimeLog.hpp>
 #include <apex/venues/binance/BinanceUsdFutFeedHandler.hpp>
 #include <apex/venues/binance/binance_common.hpp>
-#include <apex/util/TimeLog.hpp>
 #include <simdjson/simdjson.h>
 
 #define BINANCE_SPOT_SUBSCRIBE_DELAY_MILLISEC 300
@@ -33,13 +33,14 @@ struct BinanceUsdFutFeedHandler::ParserImpl {
   simdjson::ondemand::parser parser;
 };
 
-BinanceUsdFutFeedHandler::BinanceUsdFutFeedHandler(Services* services,
-                                                   RunMode run_mode,
-                                                   Reactor* reactor,
-                                                   RealtimeEventLoop* event_loop,
-                                                   FeedHandlerCallbacks callbacks)
+BinanceUsdFutFeedHandler::BinanceUsdFutFeedHandler(
+  Core* core,
+  RunMode run_mode,
+  Reactor* reactor,
+  RealtimeEventLoop* event_loop,
+  FeedHandlerCallbacks callbacks)
   : FeedHandlerImpl(ExchangeId::binance_usdfut,
-                    services,
+                    core,
                     run_mode, reactor,
                     event_loop),
     _callbacks(std::move(callbacks)),
@@ -47,7 +48,7 @@ BinanceUsdFutFeedHandler::BinanceUsdFutFeedHandler(Services* services,
 {
   _callbacks.assert_all_defined();
 
-  if (auto mcap = _services->message_capture_service()) {
+  if (auto mcap = _core->message_capture_service()) {
     std::tie(_ws_msgcap_id_in, _ws_msgcap_id_out)
       = mcap->register_stream_id_pair("binanceusdfut-feed");
   }
@@ -143,7 +144,7 @@ void BinanceUsdFutFeedHandler::do_subscriptions()
       if (!sub.second.active) {
         std::string request = sub.second.request;
         LOG_INFO("sending subscription: " << request);
-        if (auto mcap = _services->message_capture_service()) {
+        if (auto mcap = _core->message_capture_service()) {
           mcap->push_event(_ws_msgcap_id_out, request);
         }
         usleep(BINANCE_SPOT_SUBSCRIBE_DELAY_MILLISEC * 1000);
@@ -171,7 +172,7 @@ void BinanceUsdFutFeedHandler::manage_connection()
     _feed_url,
     "binance-ufut-mktdata",
     _reactor,
-    _services->ssl(),
+    _core->ssl(),
     _event_loop,  // TODO: why is this needed?
     [this](const char* buf, size_t n){ this->process_raw_message(buf, n); });
 

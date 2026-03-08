@@ -99,19 +99,19 @@ class FeedHandlerImpl : public std::enable_shared_from_this<T>,
 {
 public:
   FeedHandlerImpl(ExchangeId exchange_id,
-                  Services* services,
+                  Core* core,
                   RunMode run_mode,
                   Reactor* reactor,
                   RealtimeEventLoop* event_loop)
     : FeedHandler(exchange_id, run_mode),
-      _services(services),
+      _core(core),
       _reactor(reactor),
       _event_loop(event_loop)
   {
   }
 
 protected:
-  Services* _services;
+  Core* _core;
   Reactor* _reactor;
   RealtimeEventLoop* _event_loop;
 };
@@ -132,14 +132,14 @@ class OrderRouterAdapterImpl : public OrderRouter
 {
 public:
 
-  OrderRouterAdapterImpl(Services* services)
-    :  _services(services) {
+  OrderRouterAdapterImpl(Core* core)
+    :  _core(core) {
   }
 
   void check_is_up(Order& order);
 
 protected:
-  Services* _services;
+  Core* _core;
 };
 
 
@@ -147,9 +147,9 @@ template<typename T>
 class OrderRouterAdapter : public OrderRouterAdapterImpl
 {
 public:
-  OrderRouterAdapter(Services* services,
+  OrderRouterAdapter(Core* core,
                      std::shared_ptr< T > lh)
-    :OrderRouterAdapterImpl(services),
+    :OrderRouterAdapterImpl(core),
     _lh(std::move(lh))
   {
   }

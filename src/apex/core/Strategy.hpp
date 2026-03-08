@@ -17,10 +17,10 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <apex/core/Services.hpp>
+#include <apex/core/Core.hpp>
 #include <apex/core/RefDataService.hpp>
-#include <apex/util/Config.hpp>
 #include <apex/model/StrategyId.hpp>
+#include <apex/util/Config.hpp>
 
 #include <map>
 #include <set>
@@ -36,11 +36,11 @@ class Auditor;
 class Strategy
 {
 public:
-  Strategy(apex::Services* services, Config config);
+  Strategy(apex::Core*, Config);
 
-  Strategy(apex::Services* services, std::string strategy_id);
+  Strategy(apex::Core*, std::string strategy_id);
 
-  Strategy(std::unique_ptr<apex::Services>& services, std::string strategy_id);
+  Strategy(std::unique_ptr<apex::Core>&, std::string strategy_id);
 
   virtual Bot* construct_bot(const Instrument&)
   {
@@ -62,7 +62,7 @@ public:
 
   template<typename T>
   void create_bot(const InstrumentQuery& query) {
-    auto & instrument = _services->ref_data_service()->get_instrument(query);
+    auto & instrument = _core->ref_data_service()->get_instrument(query);
     auto bot = std::make_unique<T>(this, instrument);
     this->add_bot(std::move(bot));
   }
@@ -71,7 +71,7 @@ public:
 
   const std::string& strategy_id() { return _strategy_id; }
 
-  Services* services() { return _services; }
+  Core* core() { return _core; }
 
   Auditor* auditor() { return _auditor.get(); }
 
@@ -79,7 +79,7 @@ protected:
   std::set<std::string> parse_flat_instruments_config();
   void stop_bots();
 
-  Services* _services;
+  Core* _core;
   Config _config;
   std::string _strategy_id;
   std::map<apex::Instrument, std::unique_ptr<Bot>> _bots;

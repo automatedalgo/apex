@@ -26,20 +26,20 @@ namespace apex
 {
 
 class GxClientSession;
-class Services;
+class Core;
 class Config;
 
 class GatewayService
 {
 public:
-  GatewayService(Services*, Config);
+  GatewayService(Core*, Config);
   std::shared_ptr<GxClientSession> find_session(ExchangeId);
 
   void set_default_gateway(std::string port);
   void set_default_gateway(int port);
 
 private:
-  Services* _services;
+  Core* _core;
   std::map<ExchangeId, std::shared_ptr<GxClientSession>> _sessions;
   std::shared_ptr<GxClientSession> _default_session;
 };

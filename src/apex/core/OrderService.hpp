@@ -28,7 +28,7 @@ namespace apex
 {
 class OrderRouter;
 class Order;
-class Services;
+class Core;
 class ClientOrderIdGenerator;
 class FullUniqueOrderIdGenerator;
 
@@ -36,7 +36,7 @@ class FullUniqueOrderIdGenerator;
 class OrderService
 {
 public:
-  explicit OrderService(Services*);
+  explicit OrderService(Core*);
   ~OrderService();
 
   std::shared_ptr<Order> create(
@@ -61,7 +61,7 @@ private:
 
   using ExchOrderKey = std::pair<ExchangeId, std::string>;
 
-  Services* _services;
+  Core* _core;
   std::unique_ptr<FullUniqueOrderIdGenerator> _order_id_src;
   std::map<std::string, std::shared_ptr<Order>> _orders;
   std::map<ExchOrderKey, std::shared_ptr<Order>> _orders_by_exch_order_id;

@@ -120,12 +120,12 @@ int main()
     apex::Time upto{"2024-01-31"};
 
     // create core engine, configured for backtest
-    auto services = apex::Services::create(apex::RunMode::backtest, {from, upto});
+    auto core = apex::Core::create(apex::RunMode::backtest, {from, upto});
 
     // ----- Strategy -----
 
     // create a Strategy object, which is a container for individual Bots
-    apex::Strategy strategy(services, "QUOTE");
+    apex::Strategy strategy(core, "QUOTE");
 
     // add a bot to the strategy, responsible for trading a single name
     strategy.create_bot<SingleOrderBot>(
@@ -136,7 +136,7 @@ int main()
 
 
     // run until backtest range completed
-    services->run();
+    core->run();
   } catch (std::exception& e) {
     std::cout << "error: " << e.what() << std::endl;
     return 1;

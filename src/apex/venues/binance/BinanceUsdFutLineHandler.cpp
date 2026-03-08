@@ -15,8 +15,8 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <apex/core/Core.hpp>
 #include <apex/core/Logger.hpp>
-#include <apex/core/Services.hpp>
 #include <apex/net/WebsocketClient.hpp>
 #include <apex/util/JsonWriter.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
@@ -69,21 +69,22 @@ static std::string sign_message(const std::string& payload,
 
 
 
-BinanceUsdFutLineHandler::BinanceUsdFutLineHandler(Services * services,
-                                                   Reactor* reactor,
-                                                   RealtimeEventLoop* event_loop,
-                                                   LineHandlerCallbacks callbacks,
-                                                   OrderRouterConfig config)
-  : _services(services),
+BinanceUsdFutLineHandler::BinanceUsdFutLineHandler(
+  Core* core,
+  Reactor* reactor,
+  RealtimeEventLoop* event_loop,
+  LineHandlerCallbacks callbacks,
+  OrderRouterConfig config)
+  : _core(core),
     _event_loop(event_loop),
     _reactor(reactor),
-    _ssl(_services->ssl()),
+    _ssl(_core->ssl()),
     _callbacks(callbacks),
     _config(config)
 {
   _callbacks.assert_all_defined();
 
-  assert(!services->is_backtest());
+  assert(!_core->is_backtest());
 
   // TODO: allow these to come from config
   _line_url = "wss://ws-fapi.binance.com:443/ws-fapi/v1?returnRateLimits=false";
@@ -103,7 +104,7 @@ BinanceUsdFutLineHandler::BinanceUsdFutLineHandler(Services * services,
     _apikey = "sErnzoWaTESThtDlKTHISISATESTfWppp7t34vOOszl8wNTEST3feMyGv5SjSsLv";
   }
 
-  if (auto mcap = _services->message_capture_service()) {
+  if (auto mcap = _core->message_capture_service()) {
 
     std::tie(_ws_line_msgcap_id_in, _ws_line_msgcap_id_out)
       = mcap->register_stream_id_pair("binance-ufut-line");
@@ -139,7 +140,7 @@ void BinanceUsdFutLineHandler::subscribe_user_stream(std::string listenkey)
         << R"("],"id":"user_stream_sub"})";
 
     auto msg = oss.str();
-    if (auto mcap = _services->message_capture_service()) {
+    if (auto mcap = _core->message_capture_service()) {
       mcap->push_event(_ws_feed_msgcap_id_out, msg);
     }
     _ws_feed ->send(msg);
@@ -207,7 +208,7 @@ void BinanceUsdFutLineHandler::process_trade_lite(json& msg)
 
 void BinanceUsdFutLineHandler::on_feed_message(const char* buf, size_t len)
 {
-  if (auto mcap = _services->message_capture_service()) {
+  if (auto mcap = _core->message_capture_service()) {
     mcap->push_event(_ws_feed_msgcap_id_in, std::string_view(buf, len));
   }
 
@@ -327,7 +328,7 @@ void BinanceUsdFutLineHandler::on_line_message(const char* buf, size_t len)
   // This function receives Binance order responses, such as new-order-ack,
   // cancel-order-ack, and so on.
 
-  if (auto mcap = _services->message_capture_service())
+  if (auto mcap = _core->message_capture_service())
     mcap->push_event(_ws_line_msgcap_id_in, std::string_view(buf, len));
 
   try {
@@ -436,7 +437,7 @@ void BinanceUsdFutLineHandler::manage_connection()
                         signature,
                         R"("}})");
 
-      if (auto mcap = _services->message_capture_service())
+      if (auto mcap = _core->message_capture_service())
         mcap->push_event(_ws_line_msgcap_id_out, msg);
       _ws_line->send(msg);
     }
@@ -495,7 +496,7 @@ void BinanceUsdFutLineHandler::submit_order(OrderParams order)
     }
 
     std::string_view sv ( jw );
-    if (auto mcap = _services->message_capture_service())
+    if (auto mcap = _core->message_capture_service())
       mcap->push_event(_ws_line_msgcap_id_out, sv);
     _ws_line->send(sv);
   } else {
@@ -528,7 +529,7 @@ void BinanceUsdFutLineHandler::cancel_order(const MxCancelOrder& msg)
     params["orderId"] = std::stoul(msg.exch_order_id);
     jm["params"] = std::move(params);
     auto msg = jm.dump();
-    if (auto mcap = _services->message_capture_service())
+    if (auto mcap = _core->message_capture_service())
       mcap->push_event(_ws_line_msgcap_id_out, msg);
     _ws_line->send(msg);
   }
@@ -565,7 +566,7 @@ void BinanceUsdFutLineHandler::initiate_user_stream()
       << R"("}})";
 
   auto msg = oss.str();
-  if (auto mcap = _services->message_capture_service())
+  if (auto mcap = _core->message_capture_service())
     mcap->push_event(_ws_line_msgcap_id_out, msg);
   _ws_line->send(msg);
 }
@@ -590,7 +591,7 @@ void BinanceUsdFutLineHandler::user_stream_keepalive()
                       _apikey,
                       R"("}})");
 
-  if (auto mcap = _services->message_capture_service())
+  if (auto mcap = _core->message_capture_service())
     mcap->push_event(_ws_line_msgcap_id_out, msg);
   _ws_line->send(msg);
   }
@@ -619,7 +620,7 @@ std::unique_ptr<OrderRouter> BinanceUsdFutLineHandler::get_order_router_adapter(
 
 {
   auto router = std::make_unique<OrderRouterAdapter<BinanceUsdFutLineHandler>>(
-    _services, shared_from_this());
+    _core, shared_from_this());
 
   return router;
 }

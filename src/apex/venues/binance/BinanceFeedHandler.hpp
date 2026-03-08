@@ -27,11 +27,11 @@ class WebsocketClient;
 class BinanceFeedHandler : public FeedHandlerImpl<BinanceFeedHandler>
 {
 public:
-  BinanceFeedHandler(Services* services,
-                           RunMode run_mode,
-                           Reactor* reactor,
-                           RealtimeEventLoop* event_loop,
-                           FeedHandlerCallbacks);
+  BinanceFeedHandler(Core* core,
+                     RunMode run_mode,
+                     Reactor* reactor,
+                     RealtimeEventLoop* event_loop,
+                     FeedHandlerCallbacks);
   ~BinanceFeedHandler();
 
   void start() override;

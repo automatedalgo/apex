@@ -24,7 +24,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-class Services;
+class Core;
 class Config;
 
 
@@ -70,7 +70,7 @@ struct InstrumentQuery {
 class RefDataService
 {
 public:
-  RefDataService(Services*, Config);
+  RefDataService(Core*, Config);
 
   Asset& get_asset(const std::string& symbol);
 
@@ -95,7 +95,7 @@ private:
                               const std::string& symbol,
                               const std::string& precision);
 
-  Services* _services;
+  Core* _core;
 
   std::map<std::string, Instrument> _instruments;
   std::map<std::string, Asset> _assets;

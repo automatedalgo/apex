@@ -30,7 +30,7 @@ namespace apex
 {
 
 
-class Services;
+class Core;
 class Instrument;
 class MarketData;
 class BacktestService;
@@ -42,7 +42,7 @@ class SimOrderBook;
 class SimExchange : public OrderRouter
 {
 public:
-  SimExchange(Services*);
+  SimExchange(Core*);
 
   ~SimExchange() override;
 
@@ -54,7 +54,7 @@ public:
 
 private:
   using ExtOrderId = std::string;
-  Services* _services;
+  Core* _core;
   std::map<ExtOrderId, std::shared_ptr<SimLimitOrder>> _all_orders;
   std::map<Instrument, std::unique_ptr<SimOrderBook>> _books;
 };

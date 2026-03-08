@@ -34,7 +34,7 @@ int main()
     Logger::instance().set_level(Logger::info);
 
     // create core engine, configured for paper or live trading
-    auto services = Services::create(RunMode::paper);
+    auto core = Core::create(RunMode::paper);
 
     // list of our feed handers
     std::list<std::shared_ptr<FeedHandler>> feeds;
@@ -64,10 +64,10 @@ int main()
     if (1)
     {
       auto feed_handler = std::make_shared<BinanceFeedHandler>(
-        services.get(),
-        services->run_mode(),
-        services->reactor(),
-        services->realtime_evloop(),
+        core.get(),
+        core->run_mode(),
+        core->reactor(),
+        core->realtime_evloop(),
         callbacks
         );
       feed_handler->subscribe_trades("btcusdt");
@@ -83,10 +83,10 @@ int main()
     if (0)
     {
       auto feed_handler = std::make_shared<BinanceUsdFutFeedHandler>(
-        services.get(),
-        services->run_mode(),
-        services->reactor(),
-        services->realtime_evloop(),
+        core.get(),
+        core->run_mode(),
+        core->reactor(),
+        core->realtime_evloop(),
         callbacks
         );
       feed_handler->subscribe_trades("btcusdt");
@@ -102,10 +102,10 @@ int main()
     if (0)
     {
       auto feed_handler = std::make_shared<KucoinFutFeedHandler>(
-        services.get(),
-        services->run_mode(),
-        services->reactor(),
-        services->realtime_evloop(),
+        core.get(),
+        core->run_mode(),
+        core->reactor(),
+        core->realtime_evloop(),
         callbacks
         );
       feed_handler->subscribe_trades("XBTUSDTM");
@@ -120,10 +120,10 @@ int main()
     if (0)
     {
       auto feed_handler = std::make_shared<ByBitFeedHandler>(
-        services.get(),
-        services->run_mode(),
-        services->reactor(),
-        services->realtime_evloop(),
+        core.get(),
+        core->run_mode(),
+        core->reactor(),
+        core->realtime_evloop(),
         callbacks
         );
 
@@ -144,7 +144,7 @@ int main()
     for (auto & feed : feeds)
       feed->start();
 
-    services->run();
+    core->run();
   }
   catch (std::exception& e) {
     std::cout << "exception: " << e.what() << std::endl;

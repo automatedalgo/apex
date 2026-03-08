@@ -17,9 +17,9 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/backtest/TickFileWriter.hpp>
 #include <apex/backtest/TickbinMsgs.hpp>
+#include <apex/core/Core.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/core/RefDataService.hpp>
-#include <apex/core/Services.hpp>
 #include <apex/net/Reactor.hpp>
 #include <apex/util/Config.hpp>
 #include <apex/util/Error.hpp>
@@ -396,12 +396,12 @@ public:
   // location of where the tick collector is running.  This is important because
   // tick can arrive at different times based on how far away the tick
   // collector is from the exchange.
-  TickCollectorService(apex::Services* services,
+  TickCollectorService(apex::Core* core,
                        TickCollectorParams params)
-    : _services{services},
+    : _core{core},
       _location(params.location),
-      _event_loop{_services->realtime_evloop()},
-      _reactor{_services->reactor()},
+      _event_loop{_core->realtime_evloop()},
+      _reactor{_core->reactor()},
       _params(params)
   {
   }
@@ -420,7 +420,7 @@ private:
   void create_feed_handlers();
   void setup_collectors();
 
-  apex::Services* _services;
+  apex::Core* _core;
   std::string _location;
   apex::RealtimeEventLoop* _event_loop;
   apex::Reactor* _reactor;
@@ -440,7 +440,7 @@ void TickCollectorService::add_collector(std::string symbol,
                                          std::string stream)
 {
 
-  apex::Instrument inst = _services->ref_data_service()->get_instrument({std::move(symbol), exchange_id});
+  apex::Instrument inst = _core->ref_data_service()->get_instrument({std::move(symbol), exchange_id});
   apex::StreamInfo info{inst, std::move(stream)};
 
   if (_streams_to_add.find(info) == std::end(_streams_to_add))
@@ -455,7 +455,7 @@ TickCollectorService::build_tickbin_filename(
   apex::TickFileBucketId bucketid,
   BaseCollector& collector)
 {
-  auto directory = _services->paths_config().tickdata / "bin1";
+  auto directory = _core->paths_config().tickdata / "bin1";
 
   char year[8] = {0};
   char month[8] = {0};
@@ -534,13 +534,13 @@ void TickCollectorService::create_feed_handlers()
         case apex::ExchangeId::binance_usdfut: {
           EmbeddedFeedHandler:: FHBuilder fh_builder;
 
-          fh_builder = [services=_services]
+          fh_builder = [core=_core]
             (FeedHandlerCallbacks callbacks) -> std::shared_ptr<FeedHandler> {
             auto feed = std::make_shared<BinanceUsdFutFeedHandler>(
-              services,
-              services->run_mode(),
-              services->reactor(),
-              services->realtime_evloop(),
+              core,
+              core->run_mode(),
+              core->reactor(),
+              core->realtime_evloop(),
               callbacks
               );
             return feed;
@@ -723,10 +723,10 @@ int main(int argc, char** argv)
     // Create core-services configured for paper trading, which provides
     // real-time a real time event loop and market-data but no access to
     // production trading.
-    auto services = apex::Services::create(apex::RunMode::paper);
+    auto core = apex::Core::create(apex::RunMode::paper);
 
     // capture location of the collection;
-    apex::TickCollectorService tick_collector_svc(services.get(), params);
+    apex::TickCollectorService tick_collector_svc(core.get(), params);
 
     auto exch_id = params.exchange.exchange_id();
     for (const auto & symbol : params.symbols) {
@@ -743,7 +743,7 @@ int main(int argc, char** argv)
 
     // shutting down
     std::promise<void> queue_flush_promise;
-    services->evloop()->dispatch([&](){
+    core->evloop()->dispatch([&](){
       try {
         tick_collector_svc.check_collector_queues();
       }

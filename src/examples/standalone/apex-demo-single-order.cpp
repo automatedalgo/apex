@@ -120,7 +120,7 @@ int main()
   try {
     // create core engine, configured for paper or live trading
     apex::Logger::instance().set_level(apex::Logger::info);
-    auto services = apex::Services::create(apex::RunMode::paper);
+    auto core = apex::Core::create(apex::RunMode::paper);
 
     // ----------------------------------------------------------------------
     // CONFIGURE CORE SERVICES
@@ -129,7 +129,7 @@ int main()
     // Setup order gateway and price feeds to Binance & Binance USD Futures.
 
     apex::FeedConfig feed_config;
-    auto router_service = services->order_router_service();
+    auto router_service = core->order_router_service();
 
     // add a Binance USD-Futures line hander order-router
     apex::OrderRouterConfig binance_config;
@@ -138,21 +138,21 @@ int main()
 
     // add a Binance USD-Futures feed hanlder
     feed_config.type = "BinanceUsdFut";
-    services->market_data_service()->add_feed(feed_config, {"binance_usdfut"});
+    core->market_data_service()->add_feed(feed_config, {"binance_usdfut"});
 
     // add a Binance Spot line hander order-router
     router_service->add_binance_spot(binance_config);
 
     // add a Binance Spot feed hanlder
     feed_config.type = "Binance";
-    services->market_data_service()->add_feed(feed_config, {"binance"});
+    core->market_data_service()->add_feed(feed_config, {"binance"});
 
     // ----------------------------------------------------------------------
     // SINGLE ORDER STRATEGY
     // ----------------------------------------------------------------------
 
     // create a Strategy object, which is a container for individual bots
-    apex::Strategy strategy(services.get(), "DEM01");
+    apex::Strategy strategy(core.get(), "DEM01");
 
     // add a bot, which is responsible for trading a single name
     strategy.create_bot<OneOrderDemoBot>(apex::InstrumentQuery(
@@ -167,7 +167,7 @@ int main()
     // ----------------------------------------------------------------------
 
     // run until user presses control-c
-    services->run();
+    core->run();
   }
   catch (std::exception& e) {
     std::cout << "exception: " << e.what() << std::endl;

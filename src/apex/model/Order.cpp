@@ -15,10 +15,10 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/model/Order.hpp>
+#include <apex/core/Core.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/core/OrderRouter.hpp>
-#include <apex/core/Services.hpp>
+#include <apex/model/Order.hpp>
 #include <apex/util/Error.hpp>
 
 #include <utility>
@@ -85,11 +85,11 @@ std::ostream& operator<<(std::ostream& os, OrderCloseReason v)
 }
 
 
-Order::Order(Services* services, OrderRouter* router, Instrument instrument,
+Order::Order(Core* core, OrderRouter* router, Instrument instrument,
              Side side, double size, double price, TimeInForce tif,
              std::string order_id, void* user_data,
              std::function<void(void*)> user_data_delete_fn)
-  : _services(services),
+  : _core(core),
     _router(router),
     _instrument(std::move(instrument)),
     _side(side),
@@ -134,14 +134,14 @@ std::chrono::microseconds Order::duration_since_sent() const
 {
   if (_sent_time.empty())
     return {};
-  return _services->now() - _sent_time;
+  return _core->now() - _sent_time;
 }
 
 std::chrono::microseconds Order::duration_live() const
 {
   if (_live_time.empty())
     return {};
-  return _services->now() - _live_time;
+  return _core->now() - _live_time;
 }
 
 
@@ -153,8 +153,8 @@ void Order::send()
 
   _router->send_order(*this);
 
-  _sent_time = _services->now();
-  set_state_impl(_services->now(), OrderState::sent);
+  _sent_time = _core->now();
+  set_state_impl(_core->now(), OrderState::sent);
 }
 
 
@@ -187,10 +187,10 @@ void Order::set_state_impl(Time time, OrderState new_state, bool with_fill,
     }
 
     if (new_state == OrderState::live)
-      _live_time = _services->now();
+      _live_time = _core->now();
 
     if (new_state == OrderState::closed) {
-      _closed_time = _services->now();
+      _closed_time = _core->now();
       _close_reason = close_reason;
     }
 
@@ -215,13 +215,13 @@ void Order::apply(const MxSubmitOrderAck& ack)
   if (!ack.exch_order_id.empty())
     _exch_order_id = ack.exch_order_id;
 
-  set_state_impl(_services->now(), OrderState::live,
+  set_state_impl(_core->now(), OrderState::live,
                  false, OrderCloseReason::none);
 }
 
 
 void Order::apply_order_rej() {
-  set_state_impl(_services->now(),
+  set_state_impl(_core->now(),
                  OrderState::closed,
                  false,
                  OrderCloseReason::rejected);
@@ -233,7 +233,7 @@ void Order::apply(const OrderUpdate& update)
   if (!update.ext_order_id.empty())
     _exch_order_id = update.ext_order_id;
 
-  set_state_impl(_services->now(), update.state,
+  set_state_impl(_core->now(), update.state,
                  false, update.close_reason);
 }
 
@@ -247,7 +247,7 @@ void Order::apply_order_execution(double size, double price, bool filled)
   }
 
   // TODO: take this from caller, or, why do we need this?
-  auto recv_time = _services->now();
+  auto recv_time = _core->now();
   if (filled) {
     set_state_impl(recv_time, OrderState::closed, true,
                    OrderCloseReason::filled);

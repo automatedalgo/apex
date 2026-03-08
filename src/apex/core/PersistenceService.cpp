@@ -15,12 +15,12 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <apex/core/Core.hpp>
+#include <apex/core/Logger.hpp>
 #include <apex/core/PersistenceService.hpp>
 #include <apex/core/RefDataService.hpp>
-#include <apex/core/Services.hpp>
 #include <apex/util/Time.hpp>
 #include <apex/util/json.hpp>
-#include <apex/core/Logger.hpp>
 #include <apex/util/utils.hpp>
 
 #include <filesystem>
@@ -46,11 +46,11 @@ void write_file(std::filesystem::path path, std::string content)
   fs::rename(tmp_path, path);
 }
 
-PersistenceService::PersistenceService(Services* services) : _services(services)
+PersistenceService::PersistenceService(Core* core) : _core(core)
 {
-  auto default_path = services->paths_config().fdb;
+  auto default_path = _core->paths_config().fdb;
 
-  Config config = services->config().get_sub_config("persist", Config::empty_config());
+  Config config = _core->config().get_sub_config("persist", Config::empty_config());
   _persist_path = config.get_string("path", "");
   if (_persist_path == "") {
     _persist_path = default_path;
@@ -106,7 +106,7 @@ void PersistenceService::persist_instrument_positions(
   record["exchange"] = instrument.exchange_id();
   record["symbol"] = instrument.native_symbol();
   record["strategyid"] = algo_id;
-  record["ts"] = _services->now().as_iso8601();
+  record["ts"] = _core->now().as_iso8601();
   record["qty"] = format_double(qty, true);
 
   auto content = to_string(record);

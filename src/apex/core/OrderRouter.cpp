@@ -24,10 +24,10 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-RealtimeOrderRouter::RealtimeOrderRouter(apex::Services* services,
+RealtimeOrderRouter::RealtimeOrderRouter(apex::Core* core,
                                          std::shared_ptr<GxClientSession> gx_session,
                      std::string strategy_id)
-  : _services(services),
+  : _core(core),
     _gx_session(std::move(gx_session)),
     _strategy_id(strategy_id)
 {
@@ -49,12 +49,12 @@ RealtimeOrderRouter::RealtimeOrderRouter(apex::Services* services,
       });
 
   _gx_session->connected_observable().subscribe(
-      [wp, strategy_id, services, this](const bool& is_up) {
+      [wp, strategy_id, core, this](const bool& is_up) {
         if (!is_up)
           this->_is_up = false;
         if (auto sp = wp.lock()) {
           if (is_up) {
-            sp->strategy_logon(strategy_id, services->run_mode());
+            sp->strategy_logon(strategy_id, _core->run_mode());
           }
         }
       });
@@ -70,7 +70,7 @@ void RealtimeOrderRouter::send_order(Order& order)
 {
   if (!is_up()) {
     std::weak_ptr<Order> wp = order.weak_from_this();
-    _services->evloop()->dispatch([wp]() {
+    _core->evloop()->dispatch([wp]() {
       if (auto sp = wp.lock())
         sp->set_is_rejected(error::e0003, "gx not connected");
     });

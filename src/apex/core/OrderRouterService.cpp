@@ -17,15 +17,15 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/backtest/SimExchange.hpp>
 #include <apex/core/BacktestService.hpp>
+#include <apex/core/Core.hpp>
 #include <apex/core/GatewayService.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/core/OrderRouterService.hpp>
 #include <apex/core/OrderService.hpp>
-#include <apex/core/Services.hpp>
 #include <apex/util/Error.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
-#include <apex/venues/binance/BinanceUsdFutLineHandler.hpp>
 #include <apex/venues/binance/BinanceLineHandler.hpp>
+#include <apex/venues/binance/BinanceUsdFutLineHandler.hpp>
 
 #include <memory>
 #include <cassert>
@@ -33,8 +33,8 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-OrderRouterService::OrderRouterService(Services* services) :
-  _services(services)
+OrderRouterService::OrderRouterService(Core* core) :
+  _core(core)
 {
 }
 
@@ -47,13 +47,13 @@ OrderRouter* OrderRouterService::get_order_router(Instrument& instrument,
                                                   const std::string& strategy_id)
 {
 
-  if (_services->run_mode() == RunMode::paper || _services->run_mode() == RunMode::backtest) {
+  if (_core->run_mode() == RunMode::paper || _core->run_mode() == RunMode::backtest) {
     // create/obtain an exchange simulator
     auto iter = _sim_exchanges.find(instrument.exchange_id());
     if (iter == std::end(_sim_exchanges)) {
       bool inserted = false;
       std::tie(iter, inserted) = _sim_exchanges.insert({instrument.exchange_id(),
-                                                        std::make_unique<SimExchange>(_services)});
+                                                        std::make_unique<SimExchange>(_core)});
       if (inserted) {
         LOG_INFO("created exchange-simulator for " << QUOTE(instrument.exchange_name()));
       }
@@ -75,11 +75,11 @@ OrderRouter* OrderRouterService::get_order_router(Instrument& instrument,
 
     LOG_NOTICE("creating OrderRouter for exchange " << QUOTE(exchange));
 
-    auto gx_session = _services->gateway_service()->find_session(exchange);
+    auto gx_session = _core->gateway_service()->find_session(exchange);
     if (!gx_session) {
       THROW("cannot find GxSession for exchange " << QUOTE(exchange));
     }
-    auto router = std::make_shared<RealtimeOrderRouter>(_services,
+    auto router = std::make_shared<RealtimeOrderRouter>(_core,
                                                         std::move(gx_session),
                                                         strategy_id);
 
@@ -104,48 +104,48 @@ void OrderRouterService::add_binance_usdfut(OrderRouterConfig config)
   LineHandlerCallbacks callbacks;
 
   callbacks.on_submit_order_ack = [this](const MxSubmitOrderAck& msg) {
-    this->_services->evloop()->dispatch([this, msg]() {
-      this->_services->order_service()->process_submit_order_ack(
+    this->_core->evloop()->dispatch([this, msg]() {
+      this->_core->order_service()->process_submit_order_ack(
         ExchangeId::binance_usdfut, msg);
     });
   };
 
   callbacks.on_submit_order_rej = [this](const MxSubmitOrderRej& msg) {
-    this->_services->evloop()->dispatch([this, msg]() {
-      this->_services->order_service()->process_submit_order_rej(msg);
+    this->_core->evloop()->dispatch([this, msg]() {
+      this->_core->order_service()->process_submit_order_rej(msg);
     });
   };
 
   callbacks.on_cancel_order_ack = [this](const MxCancelOrderAck& msg) {
-    this->_services->evloop()->dispatch([this, msg]() {
-      this->_services->order_service()->process_cancel_order_ack(msg);
+    this->_core->evloop()->dispatch([this, msg]() {
+      this->_core->order_service()->process_cancel_order_ack(msg);
     });
   };
 
   callbacks.on_cancel_order_rej = [this](const MxCancelOrderRej& msg) {
-    this->_services->evloop()->dispatch([this, msg]() {
-      this->_services->order_service()->process_cancel_order_rej(msg);
+    this->_core->evloop()->dispatch([this, msg]() {
+      this->_core->order_service()->process_cancel_order_rej(msg);
    });
   };
 
   callbacks.on_order_expired = [this](const MxOrderExpired& msg) {
-    this->_services->evloop()->dispatch([this, msg]() {
-      this->_services->order_service()->process_order_expired(
+    this->_core->evloop()->dispatch([this, msg]() {
+      this->_core->order_service()->process_order_expired(
         ExchangeId::binance_usdfut, msg);
    });
   };
 
   callbacks.on_order_execution = [this](const MxOrderExecution& msg) {
-    this->_services->evloop()->dispatch([this, msg]() {
-      this->_services->order_service()->process_order_execution(
+    this->_core->evloop()->dispatch([this, msg]() {
+      this->_core->order_service()->process_order_execution(
         ExchangeId::binance_usdfut, msg);
    });
   };
 
   auto lh = std::make_shared<BinanceUsdFutLineHandler>(
-    _services,
-    _services->reactor(),
-    _services->realtime_evloop(),
+    _core,
+    _core->reactor(),
+    _core->realtime_evloop(),
     callbacks,
     config
     );
@@ -165,48 +165,48 @@ void OrderRouterService::add_binance_spot(OrderRouterConfig config)
   LineHandlerCallbacks callbacks;
 
   callbacks.on_submit_order_ack = [this](const MxSubmitOrderAck& msg) {
-    this->_services->evloop()->dispatch([this, msg]() {
-      this->_services->order_service()->process_submit_order_ack(
+    this->_core->evloop()->dispatch([this, msg]() {
+      this->_core->order_service()->process_submit_order_ack(
         ExchangeId::binance, msg);
     });
   };
 
   callbacks.on_submit_order_rej = [this](const MxSubmitOrderRej& msg) {
-    this->_services->evloop()->dispatch([this, msg]() {
-      this->_services->order_service()->process_submit_order_rej(msg);
+    this->_core->evloop()->dispatch([this, msg]() {
+      this->_core->order_service()->process_submit_order_rej(msg);
     });
   };
 
   callbacks.on_cancel_order_ack = [this](const MxCancelOrderAck& msg) {
-    this->_services->evloop()->dispatch([this, msg]() {
-      this->_services->order_service()->process_cancel_order_ack(msg);
+    this->_core->evloop()->dispatch([this, msg]() {
+      this->_core->order_service()->process_cancel_order_ack(msg);
     });
   };
 
   callbacks.on_cancel_order_rej = [this](const MxCancelOrderRej& msg) {
-    this->_services->evloop()->dispatch([this, msg]() {
-      this->_services->order_service()->process_cancel_order_rej(msg);
+    this->_core->evloop()->dispatch([this, msg]() {
+      this->_core->order_service()->process_cancel_order_rej(msg);
    });
   };
 
   callbacks.on_order_expired = [this](const MxOrderExpired& msg) {
-    this->_services->evloop()->dispatch([this, msg]() {
-      this->_services->order_service()->process_order_expired(
+    this->_core->evloop()->dispatch([this, msg]() {
+      this->_core->order_service()->process_order_expired(
         ExchangeId::binance, msg);
    });
   };
 
   callbacks.on_order_execution = [this](const MxOrderExecution& msg) {
-    this->_services->evloop()->dispatch([this, msg]() {
-      this->_services->order_service()->process_order_execution(
+    this->_core->evloop()->dispatch([this, msg]() {
+      this->_core->order_service()->process_order_execution(
         ExchangeId::binance, msg);
    });
   };
 
   auto lh = std::make_shared<BinanceLineHandler>(
-    _services,
-    _services->reactor(),
-    _services->realtime_evloop(),
+    _core,
+    _core->reactor(),
+    _core->realtime_evloop(),
     callbacks,
     config
     );

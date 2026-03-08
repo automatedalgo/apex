@@ -16,15 +16,15 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <apex/core/BacktestService.hpp>
+#include <apex/core/Core.hpp>
 #include <apex/core/GatewayService.hpp>
-#include <apex/core/TimeLogService.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/core/MarketDataService.hpp>
 #include <apex/core/OrderRouterService.hpp>
 #include <apex/core/OrderService.hpp>
 #include <apex/core/PersistenceService.hpp>
 #include <apex/core/RefDataService.hpp>
-#include <apex/core/Services.hpp>
+#include <apex/core/TimeLogService.hpp>
 #include <apex/core/version.hpp>
 #include <apex/net/Reactor.hpp>
 #include <apex/net/ssl.hpp>
@@ -180,7 +180,7 @@ static Time calc_startup_time(RunMode run_mode,
 }
 
 
-Services::Services(const SerivcesConfig& config)
+Core::Core(const CoreConfig& config)
   : _run_mode(parse_run_mode(config.run_mode)),
     _backtest_period(BacktestPeriod{}),
     _paths_config{default_paths_config()},
@@ -194,7 +194,7 @@ Services::Services(const SerivcesConfig& config)
 }
 
 
-Services::Services(RunMode run_mode,
+Core::Core(RunMode run_mode,
                    BacktestPeriod backtest_period)
   : _run_mode(run_mode),
     _backtest_period(backtest_period),
@@ -209,35 +209,35 @@ Services::Services(RunMode run_mode,
 }
 
 
-Services::~Services()
+Core::~Core()
 {
   /* assumed called on main thread */
   _evloop->sync_stop();
 }
 
 
-const char* Services::build_datetime()  {
+const char* Core::build_datetime()  {
   return __DATE__ " - " __TIME__;
 }
 
 
-std::unique_ptr<Services> Services::create(apex::RunMode run_mode,
-                                           BacktestPeriod backtest_period) {
+std::unique_ptr<Core> Core::create(apex::RunMode run_mode,
+                                   BacktestPeriod backtest_period) {
   apex::Logger::instance().register_thread_id("main");
-  auto services = std::make_unique<Services>(run_mode, backtest_period);
-  services->init_services();
-  return services;
+  auto core = std::make_unique<Core>(run_mode, backtest_period);
+  core->init_services();
+  return core;
 }
 
-std::unique_ptr<Services> Services::create(const SerivcesConfig& config) {
+std::unique_ptr<Core> Core::create(const CoreConfig& config) {
   apex::Logger::instance().register_thread_id("main");
-  auto services = std::make_unique<Services>(config);
-  services->init_services();
-  return services;
+  auto core = std::make_unique<Core>(config);
+  core->init_services();
+  return core;
 }
 
 
-void Services::init_services(Config config)
+void Core::init_services(Config config)
 {
   Logger::instance().log_banner(_run_mode);
 
@@ -289,7 +289,7 @@ void Services::init_services(Config config)
 }
 
 
-Time Services::now() {
+Time Core::now() {
   if (_run_mode == RunMode::live || _run_mode == RunMode::paper)
     return Time::realtime_now();
   else
@@ -297,21 +297,21 @@ Time Services::now() {
 }
 
 
-RealtimeEventLoop* Services::realtime_evloop() {
+RealtimeEventLoop* Core::realtime_evloop() {
   if (_run_mode == RunMode::backtest)
     throw std::runtime_error("RealtimeEventLoop not created in backtest mode");
   else
    return dynamic_cast<RealtimeEventLoop*>(_evloop.get());
 }
 
-BacktestEventLoop* Services::backtest_evloop() {
+BacktestEventLoop* Core::backtest_evloop() {
   if (_run_mode != RunMode::backtest)
     throw std::runtime_error("BacktestEventLoop only available in RunMode::backtest");
   else
     return _bt_evloop;
 }
 
-void Services::run() {
+void Core::run() {
   if (_run_mode == RunMode::backtest) {
     backtest_evloop()->set_time(_backtest_period.from);
     backtest_evloop()->run_loop(_backtest_period.upto);
@@ -322,7 +322,7 @@ void Services::run() {
 }
 
 
-SslContext* Services::ssl() {
+SslContext* Core::ssl() {
   return _ssl.get();
 }
 

@@ -33,7 +33,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-class Services;
+class Core;
 class Order;
 class MarketData;
 class Strategy;
@@ -180,7 +180,7 @@ public:
 protected:
   std::string ccy_value(const char* field, double size, double price);
 
-  Services* _services;
+  Core* _core;
   Strategy * _strategy;
   std::string _bot_typename;
   Instrument _instrument;

@@ -17,8 +17,8 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include <apex/core/Core.hpp>
 #include <apex/gx/GxSessionBase.hpp>
-#include <apex/core/Services.hpp>
 #include <apex/model/ExchangeId.hpp>
 #include <apex/util/Time.hpp>
 #include <apex/util/rx.hpp>

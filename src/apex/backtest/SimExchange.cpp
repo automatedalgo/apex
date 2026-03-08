@@ -16,14 +16,14 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <apex/backtest/SimExchange.hpp>
-#include <apex/core/Logger.hpp>
-#include <apex/model/tick_msgs.hpp>
-#include <apex/model/MarketData.hpp>
-#include <apex/util/Error.hpp>
-#include <apex/core/Services.hpp>
-#include <apex/core/MarketDataService.hpp>
-#include <apex/util/EventLoop.hpp>
+#include <apex/core/Core.hpp>
 #include <apex/core/Errors.hpp>
+#include <apex/core/Logger.hpp>
+#include <apex/core/MarketDataService.hpp>
+#include <apex/model/MarketData.hpp>
+#include <apex/model/tick_msgs.hpp>
+#include <apex/util/Error.hpp>
+#include <apex/util/EventLoop.hpp>
 
 #include <iostream>
 #include <utility>
@@ -73,7 +73,7 @@ private:
 
 class SimOrderBook {
 public:
-  SimOrderBook(Services *, const Instrument&);
+  SimOrderBook(Core*, const Instrument&);
 
   std::shared_ptr<SimLimitOrder> add_order(Order&, std::string ext_order_id);
   void remove_order(std::shared_ptr<SimLimitOrder>&);
@@ -86,7 +86,7 @@ private:
                         bool fully_filled, std::shared_ptr<SimLimitOrder> & order);
 
 private:
-  Services* _services;
+  Core* _core;
   MarketData* _mkt = nullptr;
   Instrument _instrument;
 
@@ -118,14 +118,14 @@ bool SimLimitOrder::is_fully_filled() const
 }
 
 
-SimOrderBook::SimOrderBook(Services * services,
+SimOrderBook::SimOrderBook(Core* core,
                            const Instrument& instrument)
-  : _services(services),
+  : _core(core),
     _mkt(nullptr),
     _instrument(instrument)
 {
   // setup market data subscription
-  _mkt = _services->market_data_service()->find_market_data(instrument);
+  _mkt = _core->market_data_service()->find_market_data(instrument);
   if (!_mkt) {
     THROW("SimOrderBook failed to obtain a MarketData instance for instrument "
           << instrument);
@@ -170,7 +170,7 @@ void SimOrderBook::raise_fill_event(double fill_size,
   fill.recv_time = {};
   fill.price = order->price();
   fill.size = fill_size;
-  _services->evloop()->dispatch(
+  _core->evloop()->dispatch(
     latency,
     [order_wp=order->orig_order(), fill](){
       if (auto order_sp = order_wp.lock()) {
@@ -295,7 +295,7 @@ std::shared_ptr<SimLimitOrder> SimOrderBook::add_order(Order& order,
   //   fill.recv_time = {};
   //   fill.price = price;
   //   fill.size = size;
-  //   _services->evloop()->dispatch(
+  //   _core->evloop()->dispatch(
   //     latency,
   //     [order_wp, fill](){
   //       if (auto order_sp = order_wp.lock()) {
@@ -314,7 +314,7 @@ std::shared_ptr<SimLimitOrder> SimOrderBook::add_order(Order& order,
   }
 
   // ack the order
-  _services->evloop()->dispatch(latency,
+  _core->evloop()->dispatch(latency,
                                 [order_wp,
                                  ext_order_id](){
                                   if (auto order_sp = order_wp.lock()) {
@@ -339,7 +339,7 @@ void SimOrderBook::remove_order(std::shared_ptr<SimLimitOrder>& order) {
 
   auto order_wp = order->orig_order();
   if (removed) {
-    _services->evloop()->dispatch(
+    _core->evloop()->dispatch(
       latency,
       [order_wp, ext_order_id](){
         if (auto order_sp = order_wp.lock()) {
@@ -353,7 +353,7 @@ void SimOrderBook::remove_order(std::shared_ptr<SimLimitOrder>& order) {
       });
   }
   else {
-    _services->evloop()->dispatch(
+    _core->evloop()->dispatch(
       latency,
       [order_wp](){
         if (auto order_sp = order_wp.lock()) {
@@ -367,8 +367,8 @@ void SimOrderBook::remove_order(std::shared_ptr<SimLimitOrder>& order) {
 }
 
 
-SimExchange::SimExchange(Services* services)
-  : _services(services)
+SimExchange::SimExchange(Core* core)
+  : _core(core)
 {
 }
 
@@ -384,7 +384,7 @@ void SimExchange::send_order(Order& order) {
   std::string ext_order_id = "sim_" + order.order_id();
 
   if (_all_orders.find(ext_order_id) != std::end(_all_orders)) {
-    _services->evloop()->dispatch(
+    _core->evloop()->dispatch(
       latency,
       [order_wp=order.weak_from_this()](){
         if (auto order_sp = order_wp.lock()) {
@@ -415,7 +415,7 @@ void SimExchange::cancel_order(Order& order) {
   const std::string & ext_order_id = order.ext_order_id();
   auto iter2 = _all_orders.find(ext_order_id);
   if (iter2 == std::end(_all_orders)) {
-    _services->evloop()->dispatch(
+    _core->evloop()->dispatch(
       latency,
       [order_wp=order.weak_from_this()]() {
         if (auto order_sp = order_wp.lock()) {
@@ -448,7 +448,7 @@ bool SimExchange::is_up() const {
 void SimExchange::add_instrument(const Instrument& instrument) {
   auto iter = _books.find(instrument);
   if (iter == std::end(_books)) {
-    auto ladder = std::make_unique<SimOrderBook>(_services, instrument);
+    auto ladder = std::make_unique<SimOrderBook>(_core, instrument);
     _books.insert({instrument, std::move(ladder)});
   }
 }

@@ -17,8 +17,8 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include "DemoMakerBot.hpp"
 
+#include <apex/core/Core.hpp>
 #include <apex/core/Logger.hpp>
-#include <apex/core/Services.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
 
 class MyBot : public apex::Bot {
@@ -217,7 +217,7 @@ void DemoMakerBot::manage_order_initiation()
 
   // as a safety feature, we set a maximum lifetime on this order, which we do
   // by setting a timer which when expires, will cancel the order
-  _services->evloop()->dispatch(
+  _core->evloop()->dispatch(
     std::chrono::seconds(30), [wp = order->weak_from_this()]() {
       if (auto sp = wp.lock()) {
         if (sp->is_live() && !sp->is_canceling()) {

@@ -24,7 +24,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-class Services;
+class Core;
 class Instrument;
 class MarketData;
 class FeedHandlerSession;
@@ -40,7 +40,7 @@ struct FeedConfig {
 class MarketDataService
 {
 public:
-  explicit MarketDataService(Services*);
+  explicit MarketDataService(Core*);
   ~MarketDataService();
 
   /* Find/create a MarketData instance for instrument, or else null if the
@@ -51,7 +51,7 @@ public:
 
 
 private:
-  Services* _services;
+  Core* _core;
   std::map<Instrument, std::unique_ptr<MarketData>> _markets;
   std::map<ExchangeId, std::shared_ptr<EmbeddedFeedHandler>> _feeds;
 };

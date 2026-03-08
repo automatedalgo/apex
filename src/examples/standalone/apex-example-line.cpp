@@ -38,7 +38,7 @@ int main()
 
     // create core engine, configured for realtime mode
     Logger::instance().set_level(Logger::info);
-    auto services = Services::create(RunMode::paper);
+    auto core = Core::create(RunMode::paper);
 
     // ----------------------------------------------------------------------
     // SETUP CALLBACKS
@@ -98,9 +98,9 @@ int main()
     apex::OrderRouterConfig binance_config;
     binance_config.api_key_file = apex::expand("~/.secrets/binance_key.json");
     auto line_session = std::make_shared<BinanceLineHandler>(
-      services.get(),
-      services->reactor(),
-      services->realtime_evloop(),
+      core.get(),
+      core->reactor(),
+      core->realtime_evloop(),
       lh_callbacks,
       binance_config
       );
@@ -152,7 +152,7 @@ int main()
     }
 
     // run until user presses control-c
-    services->run();
+    core->run();
   }
   catch (std::exception& e) {
     std::cout << "exception: " << e.what() << std::endl;

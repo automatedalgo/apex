@@ -23,7 +23,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 namespace apex {
 
-class Services;
+class Core;
 class Reactor;
 class RealtimeEventLoop;
 class WebsocketClient;
@@ -32,7 +32,7 @@ class KucoinFutFeedHandler : public FeedHandlerImpl<KucoinFutFeedHandler>
 {
 public:
 
-  KucoinFutFeedHandler(Services* services,
+  KucoinFutFeedHandler(Core* core,
                        RunMode run_mode,
                        Reactor* reactor,
                        RealtimeEventLoop* event_loop,

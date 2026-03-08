@@ -15,9 +15,9 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <apex/core/Core.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/core/RefDataService.hpp>
-#include <apex/core/Services.hpp>
 #include <apex/util/Config.hpp>
 #include <apex/util/Error.hpp>
 #include <apex/util/utils.hpp>
@@ -40,10 +40,10 @@ std::string InstrumentQuery::to_string() const {
   return oss.str();
 }
 
-RefDataService::RefDataService(Services* services, Config config)
-  : _services(services)
+RefDataService::RefDataService(Core* core, Config config)
+  : _core(core)
 {
-  auto default_path = _services->paths_config().refdata;
+  auto default_path = _core->paths_config().refdata;
   default_path = default_path / "instruments" / "instruments.csv";
 
   auto filename = config.get_string("instruments_csv", default_path.string());

@@ -108,14 +108,14 @@ public:
 };
 
 
-struct SerivcesConfig {
+struct CoreConfig {
 
   std::string run_mode;
 
   ReactorConfig reactor;
 
   static auto schema() {
-    FIELD_DEF_INIT( SerivcesConfig );
+    FIELD_DEF_INIT( CoreConfig );
     FIELD_DEF_REQUIRED(run_mode);
     FIELD_DEF_OPTIONAL(reactor, ReactorConfig{} );
     FIELD_DEF_RETURN();
@@ -123,23 +123,22 @@ struct SerivcesConfig {
 };
 
 
-/* Responsible for creating and providing access to the various core
- * components and services required by all apex application components. */
-class Services
+/* The core component of a trading engine. Responsible for creating and
+ * providing access to the various core components and services required by all
+ * apex application components. */
+class Core
 {
 public:
   /* Utility method used to create and init services with minimal config */
-  static std::unique_ptr<Services> create(RunMode run_mode,
-                                          BacktestPeriod backtest_period={});
-  static std::unique_ptr<Services> create(const SerivcesConfig&);
+  static std::unique_ptr<Core> create(RunMode run_mode,
+                                      BacktestPeriod backtest_period={});
+  static std::unique_ptr<Core> create(const CoreConfig&);
 
+  explicit Core(const CoreConfig&);
 
-  explicit Services(const SerivcesConfig&);
+  explicit Core(RunMode run_mode, BacktestPeriod backtest_period={});
 
-  explicit Services(RunMode run_mode,
-                    BacktestPeriod backtest_period={});
-
-  ~Services();
+  ~Core();
 
   static const char* build_datetime();
 

@@ -15,11 +15,11 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/model/Position.hpp>
-#include <apex/model/MarketData.hpp>
 #include <apex/core/Auditor.hpp>
+#include <apex/core/Core.hpp>
 #include <apex/core/Logger.hpp>
-#include <apex/core/Services.hpp>
+#include <apex/model/MarketData.hpp>
+#include <apex/model/Position.hpp>
 #include <apex/util/EventLoop.hpp>
 
 #include <iostream>
@@ -43,9 +43,8 @@ int to_int(Side s) {
 
 
 
- Auditor::Auditor(Services * services,
-                 std::string transactions_dir)
-  : _services(services)
+ Auditor::Auditor(Core* core, std::string transactions_dir)
+  : _core(core)
 {
   if (transactions_dir.empty())
     transactions_dir = apex_home() / "log";
@@ -105,7 +104,7 @@ int to_int(Side s) {
   _file << "\n";
 
   auto delay = std::chrono::seconds(5);
-  _services->evloop()->dispatch(delay, [this, delay]()-> std::chrono::milliseconds {
+  _core->evloop()->dispatch(delay, [this, delay]()-> std::chrono::milliseconds {
       try {
         this->_file.flush();
         return delay;

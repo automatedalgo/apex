@@ -17,10 +17,10 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <apex/core/Services.hpp>
+#include <apex/core/Core.hpp>
 #include <apex/gx/GxSessionBase.hpp>
-#include <apex/model/Order.hpp>
 #include <apex/model/Instrument.hpp>
+#include <apex/model/Order.hpp>
 #include <apex/model/tick_msgs.hpp>
 
 namespace apex

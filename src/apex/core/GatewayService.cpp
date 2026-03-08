@@ -15,16 +15,16 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <apex/core/Core.hpp>
 #include <apex/core/GatewayService.hpp>
-#include <apex/util/Config.hpp>
 #include <apex/gx/GxClientSession.hpp>
-#include <apex/core/Services.hpp>
+#include <apex/util/Config.hpp>
 
 namespace apex
 {
 
-GatewayService::GatewayService(Services* services, Config config)
-  : _services(services)
+GatewayService::GatewayService(Core* core, Config config)
+  : _core(core)
 {
   if (config.is_empty()) {
     LOG_WARN("no gateways configured");
@@ -47,8 +47,8 @@ GatewayService::GatewayService(Services* services, Config config)
       throw ConfigError(oss.str());
     }
     auto session = std::make_shared<apex::GxClientSession>(
-        services->reactor(), *services->realtime_evloop(), node, port,
-        services->order_service());
+        _core->reactor(), *_core->realtime_evloop(), node, port,
+        _core->order_service());
 
     session->start_connecting();
     _sessions[provides_exchange_id] = std::move(session);
@@ -69,8 +69,8 @@ std::shared_ptr<GxClientSession> GatewayService::find_session(
 
 void GatewayService::set_default_gateway(std::string port) {
   _default_session  =  std::make_shared<apex::GxClientSession>(
-      _services->reactor(), *_services->realtime_evloop(), "127.0.0.1", port,
-      _services->order_service());
+      _core->reactor(), *_core->realtime_evloop(), "127.0.0.1", port,
+      _core->order_service());
 
   _default_session->start_connecting();
 }
