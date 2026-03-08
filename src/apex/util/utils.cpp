@@ -435,7 +435,7 @@ void wait_for_sigint() {
 
 std::filesystem::path apex_home() {
   // the APEX_HOME environment variable can be used to customise where Apex
-  // finds all the files it needs (such as tickdata, refdata, positions etc)
+  // finds all the files it needs (such as tick-data, ref-data, positions etc.)
   const char * home_var = "APEX_HOME";
   const char * custom_base = std::getenv(home_var);
   std::string default_root = "apex";

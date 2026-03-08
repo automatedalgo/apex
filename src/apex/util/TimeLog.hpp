@@ -18,7 +18,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
 #include <cstdint>
-#include <time.h>
+#include <ctime>
 #include <string>
 
 namespace apex
@@ -39,7 +39,7 @@ public:
       ::clock_gettime(CLOCK_REALTIME, &ts);
     }
 
-    uint64_t to_int() const {
+    [[nodiscard]] uint64_t to_int() const {
       return ts.tv_sec * 1e9 + ts.tv_nsec;
     }
   };
@@ -54,4 +54,4 @@ public:
   std::string dump();
 };
 
-} // namepace
+}
