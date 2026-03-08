@@ -1,7 +1,7 @@
 {
     "run_mode": "paper",
 
-    "services": {
+    "core": {
         "persist": {
             "path": "${HOME}/apex/data/fdb/persist"
         },

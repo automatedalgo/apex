@@ -6,7 +6,7 @@
         "detailed" : true
     },
 
-    "services" : {
+    "core" : {
 
         "persist" : {
             "path": "${HOME}/fdb/persist"

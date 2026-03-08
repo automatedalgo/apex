@@ -1,6 +1,6 @@
 {
     // core engine services
-    "services": {
+    "core": {
         "run_mode": "paper",
 
         // main socket reactor
