@@ -22,7 +22,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 namespace apex
 {
-class Services;
+class Core;
 class GxClientSession;
 class Order;
 
@@ -56,7 +56,7 @@ public:
 class RealtimeOrderRouter : public OrderRouter // TODO: use shared_ptr, due to event based callbacks
 {
 public:
-  RealtimeOrderRouter(apex::Services* services,
+  RealtimeOrderRouter(apex::Core* core,
                       std::shared_ptr<GxClientSession> gx_session,
                       std::string strategy_id);
 
@@ -66,7 +66,7 @@ public:
 
 private:
   std::shared_ptr<GxClientSession>& gx_session();
-  Services* _services;
+  Core* _core;
   std::shared_ptr<GxClientSession> _gx_session;
   std::string _strategy_id;
   bool _is_up = false;

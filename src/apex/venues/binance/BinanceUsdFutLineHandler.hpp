@@ -34,7 +34,7 @@ class BinanceUsdFutLineHandler : public std::enable_shared_from_this<BinanceUsdF
   };
 
 public:
-  BinanceUsdFutLineHandler(Services* services,
+  BinanceUsdFutLineHandler(Core* core,
                            Reactor* reactor,
                            RealtimeEventLoop* event_loop,
                            LineHandlerCallbacks callbacks,
@@ -70,7 +70,7 @@ public:
 
   std::unique_ptr<OrderRouter> get_order_router_adapter();
 
-  Services* _services;
+  Core* _core;
   RealtimeEventLoop* _event_loop;
   Reactor* _reactor;
   SslContext* _ssl;

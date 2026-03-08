@@ -17,9 +17,9 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/backtest/TickReplayer.hpp>
 #include <apex/core/BacktestService.hpp>
+#include <apex/core/Core.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/core/MarketDataService.hpp>
-#include <apex/core/Services.hpp>
 
 #include <apex/model/Instrument.hpp>
 #include <apex/util/BacktestEventLoop.hpp>
@@ -51,9 +51,9 @@ std::list<apex::Time> get_dates_in_range(apex::Time from, apex::Time upto)
   return dates;
 }
 
-BacktestService::BacktestService(Services* services, apex::Time replay_from,
+BacktestService::BacktestService(Core* core, apex::Time replay_from,
                                  apex::Time replay_upto)
-  : _services(services),
+  : _core(core),
     _from(replay_from),
     _upto(replay_upto),
     _dates{get_dates_in_range(_from, _upto)}
@@ -71,7 +71,7 @@ void BacktestService::create_tick_replayer(const Instrument& instrument,
 {
   auto tick_format = TickFormat::tickbin1;
 
-  auto tick_dir = _services->paths_config().tickdata;
+  auto tick_dir = _core->paths_config().tickdata;
 
   std::pair<Instrument, MdStream> key{instrument, stream_type};
 
@@ -92,7 +92,7 @@ void BacktestService::create_tick_replayer(const Instrument& instrument,
       );
   }
 
-  _services->backtest_evloop()->add_event_source(sp.get());
+  _core->backtest_evloop()->add_event_source(sp.get());
   _replayers.insert({key, std::move(sp)});
 }
 

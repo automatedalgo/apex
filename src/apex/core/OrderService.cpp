@@ -15,9 +15,9 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/core/OrderService.hpp>
-#include <apex/core/Services.hpp>
+#include <apex/core/Core.hpp>
 #include <apex/core/Logger.hpp>
+#include <apex/core/OrderService.hpp>
 #include <apex/util/Error.hpp>
 #include <apex/util/EventLoop.hpp>
 
@@ -31,8 +31,8 @@ namespace apex
 class FullUniqueOrderIdGenerator
 {
 public:
-  explicit FullUniqueOrderIdGenerator(apex::Services* services) :
-    _services(services),
+  explicit FullUniqueOrderIdGenerator(apex::Core* core) :
+    _core(core),
     _order_counter(0) {
     // TODO: need session ID
     // TODO: need start-up-time
@@ -49,7 +49,7 @@ public:
 
   }
   std::string next(const std::string & strategy_id) {
-    Time startup_time = _services->startup_time();
+    Time startup_time = _core->startup_time();
 
     int epoch_sec = int(startup_time.as_epoch_ms().count() / 1000);
 
@@ -64,7 +64,7 @@ public:
   }
 
 private:
-  apex::Services* _services;
+  apex::Core* _core;
   uint32_t _order_counter;
 };
 
@@ -74,12 +74,12 @@ class ClientOrderIdGenerator
   uint32_t _last_epoch_sec = 0;
 
 public:
-  explicit ClientOrderIdGenerator(apex::Services* services) : _services(services) {}
+  explicit ClientOrderIdGenerator(apex::Core* core) : _core(core) {}
 
 
   std::string next(const std::string& strategy_id)
   {
-    auto now = _services->now();
+    auto now = _core->now();
 
     const uint32_t current_sec = uint32_t(now.as_epoch_ms().count() / 1000);
 
@@ -99,17 +99,16 @@ public:
   }
 
 private:
-  apex::Services* _services;
+  apex::Core* _core;
 };
 
 
-OrderService::OrderService(Services* services)
-  : _services(services),
-//    _order_id_src(std::make_unique<ClientOrderIdGenerator>(services))
-    _order_id_src(std::make_unique<FullUniqueOrderIdGenerator>(services))
+OrderService::OrderService(Core* core)
+  : _core(core),
+    _order_id_src(std::make_unique<FullUniqueOrderIdGenerator>(_core))
 {
   auto interval = std::chrono::minutes(60);
-  _services->evloop()->dispatch(interval, [this, interval]() {
+  _core->evloop()->dispatch(interval, [this, interval]() {
     this->background_tasks();
     return interval;
   });
@@ -128,7 +127,7 @@ std::shared_ptr<Order> OrderService::create(
   oss << _order_id_src->next(strategy_id);
 
   auto order =
-    std::make_shared<Order>(_services, router, instrument, side, size, price,
+    std::make_shared<Order>(_core, router, instrument, side, size, price,
                             tif, oss.str(), user_data, user_data_delete_fn);
 
   auto wp = order->weak_from_this();
@@ -139,7 +138,7 @@ std::shared_ptr<Order> OrderService::create(
         auto iter = _orders.find(sp->order_id());
         if (iter != std::end(_orders)) {
           _orders.erase(iter);
-          _dead_order_ids.insert({sp->order_id(), _services->now()});
+          _dead_order_ids.insert({sp->order_id(), _core->now()});
         }
       }
     }

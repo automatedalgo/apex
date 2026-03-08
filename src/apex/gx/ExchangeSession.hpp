@@ -17,12 +17,12 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include <apex/core/Core.hpp>
+#include <apex/core/Logger.hpp>
 #include <apex/model/Account.hpp>
+#include <apex/model/Order.hpp>
 #include <apex/util/Config.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
-#include <apex/core/Logger.hpp>
-#include <apex/core/Services.hpp>
-#include <apex/model/Order.hpp>
 
 #include <functional>
 #include <memory>

@@ -25,7 +25,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-class Services;
+class Core;
 
 class TimeLogService
 {
@@ -34,7 +34,7 @@ public:
   static constexpr int rows = 1 << bits;
   static constexpr int mask = (1 << bits)-1;
 
-  explicit TimeLogService(Services* services);
+  explicit TimeLogService(Core* core);
   ~TimeLogService();
 
   inline void store(TimeLog& tl) {
@@ -49,7 +49,7 @@ public:
   }
 
 private:
-  Services* _services;
+  Core* _core;
   TimingRecord* _records;
   unsigned long _idx;
   std::unique_ptr<TimeLogMemMap> _mmap;

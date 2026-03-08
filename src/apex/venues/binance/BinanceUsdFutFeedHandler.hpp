@@ -27,7 +27,7 @@ class WebsocketClient;
 class BinanceUsdFutFeedHandler : public FeedHandlerImpl<BinanceUsdFutFeedHandler>
 {
 public:
-  BinanceUsdFutFeedHandler(Services* services,
+  BinanceUsdFutFeedHandler(Core* core,
                            RunMode run_mode,
                            Reactor* reactor,
                            RealtimeEventLoop* event_loop,

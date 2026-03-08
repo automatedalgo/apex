@@ -26,7 +26,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 class Order;
-class Services;
+class Core;
 class OrderRouter;
 
 enum class Side : signed int { none = 0, buy, sell };
@@ -215,7 +215,7 @@ struct OrderFill {
 class Order : public std::enable_shared_from_this<Order>
 {
 public:
-  Order(Services* services, OrderRouter* session, Instrument instrument,
+  Order(Core* core, OrderRouter* session, Instrument instrument,
         Side side, double size, double price, TimeInForce tif,
         std::string order_id, void* user_data = nullptr,
         std::function<void(void*)> user_data_delete_fn = {});
@@ -330,7 +330,7 @@ private:
   void set_state_impl(Time time, OrderState new_state, bool with_fill = false,
                       OrderCloseReason reason = OrderCloseReason::none);
 
-  Services* _services;
+  Core* _core;
   OrderRouter* _router;
   Instrument _instrument;
   Side _side;

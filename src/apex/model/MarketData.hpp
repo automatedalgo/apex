@@ -128,7 +128,6 @@ public:
   Time time_last_l1() const { return _ts_l1; }
 
 private:
-  Services * _services;
   TickTrade _last;
   Book _book;
   Book::Level _l1_bid;

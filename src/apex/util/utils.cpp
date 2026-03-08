@@ -93,26 +93,22 @@ std::string utc_timestamp_iso8601()
 std::string utc_timestamp_condensed(bool add_fraction)
 {
   static constexpr char full_format[] = "20170521-075117.000";
-  static constexpr char shrt_format[] = "20170521-075117";
-  static constexpr int short_len = 15;
+  static constexpr char short_format[] = "20170521-075117";
+  static constexpr size_t short_len = 15;
 
-  static_assert(short_len == (sizeof shrt_format - 1),
+  static_assert(short_len == (sizeof short_format - 1),
                 "short_len check failed");
 
   auto tv = apex::time_now();
 
   char buf[32] = {0};
   assert(sizeof buf > (sizeof full_format));
-  assert(sizeof full_format > sizeof shrt_format);
+  assert(sizeof full_format > sizeof short_format);
 
   struct tm parts = {};
-  time_t rawtime = tv.sec;
+  time_t raw_time = tv.sec;
 
-#ifndef _WIN32
-  gmtime_r(&rawtime, &parts);
-#else
-  gmtime_s(&parts, &rawtime);
-#endif
+  gmtime_r(&raw_time, &parts);
 
   if (0 == strftime(buf, sizeof buf - 1, "%Y%m%d-%H%M%S", &parts))
     return ""; // strftime not successful
@@ -120,13 +116,8 @@ std::string utc_timestamp_condensed(bool add_fraction)
   // append milliseconds
   if (add_fraction) {
     int ec;
-#ifndef _WIN32
     ec = snprintf(&buf[short_len], sizeof(buf) - short_len, ".%03dZ",
                   (int)tv.usec / 1000);
-#else
-    ec = sprintf_s(&buf[short_len], sizeof(buf) - short_len, ".%03dZ",
-                   (int)tv.usec / 1000);
-#endif
     if (ec < 0)
       return "";
   }
@@ -141,7 +132,7 @@ std::string demangle(const char* name)
   int status = -1; // arbitrary value, eliminate compiler warning
 
   std::unique_ptr<char, void (*)(void*)> res{
-      abi::__cxa_demangle(name, NULL, NULL, &status), std::free};
+      abi::__cxa_demangle(name, nullptr, nullptr, &status), std::free};
 
   return (status == 0) ? res.get() : name;
 }
@@ -435,10 +426,9 @@ void wait_for_sigint() {
 
 std::filesystem::path apex_home() {
   // the APEX_HOME environment variable can be used to customise where Apex
-  // finds all the files it needs (such as tickdata, refdata, positions etc)
+  // finds all the files it needs (such as tick-data, ref-data, positions etc.)
   const char * home_var = "APEX_HOME";
   const char * custom_base = std::getenv(home_var);
-  std::string default_root = "apex";
   std::filesystem::path result = (custom_base)? custom_base : apex::user_home_dir() / "apex";
   return result;
 }

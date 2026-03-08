@@ -15,13 +15,13 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/venues/bybit/BybitFeedHandler.hpp>
+#include <apex/core/Core.hpp>
 #include <apex/core/Logger.hpp>
-#include <apex/core/Services.hpp>
-#include <apex/util/RealtimeEventLoop.hpp>
 #include <apex/model/tick_msgs.hpp>
-#include <apex/infra/WebsocketClient.hpp>
-#include <apex/infra/ssl.hpp>
+#include <apex/net/WebsocketClient.hpp>
+#include <apex/net/ssl.hpp>
+#include <apex/util/RealtimeEventLoop.hpp>
+#include <apex/venues/bybit/BybitFeedHandler.hpp>
 
 #include <curl/curl.h>
 
@@ -44,13 +44,13 @@ Side parse_side(std::string_view sv)
 }
 
 
-ByBitFeedHandler::ByBitFeedHandler(Services* services,
-                                           RunMode run_mode,
-                                           Reactor* reactor,
-                                           RealtimeEventLoop* event_loop,
-                                           FeedHandlerCallbacks callbacks)
+ByBitFeedHandler::ByBitFeedHandler(Core* core,
+                                   RunMode run_mode,
+                                   Reactor* reactor,
+                                   RealtimeEventLoop* event_loop,
+                                   FeedHandlerCallbacks callbacks)
   : FeedHandlerImpl(ExchangeId::bybit,
-                    services,
+                    core,
                     run_mode,
                     reactor,
                     event_loop),
@@ -81,7 +81,7 @@ void ByBitFeedHandler::manage_connection()
   SslSocket::Options ssl_options;
   try {
     _ws_feed = connect_websocket(usdfut_url, "bybitfeed",
-                                 _services->reactor(),
+                                 _core->reactor(),
                                  &ssl_context,
                                  _event_loop,
                                  [this](const char* buf, size_t n){
@@ -313,7 +313,7 @@ void ByBitFeedHandler::do_subscriptions()
       if (!sub.second.active) {
         std::string request = sub.second.request;
         LOG_INFO("sending subscription: " << request);
-        // if (auto mcap = _services->message_capture_service()) {
+        // if (auto mcap = _core->message_capture_service()) {
         //   mcap->push_event(_ws_feed_msgcap_id_out, request);
         // }
         _ws_feed->send(request);

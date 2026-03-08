@@ -15,11 +15,11 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/infra/WebsocketClient.hpp>
-#include <apex/venues/venues_common.hpp>
-#include <apex/core/Services.hpp>
-#include <apex/util/EventLoop.hpp>
+#include <apex/core/Core.hpp>
 #include <apex/core/Errors.hpp>
+#include <apex/net/WebsocketClient.hpp>
+#include <apex/util/EventLoop.hpp>
+#include <apex/venues/venues_common.hpp>
 
 namespace apex {
 
@@ -35,7 +35,7 @@ void OrderRouterAdapterImpl::check_is_up(Order& order)
   // check is up?
   if (!this->is_up()) {
     std::weak_ptr<Order> wp = order.weak_from_this();
-    _services->evloop()->dispatch([wp]() {
+    _core->evloop()->dispatch([wp]() {
       if (auto sp = wp.lock())
         sp->set_is_rejected(error::e0002, "exchange link down");
     });

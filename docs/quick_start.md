@@ -337,7 +337,7 @@ paper trading.  A parameter provided here specifies whether to configure for
 paper trading or live trading mode.
 
 ```c++
-auto services = apex::Services::create(apex::RunMode::paper);
+auto services = apex::Core::create(apex::RunMode::paper);
 ```
 
 The next few lines create an internal exchange-gateway component, which provides

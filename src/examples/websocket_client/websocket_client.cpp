@@ -17,9 +17,9 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/util/RealtimeEventLoop.hpp>
 #include <apex/util/json.hpp>
-#include <apex/infra/WebsocketClient.hpp>
+#include <apex/net/WebsocketClient.hpp>
 #include <apex/core/Logger.hpp>
-#include <apex/infra/ssl.hpp>
+#include <apex/net/ssl.hpp>
 
 #include <chrono>
 

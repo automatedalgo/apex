@@ -16,10 +16,10 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <apex/core/Bot.hpp>
+#include <apex/core/Core.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/core/OrderRouter.hpp>
 #include <apex/core/OrderService.hpp>
-#include <apex/core/Services.hpp>
 #include <apex/core/Strategy.hpp>
 #include <apex/core/StrategyMain.hpp>
 #include <apex/util/Config.hpp>
@@ -63,13 +63,13 @@ void StrategyMain::start(std::future<int>& interrupt_code)
 
   auto run_mode = root_config.get_string("run_mode");
 
-  // set up apex services
-  _services = std::make_unique<apex::Services>(parse_run_mode(run_mode));
-  _services->init_services(root_config.get_sub_config("services"));
+  // set up apex core services
+  _core = std::make_unique<apex::Core>(parse_run_mode(run_mode));
+  _core->init_services(root_config.get_sub_config("services"));
 
   auto strategy_config = root_config.get_sub_config("strategy");
 
-  auto strategy = this->factory.create(strategy_config, _services.get());
+  auto strategy = this->factory.create(strategy_config, _core.get());
 
   if (!strategy)
     throw std::runtime_error(

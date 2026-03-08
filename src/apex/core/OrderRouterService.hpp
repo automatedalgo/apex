@@ -25,7 +25,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-class Services;
+class Core;
 class OrderRouter;
 class Instrument;
 class SimExchange;
@@ -42,7 +42,7 @@ struct OrderRouterConfig {
 class OrderRouterService
 {
 public:
-  explicit OrderRouterService(Services*);
+  explicit OrderRouterService(Core*);
   ~OrderRouterService();
 
   /* Get an OrderRouter object for sending orders to the provided exchange, and
@@ -61,7 +61,7 @@ public:
 
 
 private:
-  Services* _services;
+  Core* _core;
 
   // order router services for live trading
   std::map<ExchangeId, std::shared_ptr<OrderRouter>> _routers;

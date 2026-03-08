@@ -37,8 +37,8 @@ std::string generate_auto_file_name()
 }
 
 
-TimeLogService::TimeLogService(Services* services)
-  : _services (services),
+TimeLogService::TimeLogService(Core* core)
+  : _core (core),
     _records(nullptr),
     _idx(0)
 {

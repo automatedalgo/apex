@@ -23,8 +23,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <mutex>
 #include <string>
 #include <optional>
-
-#include <math.h>
+#include <cmath>
 
 #ifndef STRINGIFY
 #define STRINGIFY(n) STRINGIFY_HELPER(n)
@@ -91,10 +90,10 @@ std::string utc_timestamp_condensed(bool add_fraction = true);
 std::string slurp(const char* filename);
 
 // TODO: revert this back to the return of an error code
-std::string HMACSHA256_base4(const char* key, int keylen, const char* msg,
-                             int msglen);
+std::string HMACSHA256_base4(const char* key, int key_len, const char* msg,
+                             int msg_len);
 
-void write_json_message(const std::string& dir, const std::string& msgtype,
+void write_json_message(const std::string& dir, const std::string& msg_type,
                         const std::string& raw_json);
 
 /** Optionally store a value of value of type T.  Methods to assign
@@ -173,7 +172,7 @@ private:
   std::function<void()> _fn;
 };
 
-/* Represent values like 0.0001 etc, as pair (1, -4). Does not have to be
+/* Represent values like 0.0001 etc., as pair (1, -4). Does not have to be
    normalised, eg, the _mantissa can be like 10000. */
 struct ScaledInt {
 
@@ -193,17 +192,17 @@ struct ScaledInt {
     return _mantissa != other._mantissa or _scale != other._scale;
   }
 
-  double exponent_pow10() const { return _exponent_pow10; }
+  [[nodiscard]] double exponent_pow10() const { return _exponent_pow10; }
 
-  int64_t mantissa() const { return _mantissa; }
-  int scale() const { return _scale; }
+  [[nodiscard]] int64_t mantissa() const { return _mantissa; }
+  [[nodiscard]] int scale() const { return _scale; }
 
   // double round(double) const;
-  double trunc(double) const;
-  double ceil(double) const;
+  [[nodiscard]] double trunc(double) const;
+  [[nodiscard]] double ceil(double) const;
 
   // get value as double
-  double as_double() const { return _mantissa * _exponent_pow10; }
+  [[nodiscard]] double as_double() const { return _mantissa * _exponent_pow10; }
 
 private:
   int64_t _mantissa;
@@ -253,9 +252,9 @@ struct WebSocketUrlParts {
   std::optional<std::string> query;
   std::optional<std::string> fragment;
 
-  bool is_wss() const;
-  bool is_ws() const;
-  operator bool() const { return !scheme.empty(); }
+  [[nodiscard]] bool is_wss() const;
+  [[nodiscard]] bool is_ws() const;
+  explicit operator bool() const { return !scheme.empty(); }
 };
 WebSocketUrlParts parse_websocket_url(const std::string& url);
 

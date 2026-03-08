@@ -24,7 +24,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 namespace apex
 {
-class Services;
+class Core;
 class Strategy;
 class Config;
 
@@ -33,7 +33,7 @@ class StrategyFactoryBase
 {
 public:
   virtual std::unique_ptr<apex::Strategy> create(
-      apex::Config& config, apex::Services* services) const = 0;
+      apex::Config& config, apex::Core* core) const = 0;
 };
 
 template <typename T> class StrategyFactory : public StrategyFactoryBase
@@ -41,9 +41,9 @@ template <typename T> class StrategyFactory : public StrategyFactoryBase
 
 public:
   std::unique_ptr<apex::Strategy> create(apex::Config& config,
-                                        apex::Services* services) const override
+                                        apex::Core* core) const override
   {
-    return std::make_unique<T>(services, config);
+    return std::make_unique<T>(core, config);
   }
 };
 
@@ -66,7 +66,7 @@ public:
   void start(std::future<int>& interrupt_code);
 
 public:
-  std::unique_ptr<apex::Services> _services;
+  std::unique_ptr<apex::Core> _core;
 };
 
 } // namespace apex

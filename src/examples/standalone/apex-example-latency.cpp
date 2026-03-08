@@ -43,12 +43,12 @@ struct StrategyConfig
 struct LatencyExampleBotConfig
 {
   StrategyConfig strategy;;
-  apex::SerivcesConfig services;
+  apex::CoreConfig core;
 
   static auto schema() {
     FIELD_DEF_INIT(LatencyExampleBotConfig);
     FIELD_DEF_OPTIONAL(strategy, StrategyConfig{});
-    FIELD_DEF_OPTIONAL(services, apex::SerivcesConfig{});
+    FIELD_DEF_OPTIONAL(core, apex::CoreConfig{});
     FIELD_DEF_RETURN();
   }
 
@@ -224,7 +224,7 @@ int main(int argc, char** argv)
     // ----------------------------------------------------------------------
 
     apex::Logger::instance().set_level(apex::Logger::info);
-    auto services = apex::Services::create(config.services);
+    auto core = apex::Core::create(config.core);
 
     LOG_INFO("application configuration file '" << config.filename << "'");
 
@@ -232,18 +232,18 @@ int main(int argc, char** argv)
 
     // add a Binance USD-Futures feed hanlder
     feed_config.type = "BinanceUsdFut";
-    services->market_data_service()->add_feed(feed_config, {"binance_usdfut"});
+    core->market_data_service()->add_feed(feed_config, {"binance_usdfut"});
 
     // add a Binance Spot feed hanlder
     feed_config.type = "Binance";
-    services->market_data_service()->add_feed(feed_config, {"binance"});
+    core->market_data_service()->add_feed(feed_config, {"binance"});
 
     // ----------------------------------------------------------------------
     // STRATEGY
     // ----------------------------------------------------------------------
 
     // create a Strategy object, which is a container for individual bots
-    apex::Strategy strategy(services.get(), config.strategy.id);
+    apex::Strategy strategy(core.get(), config.strategy.id);
 
     // add a bots, one for each name we will trde
     auto exchange = apex::to_exchange_id(config.strategy.exchange);
@@ -264,7 +264,7 @@ int main(int argc, char** argv)
     // ----------------------------------------------------------------------
 
     // run until user presses control-c
-    services->run();
+    core->run();
   }
   catch (std::exception& e) {
     std::cout << "error: " << e.what() << std::endl;

@@ -30,28 +30,28 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-  Strategy::Strategy(apex::Services* services,
+  Strategy::Strategy(apex::Core* core,
                    Config config)
-    : _services(services),
+    : _core(core),
       _config(config),
       _strategy_id(config.get_string("code"))
   {
     validate_strategy_id(_strategy_id);
-    _auditor = std::make_unique<Auditor>(_services);
+    _auditor = std::make_unique<Auditor>(_core);
   }
 
-  Strategy::Strategy(apex::Services* services,
+  Strategy::Strategy(apex::Core* core,
                      std::string strategy_id)
-    : _services(services),
+    : _core(core),
       _strategy_id(std::move(strategy_id))
   {
     validate_strategy_id(_strategy_id);
-    _auditor = std::make_unique<Auditor>(_services);
+    _auditor = std::make_unique<Auditor>(_core);
   }
 
-  Strategy::Strategy(std::unique_ptr<apex::Services>& services,
+  Strategy::Strategy(std::unique_ptr<apex::Core>& core,
                      std::string strategy_id)
-    : Strategy(services.get(),
+    : Strategy(core.get(),
                std::move(strategy_id))
   {
   }
@@ -82,7 +82,7 @@ std::set<std::string> Strategy::parse_flat_instruments_config()
 
 void Strategy::stop_bots()
 {
-  assert(_services->evloop()->this_thread_is_ev());
+  assert(_core->evloop()->this_thread_is_ev());
 
   // stop bots, this will cause them to issue cancel order requests
 
@@ -99,7 +99,7 @@ void Strategy::stop_bots()
 
 void Strategy::stop()
 {
-  if (_services->is_backtest()) {
+  if (_core->is_backtest()) {
     LOG_INFO("stopping bots");
     for (auto& item : _bots)
       item.second->stop();
@@ -117,13 +117,13 @@ void Strategy::stop()
   // So, if we do ever need to run this operation on the event thread, we'd need
   // to rewrite this method, where each step below get queued as a sequence of
   // actions on the event thread; and definitely no dumb sleep!
-  assert(not _services->evloop()->this_thread_is_ev());
+  assert(not _core->evloop()->this_thread_is_ev());
 
   // call stop for each bot, will triggers order cancels. caution: this
   // consumes time on the EV thread.
 
   std::promise<void> promise_stop_bots;
-  _services->evloop()->dispatch([&]() {
+  _core->evloop()->dispatch([&]() {
     LOG_INFO("stopping bots");
     for (auto& item : _bots)
       item.second->stop();
@@ -140,7 +140,7 @@ void Strategy::stop()
 
   // delete bots
   std::promise<void> delete_bots;
-  _services->evloop()->dispatch([&]() {
+  _core->evloop()->dispatch([&]() {
     LOG_INFO("deleting bots");
     for (auto& item : _bots) {
       item.second.release();
@@ -155,11 +155,11 @@ void Strategy::init_bots()
   // load all instrument positions for this strategy
   std::map<apex::Instrument, double> instrument_positions;
   for (auto& instrument_position :
-       _services->persistence_service()->restore_instrument_positions(
+       _core->persistence_service()->restore_instrument_positions(
            _strategy_id)) {
     LOG_INFO("GOT: " << instrument_position.native_symbol << ", "
                      << instrument_position.qty);
-    apex::Instrument instrument = _services->ref_data_service()->get_instrument(
+    apex::Instrument instrument = _core->ref_data_service()->get_instrument(
         instrument_position.native_symbol, instrument_position.exchange);
     instrument_positions.insert({instrument, instrument_position.qty});
   }

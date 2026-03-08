@@ -23,7 +23,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-class Services;
+class Core;
 class Instrument;
 
 struct RestoredPosition {
@@ -36,7 +36,7 @@ struct RestoredPosition {
 class PersistenceService
 {
 public:
-  explicit PersistenceService(Services* services);
+  explicit PersistenceService(Core* core);
 
   // position actions
   void persist_instrument_positions(std::string algo_id,
@@ -46,7 +46,7 @@ public:
       std::string strategy_id);
 
 private:
-  Services* _services;
+  Core* _core;
   std::string _persist_path;
 };
 

@@ -23,7 +23,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 namespace apex {
 
-class Services;
+class Core;
 class Reactor;
 class RealtimeEventLoop;
 class WebsocketClient;
@@ -32,11 +32,11 @@ class ByBitFeedHandler : public FeedHandlerImpl<ByBitFeedHandler>
 {
 public:
 
-  ByBitFeedHandler(Services* services,
-                       RunMode run_mode,
-                       Reactor* reactor,
-                       RealtimeEventLoop* event_loop,
-                       FeedHandlerCallbacks);
+  ByBitFeedHandler(Core* core,
+                   RunMode run_mode,
+                   Reactor* reactor,
+                   RealtimeEventLoop* event_loop,
+                   FeedHandlerCallbacks);
   ~ByBitFeedHandler();
 
   void start() override;

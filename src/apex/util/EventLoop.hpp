@@ -34,7 +34,7 @@ public:
    * the timer function, or 0 if the function should not be invoked again. */
   typedef std::function<std::chrono::milliseconds()> timer_fn;
 
-  virtual ~EventLoop() {}
+  virtual ~EventLoop() = default;
 
   /** Post a function object that is later invoked on the event thread. */
   virtual void dispatch(std::function<void()> fn) = 0;

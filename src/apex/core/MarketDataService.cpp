@@ -15,17 +15,16 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/comm/GxClientSession.hpp>
 #include <apex/core/BacktestService.hpp>
+#include <apex/core/Core.hpp>
 #include <apex/core/GatewayService.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/core/MarketDataService.hpp>
 #include <apex/core/RefDataService.hpp>
-#include <apex/core/Services.hpp>
-#include <apex/core/Services.hpp>
 #include <apex/core/TimeLogService.hpp>
-#include <apex/util/TimeLog.hpp>
+#include <apex/gx/GxClientSession.hpp>
 #include <apex/model/MarketData.hpp>
+#include <apex/util/TimeLog.hpp>
 #include <apex/venues/binance/BinanceFeedHandler.hpp>
 #include <apex/venues/binance/BinanceUsdFutFeedHandler.hpp>
 
@@ -115,8 +114,8 @@ private:
 
 
 
-MarketDataService::MarketDataService(Services* services) :
-  _services(services)
+MarketDataService::MarketDataService(Core* core) :
+  _core(core)
 {
 }
 
@@ -139,12 +138,12 @@ MarketData* MarketDataService::find_market_data(const Instrument& instrument)
   auto mkt = std::make_unique<MarketData>();
   MarketData* md = mkt.get();
 
-  if (_services->is_backtest()) {
-    auto backtest_svc = _services->backtest_service();
+  if (_core->is_backtest()) {
+    auto backtest_svc = _core->backtest_service();
     backtest_svc->subscribe_canned_data(instrument, mkt.get(), stream_params);
   }
   else {
-    auto session = _services->gateway_service()->find_session(instrument.exchange_id());
+    auto session = _core->gateway_service()->find_session(instrument.exchange_id());
     if (session) {
 
       LOG_INFO("subscribing to market data for " << instrument
@@ -172,17 +171,17 @@ MarketData* MarketDataService::find_market_data(const Instrument& instrument)
 void MarketDataService::add_feed(FeedConfig config,
                                  std::list<std::string> venues)
 {
-  auto tlog_svc = _services->time_log_service();
+  auto tlog_svc = _core->time_log_service();
   if (config.type == "BinanceUsdFut") {
     EmbeddedFeedHandler::FHBuilder fh_builder;
-    fh_builder = [services=_services, config]
+    fh_builder = [core=_core, config]
       (FeedHandlerCallbacks callbacks) -> std::shared_ptr<FeedHandler> {
       LOG_INFO("creating feed handler " << config.type);
       auto feed = std::make_shared<BinanceUsdFutFeedHandler>(
-        services,
-        services->run_mode(),
-        services->reactor(),
-        services->realtime_evloop(),
+        core,
+        core->run_mode(),
+        core->reactor(),
+        core->realtime_evloop(),
         callbacks
       );
       return feed;
@@ -205,14 +204,14 @@ void MarketDataService::add_feed(FeedConfig config,
   }
   else if (config.type == "Binance") {
     EmbeddedFeedHandler:: FHBuilder fh_builder;
-    fh_builder = [services=_services, config]
+    fh_builder = [core=_core, config]
       (FeedHandlerCallbacks callbacks) -> std::shared_ptr<FeedHandler> {
       LOG_INFO("creating feed handler " << config.type);
       auto feed = std::make_shared<BinanceFeedHandler>(
-        services,
-        services->run_mode(),
-        services->reactor(),
-        services->realtime_evloop(),
+        core,
+        core->run_mode(),
+        core->reactor(),
+        core->realtime_evloop(),
         callbacks
         );
       return feed;

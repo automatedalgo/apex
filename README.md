@@ -43,7 +43,20 @@ Once the code is build you should then follow the [quick
 start](docs/quick_start.md) tutorial, which shows how to start a simple program
 that can perform order send and cancel.
 
-## Caution!
+## Source layout
+
+The core engine source code is found under `src/apex`, which contains the follow
+folders:
+
+* `core` - the core engine framework
+* `model`- domain models of financial trading
+* `net` - netwworking, such as TCP, SSL/TLS
+* `venues` - exchange connectivity
+* `backtest` - backtest components, such as file readers
+* `util` - general utilties
+* `gx` - components for gateway processes
+
+## CAUTION!
 
 Running algo strategies is inherently dangerous.  You can quickly lose all of
 your money invested. Bugs in either the core platform code, or your strategy

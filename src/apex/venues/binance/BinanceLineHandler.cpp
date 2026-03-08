@@ -15,9 +15,9 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <apex/core/Core.hpp>
 #include <apex/core/Logger.hpp>
-#include <apex/core/Services.hpp>
-#include <apex/infra/WebsocketClient.hpp>
+#include <apex/net/WebsocketClient.hpp>
 #include <apex/util/JsonWriter.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
 #include <apex/venues/binance/BinanceLineHandler.hpp>
@@ -82,21 +82,21 @@ static std::string sign_message(const std::string& payload,
 
 
 
-BinanceLineHandler::BinanceLineHandler(Services * services,
+BinanceLineHandler::BinanceLineHandler(Core* core,
                                        Reactor* reactor,
                                        RealtimeEventLoop* event_loop,
                                        LineHandlerCallbacks callbacks,
                                        OrderRouterConfig config)
-  : _services(services),
+  : _core(core),
     _event_loop(event_loop),
     _reactor(reactor),
-    _ssl(_services->ssl()),
+    _ssl(_core->ssl()),
     _callbacks(callbacks),
     _config(config)
 {
   _callbacks.assert_all_defined();
 
-  assert(!services->is_backtest());
+  assert(!_core->is_backtest());
 
   // TODO: allow these to come from config
   _line_url = "wss://ws-api.binance.com:9443/ws-api/v3?returnRateLimits=false";
@@ -115,7 +115,7 @@ BinanceLineHandler::BinanceLineHandler(Services * services,
     _apikey = "sErnzoWaTESThtDlKTHISISATESTfWppp7t34vOOszl8wNTEST3feMyGv5SjSsLv";
   }
 
-  if (auto mcap = _services->message_capture_service()) {
+  if (auto mcap = _core->message_capture_service()) {
 
     std::tie(_ws_line_msgcap_id_in, _ws_line_msgcap_id_out)
       = mcap->register_stream_id_pair("binance-line");
@@ -271,7 +271,7 @@ void BinanceLineHandler::process_raw_message(const char* buf, size_t len)
   // This function receives Binance order responses, such as new-order-ack,
   // cancel-order-ack, execution reports, and so on.
 
-  if (auto mcap = _services->message_capture_service())
+  if (auto mcap = _core->message_capture_service())
     mcap->push_event(_ws_line_msgcap_id_in, std::string_view(buf, len));
 
   try {
@@ -382,7 +382,7 @@ void BinanceLineHandler::manage_connection()
                         signature,
                         R"("}})");
 
-      if (auto mcap = _services->message_capture_service())
+      if (auto mcap = _core->message_capture_service())
         mcap->push_event(_ws_line_msgcap_id_out, msg);
       _ws_line->send(msg);
     }
@@ -440,7 +440,7 @@ void BinanceLineHandler::submit_order(OrderParams order)
     }
 
     std::string_view sv ( jw );
-    if (auto mcap = _services->message_capture_service())
+    if (auto mcap = _core->message_capture_service())
       mcap->push_event(_ws_line_msgcap_id_out, sv);
     _ws_line->send(sv);
   } else {
@@ -473,7 +473,7 @@ void BinanceLineHandler::cancel_order(const MxCancelOrder& msg)
     params["orderId"] = std::stoul(msg.exch_order_id);
     jm["params"] = std::move(params);
     auto msg = jm.dump();
-    if (auto mcap = _services->message_capture_service())
+    if (auto mcap = _core->message_capture_service())
       mcap->push_event(_ws_line_msgcap_id_out, msg);
     _ws_line->send(msg);
   }
@@ -492,7 +492,7 @@ void BinanceLineHandler::initiate_user_stream()
   "method": "userDataStream.subscribe"
 })";
 
-  if (auto mcap = _services->message_capture_service())
+  if (auto mcap = _core->message_capture_service())
     mcap->push_event(_ws_line_msgcap_id_out, msg);
   _ws_line->send(msg);
 }
@@ -517,7 +517,7 @@ void BinanceLineHandler::user_stream_keepalive()
                       _apikey,
                       R"("}})");
 
-  if (auto mcap = _services->message_capture_service())
+  if (auto mcap = _core->message_capture_service())
     mcap->push_event(_ws_line_msgcap_id_out, msg);
   _ws_line->send(msg);
   }
@@ -545,7 +545,7 @@ void BinanceLineHandler::start()
 std::unique_ptr<OrderRouter> BinanceLineHandler::get_order_router_adapter()
 {
   auto router = std::make_unique<OrderRouterAdapter<BinanceLineHandler>>(
-    _services, shared_from_this());
+    _core, shared_from_this());
 
   return router;
 }

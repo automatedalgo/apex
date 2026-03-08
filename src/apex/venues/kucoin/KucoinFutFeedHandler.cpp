@@ -15,13 +15,13 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/venues/kucoin/KucoinFutFeedHandler.hpp>
+#include <apex/core/Core.hpp>
 #include <apex/core/Logger.hpp>
-#include <apex/core/Services.hpp>
-#include <apex/util/RealtimeEventLoop.hpp>
 #include <apex/model/tick_msgs.hpp>
-#include <apex/infra/WebsocketClient.hpp>
-#include <apex/infra/ssl.hpp>
+#include <apex/net/WebsocketClient.hpp>
+#include <apex/net/ssl.hpp>
+#include <apex/util/RealtimeEventLoop.hpp>
+#include <apex/venues/kucoin/KucoinFutFeedHandler.hpp>
 
 #include <curl/curl.h>
 
@@ -29,13 +29,13 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex {
 
 
-KucoinFutFeedHandler::KucoinFutFeedHandler(Services* services,
+KucoinFutFeedHandler::KucoinFutFeedHandler(Core* core,
                                            RunMode run_mode,
                                            Reactor* reactor,
                                            RealtimeEventLoop* event_loop,
                                            FeedHandlerCallbacks callbacks)
   : FeedHandlerImpl(ExchangeId::kucoin_fut,
-                    services,
+                    core,
                     run_mode, reactor,
                     event_loop),
     _callbacks(std::move(callbacks)),
@@ -128,8 +128,8 @@ void KucoinFutFeedHandler::manage_connection()
 
   try {
     _ws_feed = connect_websocket(url, "kcnfutfeed",
-                                 _services->reactor(),
-                                 _services->ssl(),
+                                 _core->reactor(),
+                                 _core->ssl(),
                                  _event_loop,
                                  [this](const char* buf, size_t n){
                                    this->process_raw_message(buf, n);
@@ -296,7 +296,7 @@ void KucoinFutFeedHandler::do_subscriptions()
       if (!sub.second.active) {
         std::string request = sub.second.request;
         LOG_INFO("sending subscription: " << request);
-        // if (auto mcap = _services->message_capture_service()) {
+        // if (auto mcap = _core->message_capture_service()) {
         //   mcap->push_event(_ws_feed_msgcap_id_out, request);
         // }
         _ws_feed->send(request);

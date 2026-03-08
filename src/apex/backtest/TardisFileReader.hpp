@@ -24,7 +24,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/model/MarketData.hpp>
 #include <apex/model/ExchangeId.hpp>
 #include <apex/model/Instrument.hpp>
-#include <apex/infra/DecodeBuffer.hpp>
+#include <apex/net/DecodeBuffer.hpp>
 #include <apex/backtest/TickReplayer.hpp>
 
 #include <filesystem>

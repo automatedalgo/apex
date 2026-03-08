@@ -161,7 +161,7 @@ int main()
     // Hoever to run in back-test mode will require captured market data.
     auto run_mode = apex::RunMode::paper;
 
-    std::unique_ptr<apex::Services> services;
+    std::unique_ptr<apex::Core> core;
 
     // ------------------------------------------------------------
     // FRAMEWORK SETUP
@@ -173,21 +173,21 @@ int main()
       apex::Time upto{"2024-02-31"};
 
       // create core engine, configured for backtest
-      services = apex::Services::create(run_mode, {from, upto});
+      core = apex::Core::create(run_mode, {from, upto});
     } else {
       // create core engine, configured for realtime (prod / paper)
-      services = apex::Services::create(run_mode);
+      core = apex::Core::create(run_mode);
 
       // add feed handlers
       apex::FeedConfig feed_config;
       feed_config.type = "BinanceUsdFut";
-      services->market_data_service()->add_feed(feed_config,
+      core->market_data_service()->add_feed(feed_config,
                                                 {"binance_usdfut"});
 
       // add line handlers
       apex::OrderRouterConfig binance_config;
       binance_config.api_key_file = apex::expand("~/.secrets/binance_key.json");
-      services->order_router_service()->add_binance_usdfut(binance_config);
+      core->order_router_service()->add_binance_usdfut(binance_config);
     }
 
     // ------------------------------------------------------------
@@ -195,7 +195,7 @@ int main()
     // ------------------------------------------------------------
 
     // create a Strategy object, which is a container for individual bots
-    apex::Strategy strategy(services.get(), "SMM02");
+    apex::Strategy strategy(core.get(), "SMM02");
 
     // add a bot, which is responsible for trading a single name
     strategy.create_bot<SimpleMarketMakerBot>(apex::InstrumentQuery(
@@ -208,7 +208,7 @@ int main()
     // ----- System start -----
 
     // run until user presses control-c, or backtest time range completed
-    services->run();
+    core->run();
   }
   catch (std::exception& e) {
     std::cout << "exception: " << e.what() << std::endl;

@@ -34,7 +34,7 @@ class BinanceLineHandler : public std::enable_shared_from_this<BinanceLineHandle
   };
 
 public:
-  BinanceLineHandler(Services* services,
+  BinanceLineHandler(Core* core,
                      Reactor* reactor,
                      RealtimeEventLoop* event_loop,
                      LineHandlerCallbacks callbacks,
@@ -68,7 +68,7 @@ private:
   void process_cancel_order_reply(PendReq&, json&);
   void process_execution_report(json&);
 
-  Services* _services;
+  Core* _core;
   RealtimeEventLoop* _event_loop;
   Reactor* _reactor;
   SslContext* _ssl;

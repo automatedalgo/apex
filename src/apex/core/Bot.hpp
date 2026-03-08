@@ -33,7 +33,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 namespace apex
 {
 
-class Services;
+class Core;
 class Order;
 class MarketData;
 class Strategy;
@@ -49,7 +49,7 @@ public:
   [[nodiscard]] bool has_pending_orders() const { return !_pending_orders.empty(); }
 
 
-  void add_new_order(std::shared_ptr<apex::Order> order)
+  void add_new_order(const std::shared_ptr<apex::Order> & order)
   {
     auto wp = order->weak_from_this();
     _pending_orders.insert(order);
@@ -180,7 +180,7 @@ public:
 protected:
   std::string ccy_value(const char* field, double size, double price);
 
-  Services* _services;
+  Core* _core;
   Strategy * _strategy;
   std::string _bot_typename;
   Instrument _instrument;

@@ -18,7 +18,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
 #include <apex/util/Time.hpp>
-#include <apex/core/common.hpp>
+#include <apex/core/RunMode.hpp>
 
 #include <functional>
 #include <map>

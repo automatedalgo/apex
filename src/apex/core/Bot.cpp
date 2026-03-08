@@ -15,16 +15,16 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <apex/core/Auditor.hpp>
 #include <apex/core/Bot.hpp>
+#include <apex/core/Core.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/core/MarketDataService.hpp>
 #include <apex/core/OrderRouter.hpp>
 #include <apex/core/OrderRouterService.hpp>
 #include <apex/core/OrderService.hpp>
 #include <apex/core/PersistenceService.hpp>
-#include <apex/core/Services.hpp>
 #include <apex/core/Strategy.hpp>
-#include <apex/core/Auditor.hpp>
 #include <apex/model/Position.hpp>
 #include <apex/util/Error.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
@@ -40,7 +40,7 @@ namespace apex
 
 Bot::Bot(const std::string& bot_typename, Strategy* strategy,
          Instrument instrument)
-  : _services(strategy->services()),
+  : _core(strategy->core()),
     _strategy(strategy),
     _bot_typename(bot_typename),
     _instrument(std::move(instrument))
@@ -68,7 +68,7 @@ void Bot::init(double initial_position)
                     << _position.net_qty());
 
   // setup market data subscription
-  _mkt = _services->market_data_service()->find_market_data(_instrument);
+  _mkt = _core->market_data_service()->find_market_data(_instrument);
   if (!_mkt) {
     THROW("failed to obtain a MarketData instance for instrument "
           << _instrument);
@@ -86,26 +86,26 @@ void Bot::init(double initial_position)
     }
   });
 
-  _order_router = _services->order_router_service()->get_order_router(
+  _order_router = _core->order_router_service()->get_order_router(
     _instrument, _strategy->strategy_id());
   assert(_order_router != nullptr);
 
   // setup market data subscription for an FX-rate instrument
-  if (_services->ref_data_service()->is_fx_rate_instrument(_instrument)) {
+  if (_core->ref_data_service()->is_fx_rate_instrument(_instrument)) {
     _mkt_fx_instr = _mkt;
   } else {
     auto fx_instruments =
-        _services->ref_data_service()->get_fx_rate_instruments(_instrument);
+        _core->ref_data_service()->get_fx_rate_instruments(_instrument);
     auto iter = fx_instruments.begin();
     while (iter != std::end(fx_instruments) && !_mkt_fx_instr)
-      _mkt_fx_instr = _services->market_data_service()->find_market_data(*iter);
+      _mkt_fx_instr = _core->market_data_service()->find_market_data(*iter);
 
     if (!_mkt_fx_instr)
       LOG_WARN(ticker() << ": failed to find an FX-rate instrument");
   }
 
   auto timer_interval = 1000ms;
-  _services->evloop()->dispatch(timer_interval, [this, timer_interval]() {
+  _core->evloop()->dispatch(timer_interval, [this, timer_interval]() {
     try {
       this->on_timer();
     } catch (std::runtime_error& e) {
@@ -189,7 +189,7 @@ std::shared_ptr<Order> Bot::create_order(
   if (this->is_stopping())
     throw std::runtime_error("cannot create order when bot is stopping");
 
-  auto order = _services->order_service()->create(
+  auto order = _core->order_service()->create(
       _order_router, _instrument, side, size, price, tif,
       _strategy->strategy_id(), user_data, user_data_delete_fn);
 
@@ -200,13 +200,13 @@ std::shared_ptr<Order> Bot::create_order(
     if (ev.is_fill()) {
       this->_position.apply_fill(ev.order->side(), ev.order->last_fill().qty,
                                  ev.order->last_fill().price);
-      _services->persistence_service()->persist_instrument_positions(
+      _core->persistence_service()->persist_instrument_positions(
           "XYZ", ev.order->instrument(), _position.net_qty());
     }
 
     if (this->_strategy->auditor()) {
       this->_strategy->auditor()->add_transaction(
-        _services->now(),
+        _core->now(),
         this->_strategy->strategy_id(),
         ev,
         "EVENT",
@@ -355,7 +355,7 @@ bool Bot::is_stopping() { return _is_stopping; }
 
 void Bot::stop()
 {
-  auto sleep_interval = _services->is_backtest()? 0ms: 50ms;
+  auto sleep_interval = _core->is_backtest()? 0ms: 50ms;
 
   auto stop_on_eventloop = [this, sleep_interval]() {
     if (!_is_stopping) {
@@ -376,7 +376,7 @@ void Bot::stop()
     }
   };
 
-  if (_services->evloop()->this_thread_is_ev()) {
+  if (_core->evloop()->this_thread_is_ev()) {
     stop_on_eventloop();
   } else {
     event_loop().dispatch(stop_on_eventloop);
@@ -410,7 +410,7 @@ void Bot::wait_for_stop() {
   promise_all_closed.get_future().wait_for(2s);
 }
 
-EventLoop& Bot::event_loop() { return *_services->evloop(); }
+EventLoop& Bot::event_loop() { return *_core->evloop(); }
 
 double Bot::last_price() const {
   return _mkt->last().price;

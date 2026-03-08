@@ -33,7 +33,7 @@ class TickReplayer;
 class BacktestService
 {
 public:
-  BacktestService(Services*, apex::Time replay_from, apex::Time replay_upto);
+  BacktestService(Core*, apex::Time replay_from, apex::Time replay_upto);
   ~BacktestService();
   void subscribe_canned_data(const Instrument&, MarketData*, MdStreamParams stream_params);
 
@@ -43,7 +43,7 @@ private:
                             MarketData* mktdata,
                             MdStream stream_type);
 
-  Services* _services;
+  Core* _core;
   apex::Time _from;
   apex::Time _upto;
   std::list<Time> _dates;

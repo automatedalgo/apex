@@ -27,7 +27,7 @@ namespace apex
 class MarketData;
 class Position;
 class OrderEvent;
-class Services;
+class Core;
 
 // Responsible for capturing detailed transaction records of the trading
 // strategy, including order activity, fills, pnl etc, and either directly
@@ -38,7 +38,7 @@ class Auditor
 {
 public:
 
-  Auditor(Services*, std::string transactions_dir="");
+  Auditor(Core*, std::string transactions_dir="");
   ~Auditor();
 
   void add_transaction(Time event_time,
@@ -53,7 +53,7 @@ public:
                        double fill_price);
 
 private:
-  Services* _services;
+  Core* _core;
   std::ofstream _file;
 };
 

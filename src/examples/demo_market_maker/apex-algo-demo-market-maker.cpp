@@ -15,16 +15,16 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/model/Account.hpp>
+#include "DemoMakerBot.hpp"
 #include <apex/core/Bot.hpp>
-#include <apex/util/Config.hpp>
-#include <apex/util/RealtimeEventLoop.hpp>
-#include <apex/comm/GxClientSession.hpp>
+#include <apex/core/Core.hpp>
+#include <apex/core/Logger.hpp>
 #include <apex/core/OrderRouter.hpp>
-#include <apex/core/Services.hpp>
 #include <apex/core/Strategy.hpp>
 #include <apex/core/StrategyMain.hpp>
-#include <apex/demo/DemoMakerBot.hpp>
+#include <apex/model/Account.hpp>
+#include <apex/util/Config.hpp>
+#include <apex/util/RealtimeEventLoop.hpp>
 
 
 #include <memory>
@@ -35,8 +35,8 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 class TestStrategy : public apex::Strategy
 {
 public:
-  TestStrategy(apex::Services* services, apex::Config config)
-    : apex::Strategy(services, std::move(config))
+  TestStrategy(apex::Core* core, apex::Config config)
+    : apex::Strategy(core, std::move(config))
   {
   }
 
@@ -51,7 +51,7 @@ public:
     auto symbols = parse_flat_instruments_config();
     for (const std::string& symbol : symbols) {
       apex::Instrument instrument =
-          _services->ref_data_service()->get_instrument(
+          _core->ref_data_service()->get_instrument(
               symbol, apex::InstrumentType::coinpair);
 
       auto bot = std::unique_ptr<apex::Bot>(construct_bot(instrument));

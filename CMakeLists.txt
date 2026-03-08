@@ -107,13 +107,6 @@ configure_file(
         "${PROJECT_SOURCE_DIR}/src/apex/core/version.hpp"
 )
 
-# check websocketpp is available in the source tree
-set(websocketpp "${PROJECT_SOURCE_DIR}/3rdparty/websocketpp/websocketpp/message_buffer/message.hpp")
-message(STATUS "checking for ${websocketpp}")
-if (NOT EXISTS "${websocketpp}")
-    message(FATAL_ERROR "websocketpp header not found! Check that websocketpp is unzipped under 3rdparty/")
-endif ()
-
 
 ##
 ## Setup RPATH
