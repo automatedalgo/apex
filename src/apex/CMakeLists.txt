@@ -95,6 +95,8 @@ list(APPEND LIB_APEX_SRC_FILES
   "model/Position.hpp"
   "model/StrategyId.cpp"
   "model/StrategyId.hpp"
+  "model/model_common.cpp"
+  "model/model_common.hpp"
   "model/tick_msgs.hpp"
   "util/AllocTracker.cpp"
   "util/AllocTracker.hpp"
