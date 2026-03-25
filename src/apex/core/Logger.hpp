@@ -23,7 +23,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <functional>
 #include <map>
 #include <mutex>
-#include <sstream>
 #include <string>
 #include <memory>
 #include <queue>
@@ -35,7 +34,7 @@ namespace apex
 
 class Config;
 class RealtimeEventLoop;
-class LogOpts;
+struct LogOpts;
 
 
 class Logger
@@ -59,7 +58,7 @@ public:
 
   ~Logger();
 
-  void set_opts(LogOpts);
+  void set_opts(const LogOpts&);
 
   bool wants_level(Logger::level l) const { return l & _mask; }
 
@@ -84,6 +83,10 @@ public:
 
   static Logger& instance();
 
+  // Configure the global instance directly
+  static void configure(level level, bool want_detail = false);
+
+  // Configure the global instance from a config object
   static void configure_from_config(Config);
 
   void write(Logger::level, std::string_view, const char* file, int l);
@@ -94,12 +97,11 @@ public:
 
   bool is_async_mode();
 
+  Logger(const Logger&) = delete;
+  Logger& operator=(const Logger&) = delete;
+
 private:
   Logger();
-
-  Logger(const Logger&) = delete;
-
-  Logger& operator=(const Logger&) = delete;
 
   void enable_async_mode();
   void drain_async_queue();
@@ -147,7 +149,7 @@ private:
 struct LogOpts {
   // file-name for log file, leave empty to disable log file, or put "auto" to
   // auto generate a file-name
-  std::string filename = "";
+  std::string filename;
 
   // for an auto generated file-name, what resolution to use for time part
   enum Time { none, day, second} time = LogOpts::second;
