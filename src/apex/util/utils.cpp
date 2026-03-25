@@ -419,7 +419,6 @@ void wait_for_sigint() {
     sigaction(SIGTERM, &newsigact, nullptr);
   }
 
-
   interrupt_code.get_future().wait();
 }
 

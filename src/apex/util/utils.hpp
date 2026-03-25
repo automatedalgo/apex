@@ -151,7 +151,7 @@ public:
   {
   }
 
-  scope_guard(scope_guard&& other) : _fn(std::move(other._fn))
+  scope_guard(scope_guard&& other) noexcept : _fn(std::move(other._fn))
   {
     other._fn = nullptr;
   }
