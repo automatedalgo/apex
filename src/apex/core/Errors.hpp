@@ -17,6 +17,8 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include <string_view>
+
 namespace apex::error
 {
 
@@ -24,7 +26,7 @@ namespace apex::error
 inline const char* const e0001 = "e0001";
 
 // internal reject, exchange link down
-inline const char* const e0002 = "e0002";
+inline constexpr std::string_view venue_link_down = "e0002";
 
 // internal reject, GX connection not up
 inline const char* const e0003 = "e0003";
@@ -42,4 +44,3 @@ inline const char* const e0200 = "e0200";
 inline const char* const e0201 = "e0201";
 
 } // namespace apex::error
-
