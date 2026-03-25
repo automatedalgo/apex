@@ -35,7 +35,7 @@ public:
   {
     struct timespec ts = {0,0};
 
-    inline void mark() {
+    void mark() {
       ::clock_gettime(CLOCK_REALTIME, &ts);
     }
 
@@ -51,7 +51,7 @@ public:
   TimePoint at_parsed;     // at message parsed
   TimePoint at_book;       // at book updated
 
-  std::string dump();
+  [[nodiscard]] std::string dump() const;
 };
 
 }
