@@ -34,7 +34,7 @@ class TcpSocket;
 
 /** Exception thrown during IO processing of a new connection. This is an
  * unrecoverable error that prevents the correct construction of a protocol
- * encoder/decoder object, and so prevents creationg of a session from a new
+ * encoder/decoder object, and so prevents creating of a session from a new
  * socket connection.  Will lead to connection drop without any attempt to send
  * a final message (although protocol level messages maybe sent before
  * disconnect). */
@@ -52,11 +52,11 @@ namespace protocol_constants
 {
 /* Keep default interval under 1 minute, which is a typical timeout period
    chosen by load balancers etc. */
-static const int default_ping_interval_ms = 30000;
+inline constexpr int default_ping_interval_ms = 30000;
 
-static const int default_pong_min_interval_ms = 1000;
+inline constexpr int default_pong_min_interval_ms = 1000;
 
-static const int default_max_missed_pings = 2;
+inline constexpr int default_max_missed_pings = 2;
 } // namespace protocol_constants
 
 /* Base class for encoding & decoding of bytes on the wire. */
@@ -70,7 +70,7 @@ public:
     /* minimum allowed interval between replies to ping */
     std::chrono::milliseconds pong_min_interval;
 
-    /* Maximum number of missed pings.  A connection that reaches this mumber of
+    /* Maximum number of missed pings.  A connection that reaches this number of
      * missed pings will be dropped.  A missed ping is one that is not answered
      * by a pong, nor by any other received data. It is expected that a peer
      * will reply to a ping with a pong message, or, will send application data
@@ -102,7 +102,7 @@ public:
   virtual ~protocol() = default;
 
 protected:
-  std::string fd() const;
+  [[nodiscard]] std::string fd() const;
 
   TcpSocket* _socket; /* non owning */
   t_msg_cb _on_data_cb;
@@ -158,9 +158,10 @@ public:
   void send_pong(std::string_view sv = {});
 
   // state
-  bool is_open() const { return _state == state::open; }
-  bool is_opening() const { return _state == state::handling_http_request ||
-      _state == state::handling_http_response; }
+  [[nodiscard]] bool is_open() const { return _state == state::open; }
+  [[nodiscard]] bool is_opening() const {
+    return _state == state::handling_http_request ||
+           _state == state::handling_http_response; }
 
 private:
 
