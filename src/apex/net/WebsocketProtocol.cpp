@@ -19,13 +19,11 @@
 #include <apex/net/HttpParser.hpp>
 #include <apex/net/TcpSocket.hpp>
 #include <apex/core/Logger.hpp>
-#include <apex/util/platform.hpp>
 #include <apex/util/utils.hpp>
 
 #include <apache/base64.h> // from 3rdparty
 
-#include <assert.h>
-#include <string.h>
+#include <cassert>
 
 #include <openssl/sha.h>
 
@@ -63,7 +61,7 @@ constexpr uint8_t opcode = 0x0F;
 
 namespace close_status {
 
-// normal closure, meaning that the purpose forwhich the connection was
+// normal closure, meaning that the purpose for which the connection was
 // established has been fulfilled.
 constexpr int normal = 1000;
 
@@ -75,6 +73,7 @@ constexpr int protocol_error = 1002;
 constexpr int basic_header_len = 2;
 constexpr int payload_size_16 = 126;
 constexpr int payload_size_64 = 127;
+constexpr int mask_len = 4;
 
 enum class opcode  {
   continuation = 0x0,
@@ -118,9 +117,11 @@ struct basic_header {
     bytes[1] |= basic_value;
   }
 
-  size_t header_size() const { return basic_header_len; }
+  static size_t header_size() { return basic_header_len; }
 
-  char bytes[basic_header_len];
+  [[nodiscard]] const char* data() const { return reinterpret_cast<const char*>(bytes); }
+
+  uint8_t bytes[basic_header_len];
 };
 
 
@@ -153,13 +154,17 @@ inline bool is_fin(uint8_t h0) {
   return (h0 & ws::flag::fin) == ws::flag::fin;
 }
 
+inline bool is_masked(uint8_t h0) {
+  return (h0 & ws::flag::mask) == ws::flag::mask;
+}
+
 } // namespace ws
 
 protocol::protocol(TcpSocket* h, t_msg_cb cb, protocol_callbacks callbacks,
                    size_t buf_initial_size,
                    size_t buf_max_size)
   : _socket(h),
-    _on_data_cb(cb),
+    _on_data_cb(std::move(cb)),
     _callbacks(std::move(callbacks)),
     _buf(buf_initial_size, buf_max_size)
 {
@@ -173,7 +178,7 @@ std::string protocol::fd() const { return std::to_string(_socket->fd()); }
 WebsocketProtocol::WebsocketProtocol(TcpSocket* h, t_msg_cb msg_cb,
                                      protocol::protocol_callbacks callbacks,
                                      connect_mode mode, options opts)
-  : protocol(h, msg_cb, std::move(callbacks)),
+  : protocol(h, std::move(msg_cb), std::move(callbacks)),
     _state(mode == connect_mode::accept ? state::handling_http_request
            : state::handling_http_response),
     _http_parser(new HttpParser(mode == connect_mode::accept
@@ -195,24 +200,24 @@ inline std::string make_accept_key(const std::string& challenge)
   auto full_key = challenge;
   full_key += ws::GUID;
 
-  unsigned char obuf[20] = {};
+  unsigned char buf[20] = {};
 
-  SHA1((const unsigned char*)full_key.c_str(), full_key.size(), obuf);
+  SHA1(reinterpret_cast<const unsigned char*>(full_key.c_str()), full_key.size(), buf);
 
   char tmp[50] = {};
-  assert(ap_base64encode_len(sizeof(obuf)) < (int)sizeof(tmp));
+  assert(ap_base64encode_len(sizeof(buf)) < static_cast<int>(sizeof(tmp)));
   assert(tmp[sizeof(tmp) - 1] == 0);
 
-  ap_base64encode(tmp, (char*)obuf, sizeof(obuf));
+  ap_base64encode(tmp, reinterpret_cast<char*>(buf), sizeof(buf));
 
   return tmp;
 }
 
 
-/* Test whether a HTTP header contains a desired value.  Note that when checking
- * request and response headers, we are generally case
- * insensitive. I.e. according to RFC2616, all header field names in both HTTP
- * requests and HTTP responses are case-insensitive. */
+/* Test whether an HTTP header contains a desired value.  Note, when checking
+ * request and response headers, we are generally case-insensitive. I.e.
+ * according to RFC2616, all header field names in both HTTP requests and HTTP
+ * responses are case-insensitive. */
 static bool header_contains(const std::string& source, const std::string& match)
 {
   for (auto& i : split(source, ',')) {
@@ -264,7 +269,7 @@ uint64_t WebsocketProtocol::process_http_request(DecodeBuffer::read_pointer& rd)
         // auto& websock_sub = header_field("sec-websocket-protocol");
 
         /* Note, here we would identify common protocol to use, but
-         * binance has no options other that json */
+         * binance has no options other that JSON */
       }
 
       std::ostringstream os;
@@ -283,7 +288,7 @@ uint64_t WebsocketProtocol::process_http_request(DecodeBuffer::read_pointer& rd)
       _state = state::open;
     } else if (_http_parser->has("connection") &&
                header_contains(_http_parser->get("connection"), "close")) {
-      /* Received a http header that requests connection close.  This is
+      /* Received an http header that requests connection close.  This is
        * straight-forward to obey (just echo the header and close the
        * socket). This kind of request can be received when connected to a
        * load balancer that is checking server health. */
@@ -374,7 +379,7 @@ void WebsocketProtocol::on_read(char* src, size_t len)
 
 void WebsocketProtocol::initiate(t_initiate_cb cb)
 {
-  _on_open_cb = cb;
+  _on_open_cb = std::move(cb);
 
   char nonce[16];
   std::random_device rd;
@@ -385,7 +390,8 @@ void WebsocketProtocol::initiate(t_initiate_cb cb)
 
   char sec_websocket_key[30] = {};
   assert(sec_websocket_key[sizeof(sec_websocket_key) - 1] == 0);
-  assert(ap_base64encode_len(sizeof(nonce)) < (int)sizeof(sec_websocket_key));
+  assert(ap_base64encode_len(sizeof(nonce)) <
+         static_cast<int>(sizeof(sec_websocket_key)));
 
   ap_base64encode(sec_websocket_key, nonce, sizeof(nonce));
 
@@ -428,7 +434,7 @@ void WebsocketProtocol::initiate(t_initiate_cb cb)
 
 void WebsocketProtocol::send_msg(const char* buf, size_t payload_len)
 {
-  char frame[2+4+8+65536]; // head(2) + mask(4) + ext(8) + payload(64KB)
+  uint8_t frame[2+4+8+65536]; // head(2) + mask(4) + ext(8) + payload(64KB)
 
   if (payload_len <= 0xFFFF) {
     const size_t hdr_len = 2 + 4 + ((payload_len<126)?0:2); // head(2) + mask(4) + ext(2)?
@@ -449,7 +455,7 @@ void WebsocketProtocol::send_msg(const char* buf, size_t payload_len)
 
     // generate mask and copy into frame, after header
     uint32_t mask = _rng();
-    uint8_t mask_bytes[4] = {
+    uint8_t mask_bytes[ws::mask_len] = {
       static_cast<uint8_t>((mask >> 24) & 0xFF),
       static_cast<uint8_t>((mask >> 16) & 0xFF),
       static_cast<uint8_t>((mask >> 8) & 0xFF),
@@ -465,10 +471,10 @@ void WebsocketProtocol::send_msg(const char* buf, size_t payload_len)
 
     // apply mask
     for (size_t i = 0; i < payload_len; i++)
-      frame[offset + i] = buf[i] ^ mask_bytes[i & 3];
+      frame[offset + i] = buf[i] ^ mask_bytes[i & (ws::mask_len-1)];
 
     LOG_DEBUG("sending: len=" << frame_len << ", frame: " << to_hex(frame, frame_len) );
-    _socket->write((char*) frame, frame_len);
+    _socket->write(reinterpret_cast<char*>(frame), frame_len);
   }
   else {
     throw std::runtime_error("sending huge frames not supported");
@@ -478,13 +484,13 @@ void WebsocketProtocol::send_msg(const char* buf, size_t payload_len)
 
 void WebsocketProtocol::send_ping()
 {
-  ws::basic_header hdr {
+  const ws::basic_header hdr {
     ws::opcode::ping,
     0, // no payload
     true, // fin
     false // mask
   };
-  _socket->write(hdr.bytes, hdr.header_size());
+  _socket->write(hdr.data(), hdr.header_size());
 }
 
 
@@ -505,7 +511,7 @@ void WebsocketProtocol::send_pong(std::string_view payload)
 
   // generate mask and copy into frame, after header
   uint32_t mask = _rng();
-  uint8_t mask_bytes[4] = {
+  uint8_t mask_bytes[ws::mask_len] = {
     static_cast<uint8_t>((mask >> 24) & 0xFF),
     static_cast<uint8_t>((mask >> 16) & 0xFF),
     static_cast<uint8_t>((mask >> 8) & 0xFF),
@@ -518,9 +524,9 @@ void WebsocketProtocol::send_pong(std::string_view payload)
 
   // apply the mask
   for (size_t i = 0; i < payload.size(); i++)
-    frame[2 + 4 + i] = payload[i] ^ mask_bytes[i & 3];
+    frame[2 + 4 + i] = payload[i] ^ mask_bytes[i & (ws::mask_len-1)];
 
-  _socket->write((char*) frame, 2 + 4 + payload.size());
+  _socket->write(reinterpret_cast<char*>(frame), 2 + 4 + payload.size());
 }
 
 
@@ -529,7 +535,7 @@ void WebsocketProtocol::send_close(uint16_t /*code*/, const std::string& /*reaso
   uint8_t frame[2+4] = {}; // header(2) + mask (4)
   frame[0] = ws::flag::fin | static_cast<uint8_t>(ws::opcode::close);
   frame[1] = ws::flag::mask;
-  _socket->write((char*) frame, std::size(frame));
+  _socket->write(reinterpret_cast<char*>(frame), std::size(frame));
 }
 
 
@@ -556,7 +562,7 @@ uint64_t WebsocketProtocol::process_frame_bytes(DecodeBuffer::read_pointer& rd)
   if (rd.avail() < ws::basic_header_len)
     return 0;
 
-  const uint8_t * const hdr = reinterpret_cast<const uint8_t*>(rd.ptr());
+  const auto * const hdr = reinterpret_cast<const uint8_t*>(rd.ptr());
 
   const uint64_t hdr_len = ws::calc_header_len(hdr[1]);
 
@@ -569,9 +575,18 @@ uint64_t WebsocketProtocol::process_frame_bytes(DecodeBuffer::read_pointer& rd)
   if (rd.avail() < frame_len)
     return 0;
 
-  const auto op =  ws::calc_opcode(hdr[0]);
+  const auto op = ws::calc_opcode(hdr[0]);
   const bool fin = ws::is_fin(hdr[0]);
+  const bool masked = ws::is_fin(hdr[1]);
   char * payload = rd.ptr() + hdr_len;
+
+  if (masked) {
+    // extract masking key, the final 4 bytes of the header, and unmask
+    uint8_t mask_bytes[ws::mask_len];
+    memcpy(mask_bytes, hdr + (hdr_len-ws::mask_len), ws::mask_len);
+    for (size_t i = 0; i < payload_len; i++)
+      payload[i] = payload[i] ^ mask_bytes[i & (ws::mask_len-1)];
+  }
 
   _missed_pings.store(0); // any frame can reset missing pings counter
 
@@ -602,7 +617,7 @@ uint64_t WebsocketProtocol::process_frame_bytes(DecodeBuffer::read_pointer& rd)
   }
 
   if (!fin || op == ws::opcode::continuation) {
-    LOG_ERROR("websocket fragemented frames not supported");
+    LOG_ERROR("websocket fragmented frames not supported");
     initiate_close();
   }
 
