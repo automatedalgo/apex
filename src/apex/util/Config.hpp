@@ -34,6 +34,9 @@ class ConfigError : public Error
 {
 public:
   explicit ConfigError(const std::string& what) : Error("", 0, what) {}
+  explicit ConfigError(const std::string& what,
+                       std::string filename,
+                       int line) : Error(filename, line, what) {}
 };
 
 class ConfigParseError : public ConfigError {

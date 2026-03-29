@@ -38,7 +38,8 @@ using namespace std::chrono_literals;
 namespace apex
 {
 
-Bot::Bot(const std::string& bot_typename, Strategy* strategy,
+Bot::Bot(const std::string& bot_typename,
+         Strategy* strategy,
          Instrument instrument)
   : _core(strategy->core()),
     _strategy(strategy),
@@ -47,10 +48,10 @@ Bot::Bot(const std::string& bot_typename, Strategy* strategy,
 {
   bool include_bot_typename = !bot_typename.empty();
 
-  _ticker = _instrument.id();
+  _name = _instrument.id();
   if (include_bot_typename)
-    _ticker += " (" + bot_typename + ")";
-  LOG_INFO(ticker() << ": bot created");
+    _name += " (" + bot_typename + ")";
+  LOG_INFO(name() << ": bot created");
 }
 
 
@@ -64,8 +65,8 @@ Bot::~Bot()
 void Bot::init(double initial_position)
 {
   _position = Position(initial_position);
-  LOG_INFO(ticker() << ": initialising bot, startup-position:"
-                    << _position.net_qty());
+  LOG_INFO(name() << ": initialising bot, startup-position:"
+           << _position.net_qty());
 
   // setup market data subscription
   _mkt = _core->market_data_service()->find_market_data(_instrument);
@@ -101,7 +102,7 @@ void Bot::init(double initial_position)
       _mkt_fx_instr = _core->market_data_service()->find_market_data(*iter);
 
     if (!_mkt_fx_instr)
-      LOG_WARN(ticker() << ": failed to find an FX-rate instrument");
+      LOG_WARN(name() << ": failed to find an FX-rate instrument");
   }
 
   auto timer_interval = 1000ms;
@@ -182,12 +183,18 @@ std::shared_ptr<Order> Bot::create_order(
 
 {
   if (!is_finite_non_zero(size))
-    throw std::runtime_error(concat("cannot create order, size invalid or zero, ",
-                                    std::to_string(size)));
+    throw std::runtime_error(
+      concat(name(),
+             ": cannot create order, size invalid or zero, ",
+             std::to_string(size)));
   if (!is_finite_non_zero(price))
-    throw std::runtime_error("cannot create order, price invalid or zero");
+    throw std::runtime_error(
+      concat(name(),
+             ": cannot create order, price invalid or zero"));
   if (this->is_stopping())
-    throw std::runtime_error("cannot create order when bot is stopping");
+    throw std::runtime_error(
+      concat(name(),
+             ": cannot create order when bot is stopping"));
 
   auto order = _core->order_service()->create(
       _order_router, _instrument, side, size, price, tif,
@@ -223,25 +230,25 @@ std::shared_ptr<Order> Bot::create_order(
     if (ev.is_fill()) {
       const auto& fill = ev.order->last_fill();
       LOG_INFO(
-          ticker() << ": "
-                   << "order " << ev.order->order_id() << " "
-                   << event_code(true, ev.new_state, ev.order->close_reason())
-                   << " "
-                   << "side:" << ev.order->side()
-                   << ", price:" << format_double(ev.order->price(), true)
-                   << ", qty:" << format_double(ev.order->size(), true)
-                   << ", qdone:" << format_double(ev.order->filled_size(), true)
-                   << ", xprice:" << format_double(fill.price, true)
-                   << ", xqty:" << format_double(fill.qty, true)
-                   << ccy_value("xqtyUsd", fill.qty, fill.price)
-                   << ", pos:" << _position.net_qty()
-                   << ccy_value("posUsd", _position.net_qty(), ev.order->price())
-                   << ", exchId:" << ev.order->exch_order_id()
+        name() << ": "
+        << "order " << ev.order->order_id() << " "
+        << event_code(true, ev.new_state, ev.order->close_reason())
+        << " "
+        << "side:" << ev.order->side()
+        << ", price:" << format_double(ev.order->price(), true)
+        << ", qty:" << format_double(ev.order->size(), true)
+        << ", qdone:" << format_double(ev.order->filled_size(), true)
+        << ", xprice:" << format_double(fill.price, true)
+        << ", xqty:" << format_double(fill.qty, true)
+        << ccy_value("xqtyUsd", fill.qty, fill.price)
+        << ", pos:" << _position.net_qty()
+        << ccy_value("posUsd", _position.net_qty(), ev.order->price())
+        << ", exchId:" << ev.order->exch_order_id()
         );
     } else if (ev.is_state_change()) {
       if (ev.new_state == OrderState::closed &&
           ev.order->close_reason() == OrderCloseReason::rejected) {
-        LOG_INFO(ticker() << ": "
+        LOG_INFO(name() << ": "
                  << "order " << ev.order->order_id() << " "
                  << event_code(false, ev.new_state,
                                ev.order->close_reason())
@@ -250,7 +257,7 @@ std::shared_ptr<Order> Bot::create_order(
                  << ", text: " << ev.order->error_text());
       } else {
         auto has_exchId = !ev.order->exch_order_id().empty();
-        LOG_INFO(ticker()
+        LOG_INFO(name()
                  << ": "
                  << "order " << ev.order->order_id() << " "
                  << event_code(false, ev.new_state, ev.order->close_reason())

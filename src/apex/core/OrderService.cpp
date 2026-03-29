@@ -226,10 +226,8 @@ void OrderService::process_order_expired(ExchangeId exch_id,
 {
   std::pair<ExchangeId, std::string> key {exch_id, exp.exch_order_id};
 
-  auto iter = _orders_by_exch_order_id.find(key);
-
-  if (iter != _orders_by_exch_order_id.end()) {
-
+  if (auto iter = _orders_by_exch_order_id.find(key);
+      iter != _orders_by_exch_order_id.end()) {
     OrderUpdate update;
     update.state = OrderState::closed;
     update.close_reason = OrderCloseReason::lapsed;
@@ -241,7 +239,17 @@ void OrderService::process_order_expired(ExchangeId exch_id,
     }
   }
   else {
-    LOG_WARN("ignoring order expired, order not found, exch_order_id: " << exp.exch_order_id);
+    if (auto iter = _orders_by_exch_order_id_closed.find(key);
+        iter != _orders_by_exch_order_id_closed.end()) {
+
+      // we have received an order-cancel update for an order that has already
+      // been cancelled, most likely because we earlier processes an
+      // order-cancel-ack
+      _orders_by_exch_order_id_closed.erase(iter);
+    }
+    else {
+      LOG_WARN("ignoring order expired, order not found, exch_order_id: " << exp.exch_order_id);
+    }
   }
 }
 
@@ -270,7 +278,7 @@ void OrderService::process_submit_order_rej(const MxSubmitOrderRej& msg)
 {
   auto order = find_order(msg.order_id);
   if (order) {
-    order->apply_order_rej();
+    order->apply_order_reject(msg.exch_error_code, msg.exch_error_text);
   }
 }
 
@@ -285,7 +293,6 @@ void OrderService::process_cancel_order_ack(const MxCancelOrderAck& ack)
     order->apply(update);
 
     if (order->is_closed()) {
-
       std::pair<ExchangeId, std::string> key {
         order->instrument().exchange_id(),
         order->exch_order_id()};

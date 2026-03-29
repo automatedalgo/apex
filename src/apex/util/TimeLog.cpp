@@ -19,13 +19,13 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/util/TimeLog.hpp>
 #include <apex/util/utils.hpp>
 
-#include <time.h>
+#include <ctime>
 #include <sstream>
 
 namespace apex
 {
 
-static inline long nsec_diff(TimeLog::TimePoint a, TimeLog::TimePoint b) // a-b
+static long nsec_diff(TimeLog::TimePoint a, TimeLog::TimePoint b) // a-b
 {
   return (a.ts.tv_sec - b.ts.tv_sec)*1000000000 + (a.ts.tv_nsec - b.ts.tv_nsec);
 }
@@ -44,7 +44,7 @@ static std::string timespec_to_string(const struct timespec ts)
 class LatencyReport
 {
 public:
-  LatencyReport(TimeLog::TimePoint t0)
+  explicit LatencyReport(TimeLog::TimePoint t0)
     : _t0(t0),
       _tprev(t0) {
     _oss << timespec_to_string(t0.ts);
@@ -60,7 +60,7 @@ public:
     }
   }
 
-  std::string str() {
+  std::string str() const {
     return _oss.str();
   }
 
@@ -71,9 +71,9 @@ private:
 };
 
 
-std::string TimeLog::dump()
+std::string TimeLog::dump() const
 {
-  LatencyReport report{at_io};
+  LatencyReport report(at_io);
   report.next(at_read);
   report.next(at_ssl);
   report.next(at_message);
@@ -82,4 +82,4 @@ std::string TimeLog::dump()
   return report.str();
 }
 
-} // namepace
+} // namespace

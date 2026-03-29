@@ -1,4 +1,4 @@
-/* Copyright 2024 Automated Algo (www.automatedalgo.com)
+/* Copyright 2026 Automated Algo (www.automatedalgo.com)
 
 This file is part of Automated Algo's "Apex" project.
 
@@ -18,40 +18,36 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
 #include <cstdint>
-#include <ctime>
+#include <array>
 #include <string>
 
 namespace apex
 {
 
-/* Collect a log of time points, marked at various milestones on the tick to
- * trade journey.
- */
-class TimeLog
-{
+class Ed25519Signer {
 public:
+  static constexpr int secret_key_bytes_len = 64;
+  static constexpr int signature_bytes_len = 64;
 
-  struct TimePoint
-  {
-    struct timespec ts = {0,0};
-
-    void mark() {
-      ::clock_gettime(CLOCK_REALTIME, &ts);
-    }
-
-    [[nodiscard]] uint64_t to_int() const {
-      return ts.tv_sec * 1e9 + ts.tv_nsec;
-    }
+  struct Signature {
+    std::array<uint8_t, signature_bytes_len> bytes = {};
+    [[nodiscard]] std::string to_hex() const;
+    [[nodiscard]] std::string to_base64() const;
   };
 
-  TimePoint at_io;         // at first IO notification
-  TimePoint at_read;       // at socket read complete
-  TimePoint at_ssl;        // at SSL decoded
-  TimePoint at_message;    // at raw message ready
-  TimePoint at_parsed;     // at message parsed
-  TimePoint at_book;       // at book updated
+  Ed25519Signer() = default;
+  explicit Ed25519Signer(std::string_view private_key_hex);
 
-  [[nodiscard]] std::string dump() const;
+  ~Ed25519Signer();
+
+  void set_private_key_hex(std::string_view private_key_hex);
+
+  [[nodiscard]] Signature sign_detached(std::string_view payload) const;
+
+private:
+  std::array<uint8_t, secret_key_bytes_len> _secret = {};
 };
 
-}
+
+
+} // namespace apex

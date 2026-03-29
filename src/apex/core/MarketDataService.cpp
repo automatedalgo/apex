@@ -33,8 +33,8 @@ namespace apex
 {
 
 
-// Purpose of EmbeddedFeedHandler is proxy a direct FeedHandler instance so that
-// an Apex instance can connect direct direct to an exchange.
+// Purpose of EmbeddedFeedHandler is to proxy a direct FeedHandler instance so
+// that an Apex instance can connect direct direct to an exchange.
 // EmbeddedFeedHandler will perform the mapping from feed symbols (pxsym) to
 // MarketData instances.
 
@@ -171,6 +171,9 @@ MarketData* MarketDataService::find_market_data(const Instrument& instrument)
 void MarketDataService::add_feed(FeedConfig config,
                                  std::list<std::string> venues)
 {
+  if (config.type.empty())
+    throw ConfigError("FeedConfig.type cannot be empty");
+
   auto tlog_svc = _core->time_log_service();
   if (config.type == "BinanceUsdFut") {
     EmbeddedFeedHandler::FHBuilder fh_builder;
@@ -231,10 +234,9 @@ void MarketDataService::add_feed(FeedConfig config,
       _feeds[venue_exch_id] = embed_fh;
       LOG_INFO("feed handler " << config.type << " provides venue '" << venue << "'");
     }
-
   }
   else {
-    throw std::runtime_error(concat("unknown feed type '", config.type, "'"));
+    throw ConfigError(concat("unknown feed type '", config.type, "'"), __FILE__, __LINE__);
   }
 }
 

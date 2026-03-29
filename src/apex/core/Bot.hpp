@@ -101,7 +101,12 @@ public:
 
   [[nodiscard]] const std::string& ticker() const
   {
-    return _ticker;
+    return _instrument.id();
+  }
+
+  [[nodiscard]] const std::string& name() const
+  {
+    return _name;
   }
 
   [[nodiscard]] ExchangeId exchange() const
@@ -177,6 +182,7 @@ public:
   EventLoop& event_loop();
 
   const std::string& bot_typename() const {return _bot_typename; }
+
 protected:
   std::string ccy_value(const char* field, double size, double price);
 
@@ -184,7 +190,7 @@ protected:
   Strategy * _strategy;
   std::string _bot_typename;
   Instrument _instrument;
-  std::string _ticker;
+  std::string _name;
   MarketData* _mkt = nullptr;
   MarketData* _mkt_fx_instr = nullptr;
   OrderRouter* _order_router = nullptr;

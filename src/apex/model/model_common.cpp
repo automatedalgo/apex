@@ -1,4 +1,4 @@
-/* Copyright 2024 Automated Algo (www.automatedalgo.com)
+/* Copyright 2026 Automated Algo (www.automatedalgo.com)
 
 This file is part of Automated Algo's "Apex" project.
 
@@ -15,15 +15,11 @@ You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <apex/net/WebsocketClient.hpp>
-#include <apex/util/EventLoop.hpp>
-#include <apex/venues/venues_common.hpp>
+#include <apex/model/model_common.hpp>
 
-namespace apex {
-
-bool websock_is_open(const std::shared_ptr<WebsocketClient>& ws)
+namespace apex
 {
-  return ws && ws->is_open();
-}
 
-} // namespace
+const SendStatus SendStatus::success = {};
+
+}

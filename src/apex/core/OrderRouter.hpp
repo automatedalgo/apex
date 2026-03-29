@@ -17,51 +17,38 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include <apex/model/model_common.hpp>
+
 #include <memory>
 #include <string>
 
 namespace apex
 {
+
 class Core;
 class GxClientSession;
 class Order;
-
 class OrderRouter;
 class RealtimeOrderRouter;
-
-class OmService
-{
-
-public:
-  // PriceFeed
-  // OrderGateway
-  RealtimeOrderRouter* get_order_session(const std::string& exchange,
-                                         const std::string& strategy_id);
-
-private:
-
-  // same combinations of exchange & strategy_id
-
-};
 
 
 class OrderRouter {
 public:
   virtual ~OrderRouter() = default;
-  virtual void send_order(Order&) = 0;
-  virtual void cancel_order(Order&) = 0;
+  virtual SendStatus send_order(Order&) = 0;
+  virtual SendStatus cancel_order(Order&) = 0;
   virtual bool is_up() const = 0;
 };
 
-class RealtimeOrderRouter : public OrderRouter // TODO: use shared_ptr, due to event based callbacks
+class RealtimeOrderRouter : public OrderRouter
 {
 public:
   RealtimeOrderRouter(apex::Core* core,
                       std::shared_ptr<GxClientSession> gx_session,
                       std::string strategy_id);
 
-  void send_order(Order&) override;
-  void cancel_order(Order&) override;
+  SendStatus send_order(Order&) override;
+  SendStatus cancel_order(Order&) override;
   bool is_up() const override;
 
 private:

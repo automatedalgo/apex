@@ -18,6 +18,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
 #include <apex/model/Instrument.hpp>
+#include <apex/model/model_common.hpp>
 #include <apex/util/Time.hpp>
 #include <apex/util/rx.hpp>
 
@@ -59,7 +60,6 @@ enum class OrderCancelState : unsigned int {
   canceled,  // request successful, order is canceled
   error      // request failed internally
 };
-
 
 enum class OrderState : unsigned int {
   none = 0,
@@ -124,7 +124,7 @@ struct OrderParams {  // TODO: rename to NewOrder
   ExchangeId exchange;
   Side side = Side::none;
   OrderType order_type = OrderType::limit;
-  TimeInForce time_in_force = TimeInForce::fok; // TODO: rename tif
+  TimeInForce time_in_force = TimeInForce::fok;
   double size = 0.0;
   double price = 0.0;
   std::string order_id;
@@ -244,17 +244,16 @@ public:
   [[nodiscard]] const std::string& ticker() const;
 
   /* Send this order to the exchange */
-  void send();
+  SendStatus send();
 
-  /* Attempt to cancel this order. Returns true if the request was internally
-   * sent, else false if there was an internal error. Cancel is an asynchronous
-   * operation (because it involves the exchange), so success/rejection of the
-   * request will only be determined later. */
-  bool cancel();
+  /* Attempt to cancel this order. Cancel is an asynchronous operation (because
+   * it involves the exchange), so success/rejection of the request will only be
+   * determined later. */
+  SendStatus cancel();
 
   // TODO: change this to have an appy_***** name, like the other apply_
   // methods.
-  void set_is_rejected(std::string code, std::string text);
+  void set_is_rejected(std::string_view code, std::string text);
 
   void set_is_closed(Time time, OrderCloseReason reason);
 
@@ -309,9 +308,10 @@ public:
   }
 
   void apply(const MxSubmitOrderAck&);
-  void apply_order_rej();
+  void apply_order_reject(std::string code, std::string text);
   void apply(const OrderUpdate&);
   void apply_cancel_reject(std::string code, std::string text);
+  void apply_cancel_reject(std::string_view code, std::string_view text = "");
   void apply(const OrderFill&);
 
   void apply_order_execution(double size, double price, bool filled);

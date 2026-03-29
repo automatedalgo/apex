@@ -29,7 +29,22 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 using namespace apex;
 using namespace std;
 
+
+/* Provides a Binance (Spot) Simulation Exchange.
+
+   Purpose is help assist local development, so we can connect to this to
+   replicate problems encountered in production.
+ */
+
 #define BINANCE_UAT_API_KEY "sErnzoWaTESThtDlKTHISISATESTfWppp7t34vOOszl8wNTEST3feMyGv5SjSsLv"
+
+
+// Options for controlling various order interaction scenarios.
+struct Options {
+  bool reject_all_orders = false;
+  bool reject_all_cancel = false;
+} options;
+
 
 static size_t timestamp() {
   return Time::realtime_now().as_epoch_ms().count();
@@ -90,45 +105,6 @@ const auto cancel_ack = R"(
 }
 )";
 
-const auto solicited_cancel_execution_report = R"({
-  "event": {
-    "e": "executionReport",
-    "E": 1753641776750,
-    "s": "DOGEUSDT",
-    "c": "5L0sTc5oiVKsDFNofdfDt481l",
-    "S": "BUY",
-    "o": "LIMIT",
-    "f": "GTC",
-    "q": "50.00000000",
-    "p": "0.23000000",
-    "P": "0.00000000",
-    "F": "0.00000000",
-    "g": -1,
-    "C": "0000000002",
-    "x": "CANCELED",
-    "X": "CANCELED",
-    "r": "NONE",
-    "i": 11199699515,
-    "l": "0.00000000",
-    "z": "0.00000000",
-    "L": "0.00000000",
-    "n": "0",
-    "N": null,
-    "T": 1753641776749,
-    "t": -1,
-    "I": 23838594262,
-    "w": false,
-    "m": false,
-    "M": false,
-    "O": 1753641771745,
-    "Z": "0.00000000",
-    "Y": "0.00000000",
-    "Q": "0.00000000",
-    "W": 1753641771745,
-    "V": "EXPIRE_MAKER"
-  }
-}
-)";
 
 const auto unsol_cancel_execution_report = R"(
 {
@@ -383,284 +359,11 @@ const auto order_ack_template = R"({
   ]
 })";
 
-// ----- DELETE THE BELOW  -----
-
-const std::string order_expired_template = R"(
-{"e":"ORDER_TRADE_UPDATE","T":1753184304488,"E":1753184304488,"o":{"s":"BTCUSDT","c":"0000000003","S":"BUY","o":"LIMIT","f":"GTC","q":"0.001","p":"117912","ap":"0","sp":"0","x":"CANCELED","X":"CANCELED","i":736189971752,"l":"0","z":"0","L":"0","n":"0","N":"USDT","T":1753184304488,"t":0,"b":"0","a":"0","m":false,"R":false,"wt":"CONTRACT_PRICE","ot":"LIMIT","ps":"BOTH","cp":false,"rp":"0","pP":false,"si":0,"ss":0,"V":"EXPIRE_MAKER","pm":"NONE","gtd":0}})";
-
-
-const std::string order_trade_update_template = R"(
-{
-  "e": "ORDER_TRADE_UPDATE",
-  "T": 1752925392000,
-  "E": 1752925392000,
-  "o": {
-    "s": "BTCUSDT",
-    "c": "0000000003",
-    "S": "BUY",
-    "o": "LIMIT",
-    "f": "GTC",
-    "q": "0.001",
-    "p": "111912",
-    "ap": "0",
-    "sp": "0",
-    "x": "NEW",
-    "X": "NEW",
-    "i": 733832495338,
-    "l": "0",
-    "z": "0",
-    "L": "0",
-    "n": "0",
-    "N": "USDT",
-    "T": 1752925392000,
-    "t": 0,
-    "b": "111.912",
-    "a": "0",
-    "m": false,
-    "R": false,
-    "wt": "CONTRACT_PRICE",
-    "ot": "LIMIT",
-    "ps": "BOTH",
-    "cp": false,
-    "rp": "0",
-    "pP": false,
-    "si": 0,
-    "ss": 0,
-    "V": "EXPIRE_MAKER",
-    "pm": "NONE",
-    "gtd": 0
-  }
-})";
-
-
-const std::string trade_lite_template = R"(
-{
-  "e": "TRADE_LITE",
-  "E": 1752884381175,
-  "T": 1752884381175,
-  "s": "BTCUSDT",
-  "q": "0.022",
-  "p": "0.00",
-  "m": false,
-  "c": "clientorderid",
-  "S": "SELL",
-  "L": "117890.10",
-  "l": "0.001",
-  "t": 6485886676,
-  "i": 733553672133
-}
-)";
-
-
-const std::string trade_partial_template = R"(
-{
-  "e": "ORDER_TRADE_UPDATE",
-  "T": 1752884381175,
-  "E": 1752884381176,
-  "o": {
-    "s": "BTCUSDT",
-    "c": "web_ZdriR273pHjIXX2Usbeg",
-    "S": "SELL",
-    "o": "MARKET",
-    "f": "GTC",
-    "q": "0.022",
-    "p": "0",
-    "ap": "117890.1",
-    "sp": "0",
-    "x": "TRADE",
-    "X": "PARTIALLY_FILLED",
-    "i": 733553672133,
-    "l": "0.002",
-    "z": "0.007",
-    "L": "117890.1",
-    "n": "0.1178901",
-    "N": "USDT",
-    "T": 1752884381175,
-    "t": 6485886680,
-    "b": "0",
-    "a": "0",
-    "m": false,
-    "R": true,
-    "wt": "CONTRACT_PRICE",
-    "ot": "MARKET",
-    "ps": "BOTH",
-    "cp": false,
-    "rp": "0.0594",
-    "pP": false,
-    "si": 0,
-    "ss": 0,
-    "V": "EXPIRE_MAKER",
-    "pm": "NONE",
-    "gtd": 0
-  }
-})";
-
-
-const std::string trade_filled_template = R"(
-{
-  "e": "ORDER_TRADE_UPDATE",
-  "T": 1752884381175,
-  "E": 1752884381176,
-  "o": {
-    "s": "BTCUSDT",
-    "c": "web_ZdriR273pHjIXX2Usbeg",
-    "S": "SELL",
-    "o": "MARKET",
-    "f": "GTC",
-    "q": "0.022",
-    "p": "0",
-    "ap": "117890.1",
-    "sp": "0",
-    "x": "TRADE",
-    "X": "FILLED",
-    "i": 733553672133,
-    "l": "0.015",
-    "z": "0.022",
-    "L": "117890.1",
-    "n": "0.88417575",
-    "N": "USDT",
-    "T": 1752884381175,
-    "t": 6485886681,
-    "b": "0",
-    "a": "0",
-    "m": false,
-    "R": true,
-    "wt": "CONTRACT_PRICE",
-    "ot": "MARKET",
-    "ps": "BOTH",
-    "cp": false,
-    "rp": "0.4455",
-    "pP": false,
-    "si": 0,
-    "ss": 0,
-    "V": "EXPIRE_MAKER",
-    "pm": "NONE",
-    "gtd": 0
-  }
-}
-)";
-
-
-const std::string submit_order_ack_template = R"(
-{
-  "id": "3f7df6e3-2df4-44b9-9919-d2f38f90a99a",
-  "status": 200,
-  "result": {
-    "orderId": 730878025055,
-    "symbol": "BTCUSDT",
-    "status": "NEW",
-    "clientOrderId": "dem010000123",
-    "price": "116650.00",
-    "avgPrice": "0.00",
-    "origQty": "0.001",
-    "executedQty": "0.000",
-    "cumQty": "0.000",
-    "cumQuote": "0.00000",
-    "timeInForce": "GTC",
-    "type": "LIMIT",
-    "reduceOnly": false,
-    "closePosition": false,
-    "side": "SELL",
-    "positionSide": "BOTH",
-    "stopPrice": "0.00",
-    "workingType": "CONTRACT_PRICE",
-    "priceProtect": false,
-    "origType": "LIMIT",
-    "priceMatch": "NONE",
-    "selfTradePreventionMode": "EXPIRE_MAKER",
-    "goodTillDate": 0,
-    "updateTime": 1752611645940
-  }
-}
-)";
-
-
-
+constexpr std::string_view cancel_order_reject_template = R"({"id":"0000000011","status":400,"error":{"code":-2011,"msg":"Unknown order sent."},"rateLimits":[{"rateLimitType":"REQUEST_WEIGHT","interval":"MINUTE","intervalNum":1,"limit":6000,"count":16}]})";
 
 const std::string submit_order_rej_template = R"(
 {"id":"3f7df6e3-2df4-44b9-9919-d2f38f90a99a","status":400,"error":{"code":-2019,"msg":"Margin is insufficient."}}
 )";
-
-const std::string cancel_ack_template = R"(
-{
-  "id": "3f7df6e3-2df4-44b9-9919-d2f38f90a99a",
-  "status": 200,
-  "result": {
-    "orderId": 731753480298,
-    "symbol": "BTCUSDT",
-    "status": "CANCELED",
-    "clientOrderId": "<REPLACE>",
-    "price": "119150.00",
-    "avgPrice": "0.00",
-    "origQty": "0.001",
-    "executedQty": "0.000",
-    "cumQty": "0.000",
-    "cumQuote": "0.00000",
-    "timeInForce": "GTC",
-    "type": "LIMIT",
-    "reduceOnly": false,
-    "closePosition": false,
-    "side": "BUY",
-    "positionSide": "BOTH",
-    "stopPrice": "0.00",
-    "workingType": "CONTRACT_PRICE",
-    "priceProtect": false,
-    "origType": "LIMIT",
-    "priceMatch": "NONE",
-    "selfTradePreventionMode": "EXPIRE_MAKER",
-    "goodTillDate": 0,
-    "updateTime": 1752698245647
-  }
-}
-)";
-
-auto order_update_solicited_cancel_ack = R"(
-{
-  "e": "ORDER_TRADE_UPDATE",
-  "T": 1752698245647,
-  "E": 1752698245647,
-  "o": {
-    "s": "BTCUSDT",
-    "c": "<REPLACE>",
-    "S": "BUY",
-    "o": "LIMIT",
-    "f": "GTC",
-    "q": "0.001",
-    "p": "119150",
-    "ap": "0",
-    "sp": "0",
-    "x": "CANCELED",
-    "X": "CANCELED",
-    "i": 731753480298,
-    "l": "0",
-    "z": "0",
-    "L": "0",
-    "n": "0",
-    "N": "USDT",
-    "T": 1752698245647,
-    "t": 0,
-    "b": "0",
-    "a": "0",
-    "m": false,
-    "R": false,
-    "wt": "CONTRACT_PRICE",
-    "ot": "LIMIT",
-    "ps": "BOTH",
-    "cp": false,
-    "rp": "0",
-    "pP": false,
-    "si": 0,
-    "ss": 0,
-    "V": "EXPIRE_MAKER",
-    "pm": "NONE",
-    "gtd": 0
-  }
-}
-)";
-
-
-
-
 
 // This is a very basic implementation of a websocket server session, with the
 // goal to support integration testing.
@@ -679,10 +382,8 @@ public:
       _idle_thread(idle_thread),
       _on_msg(std::move(on_msg))
   {
-
     // construct the websocket protocol handler
     auto request_timer_cb = [this](std::chrono::milliseconds interval) {
-      LOG_INFO("*** request_timer_cb("<<interval.count()<<") *** ");
 
       /* If protocol has requested a timer, register a reoccurring event to call
        * the protocol's on_timer function. Called during construction of
@@ -703,8 +404,7 @@ public:
 
     };
 
-    auto protocol_closed_fn = [this](std::chrono::milliseconds s) {
-      LOG_INFO("*** protocol_closed_fn(" << s.count() << ")  *** s=" );
+    auto protocol_closed_fn = [this](std::chrono::milliseconds) {
     };
 
     protocol::protocol_callbacks callbacks {
@@ -720,9 +420,8 @@ public:
       connect_mode::accept,
       protocol_options
       );
-
-
   }
+
 
   void start() {
     // start socket read, which feeds into the protocol handler
@@ -732,7 +431,7 @@ public:
         this->_protocol->on_read(buf, n);
       }
       else {
-        LOG_ERROR("socket disconnected");
+        LOG_INFO("client disconnected");
       }
     });
 
@@ -908,7 +607,9 @@ public:
     }
 
     if (success) {
-      LOG_INFO("order cancelled: " << order.symbol << " " << order.order_id);
+      LOG_INFO("cancel order: "
+               << "symbol: " << order.symbol
+               << ", order_id: " << order.order_id);
       if (notify_private)
         notify_private(order);
 
@@ -992,9 +693,10 @@ public:
 
     order.tot_exec_qty = 0;
 
-    LOG_INFO("order added:"
-             << ", symbol: " << order.symbol
+    LOG_INFO("new order: "
+             << "symbol: " << order.symbol
              << ", client_order_id: " <<  order.client_order_id
+             << ", price: " << order.price
              << ", order_id: " << order.order_id);
     _orders[order.order_id] = order;
 
@@ -1258,11 +960,19 @@ void BinanceSimulator::process_submit_order_request(WebsocketServerSession* sess
 
   if (symbol.empty())  {
     // reject
-    LOG_WARN("order rejected");
     json resp = json::parse(submit_order_rej_template);
     resp["id"] = req["id"];
     resp["error"]["code"] = -1121;
     resp["error"]["msg"] = "Invalid symbol.";
+    session->send(resp.dump());
+    return;
+  }
+
+  if (options.reject_all_orders) {
+    json resp = json::parse(submit_order_rej_template);
+    resp["id"] = req["id"];
+    resp["error"]["code"] = -1121;
+    resp["error"]["msg"] = "orders not allowed";
     session->send(resp.dump());
     return;
   }
@@ -1387,6 +1097,15 @@ void BinanceSimulator::process_order_cancel_request(WebsocketServerSession* ws,
 {
   auto account = find_account(ws->shared_from_this());
 
+  if (options.reject_all_cancel) {
+    json resp = json::parse(cancel_order_reject_template);
+    resp["id"] = req["id"];
+    resp["error"]["code"] = -2011;
+    resp["error"]["msg"] = "order cannot be cancelled";
+    ws->send(resp.dump());
+    return;
+  }
+
   // callback to notify the private channel of the cancel before its
   // published on the user channel
   auto after_cancel_cb = [ws, req](SimRestingOrder& order){
@@ -1424,7 +1143,7 @@ void BinanceSimulator::process_session_logon(WebsocketServerSession* ws,
   auto apikey = req["params"]["apiKey"].get<std::string>();
 
   if (apikey == BINANCE_UAT_API_KEY)  {
-    LOG_INFO("logon successful");
+    LOG_INFO("client logon successful");
 
     attach_to_account(ws->shared_from_this());
 
@@ -1459,13 +1178,11 @@ void BinanceSimulator::process_user_data_stream_subscribe(
   WebsocketServerSession* ws,
   json& req)
 {
-  auto account = find_account(ws->shared_from_this());
-
-  if (account) {
+  if (const auto account = find_account(ws->shared_from_this())) {
     // subscribe to user stream
     account->subscribe_user_data(ws->shared_from_this());
 
-    // send the accept
+    // send accept
     json resp = json::parse(user_data_stream_subscribe_ack);
     resp["id"] = req["id"];
     ws->send(resp.dump());
@@ -1482,7 +1199,6 @@ void BinanceSimulator::on_line_message(WebsocketServerSession* session,
   /* io-thread */
 
   // Message received from Apex engine, eg, SubmitOrder or Cancel Order.
-
   auto sp = session->shared_from_this();
   auto req = json::parse(buf, buf + n);
 
@@ -1517,8 +1233,7 @@ void BinanceSimulator::on_line_message(WebsocketServerSession* session,
 
 int main()
 {
-  Logger::instance().set_level(Logger::info);
-  Logger::instance().set_detail(true);
+  Logger::configure(Logger::info);
   apex::Logger::instance().register_thread_id("main");
 
   Reactor reactor;

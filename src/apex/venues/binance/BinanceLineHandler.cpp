@@ -17,6 +17,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/core/Core.hpp>
 #include <apex/core/Logger.hpp>
+#include <apex/core/Errors.hpp>
 #include <apex/net/WebsocketClient.hpp>
 #include <apex/util/JsonWriter.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
@@ -25,7 +26,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apache/base64.h> // from 3rdparty
 #include <sodium.h>
-
 
 namespace apex {
 
@@ -42,44 +42,6 @@ Side to_side(std::string_view side) {
     return Side::sell;
   return Side::none;
 }
-
-
-static std::string sign_message(const std::string& payload,
-                                const std::string& seed_hex) {
-
-  // convert seed hex string to bytes
-  unsigned char seed[crypto_sign_SEEDBYTES];
-  sodium_hex2bin(seed, sizeof(seed), seed_hex.c_str(), seed_hex.size(),
-                 NULL, NULL, NULL);
-
-  // generate Ed25519 keypair from seed
-  unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
-  unsigned char secret_key[crypto_sign_SECRETKEYBYTES];
-  crypto_sign_seed_keypair(public_key, secret_key, seed);
-
-  // create signature (in raw bytes)
-  unsigned char signature[crypto_sign_BYTES];
-  unsigned long long sig_len;
-
-  crypto_sign_detached(
-    signature,
-    &sig_len,
-    reinterpret_cast<const unsigned char*>(payload.c_str()),
-    payload.size(),
-    secret_key
-    );
-
-  auto temp_len = ::ceil((sig_len * 8) / 24) * 4;
-
-  // convert signature to base64
-  char tmp[150] = {0};   // assert is >= 88
-
-  assert(sizeof(tmp) > temp_len);
-  ap_base64encode(tmp, reinterpret_cast<char*>(signature), sig_len);
-
-  return tmp;
-}
-
 
 
 BinanceLineHandler::BinanceLineHandler(Core* core,
@@ -101,13 +63,16 @@ BinanceLineHandler::BinanceLineHandler(Core* core,
   // TODO: allow these to come from config
   _line_url = "wss://ws-api.binance.com:9443/ws-api/v3?returnRateLimits=false";
 
-
-  // load secrets
+  // load exchange secrets
   std::filesystem::path secrets_file = config.api_key_file;
+  if (secrets_file.empty()) {
+    throw ConfigError("binance API-key filename not provided", __FILE__, __LINE__);
+  }
+
   auto obj = json::parse(slurp(secrets_file.native().c_str()));
 
   _apikey = obj["key"].get<std::string>();
-  _seedhex = obj["seed"].get<std::string>(); // TODO: allow other form, eg PEM
+  _ed25519_signer.set_private_key_hex(obj["secret"].get<std::string>());
 
   int uat_mode = 0;
   if (uat_mode) {
@@ -154,7 +119,6 @@ void BinanceLineHandler::process_submit_order_reply(PendReq& req, json& msg)
   }
 
   if (auto iter = msg.find("error"); iter != msg.end() && iter->is_object()) {
-    LOG_WARN("binance order reject: " << msg);
     MxSubmitOrderRej out;
     out.order_id = req.order_id;
     out.exch_error_code = std::to_string((*iter)["code"].get<long>());
@@ -193,7 +157,7 @@ void BinanceLineHandler::process_cancel_order_reply(PendReq& req, json& msg)
 
 
 void BinanceLineHandler::process_session_logon_reply(PendReq&,
-                                                           json& msg)
+                                                     json& msg)
 {
   /* io-thread */
 
@@ -371,7 +335,7 @@ void BinanceLineHandler::manage_connection()
 
       auto timestamp = Time::realtime_now().as_epoch_ms().count();
       auto payload = concat("apiKey=", _apikey, "&timestamp=", timestamp);
-      auto signature = sign_message(payload, _seedhex);
+      auto signature = _ed25519_signer.sign_detached(payload).to_base64();
       auto msg = concat(R"({"id":")",
                         req_id,
                         R"(","method":"session.logon","params":{"apiKey":")",
@@ -395,9 +359,8 @@ void BinanceLineHandler::manage_connection()
 }
 
 
-void BinanceLineHandler::submit_order(OrderParams order)
+SendStatus BinanceLineHandler::submit_order(OrderParams order)
 {
-
   // TODO: concern: how to make these IDs unique if we have 2 engines?
   //       ideally need an instance ID.
   //       And what if the same engine restarts?
@@ -444,13 +407,14 @@ void BinanceLineHandler::submit_order(OrderParams order)
       mcap->push_event(_ws_line_msgcap_id_out, sv);
     _ws_line->send(sv);
   } else {
-    LOG_WARN("*** NOT OPEN ***");
-    // TODO: how to return with a reject here?
+    return SendStatus{error::venue_link_down};
   }
+
+  return SendStatus::success;
 }
 
 
-void BinanceLineHandler::cancel_order(const MxCancelOrder& msg)
+SendStatus BinanceLineHandler::cancel_order(const MxCancelOrder& msg)
 {
   // create request ID
   char req_id[16] = {};
@@ -468,7 +432,7 @@ void BinanceLineHandler::cancel_order(const MxCancelOrder& msg)
     jm["id"] = req_id;
     jm["method"] = "order.cancel";
     json params;
-    params["symbol"] = msg.symbol;  // TOOD: needs to be the feed symbol
+    params["symbol"] = msg.symbol;
     params["timestamp"] = Time::realtime_now().as_epoch_ms().count();
     params["orderId"] = std::stoul(msg.exch_order_id);
     jm["params"] = std::move(params);
@@ -477,6 +441,8 @@ void BinanceLineHandler::cancel_order(const MxCancelOrder& msg)
       mcap->push_event(_ws_line_msgcap_id_out, msg);
     _ws_line->send(msg);
   }
+
+  return SendStatus::success;
 }
 
 

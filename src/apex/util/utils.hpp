@@ -151,7 +151,7 @@ public:
   {
   }
 
-  scope_guard(scope_guard&& other) : _fn(std::move(other._fn))
+  scope_guard(scope_guard&& other) noexcept : _fn(std::move(other._fn))
   {
     other._fn = nullptr;
   }
@@ -211,6 +211,9 @@ private:
 };
 
 std::string demangle(const char* name);
+
+/* Calculate number of base64 chars required to encoded n bytes (padded) */
+constexpr size_t base64_encoded_size(size_t n) { return 4 * ((n + 2) / 3); }
 
 std::string to_hex(const unsigned char* p, size_t size);
 

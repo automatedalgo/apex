@@ -31,26 +31,25 @@ extern char *program_invocation_short_name;
 namespace apex
 {
 
+static constexpr size_t thread_width = 24;
 
-static const size_t thread_width = 24;
-
-static std::string format_threadid(int tid_int, const std::string& tname)
+static std::string format_threadid(int thread_id, const std::string& thread_name)
 {
-  std::array<char, thread_width + 1> buf; // +1 for null
-  memset(buf.data(), ' ', thread_width);
+  std::array<char, thread_width + 1> buf{}; // +1 for null
+  buf.fill(' ');
 
   std::ostringstream oss;
-  oss << "| " << tid_int << "/" << tname;
+  oss << "| " << thread_id << "/" << thread_name;
   auto raw = oss.str();
 
-  // memcpy into the buf
+  // copy into the buf
   auto copy_len = std::min(thread_width, raw.length());
   memcpy(buf.data(), raw.data(), copy_len);
 
   buf[buf.size() - 1] = '\0';
   buf[buf.size() - 2] = ' ';
 
-  return std::string(buf.data(), thread_width);
+  return {buf.data(), thread_width};
 }
 
 
@@ -87,7 +86,7 @@ std::vector<std::string> create_banner() {
 Logger::Logger() : _mask(mask_level_and_above(level::info)) {}
 
 /* Destructor */
-Logger::~Logger() {}
+Logger::~Logger() = default;
 
 int Logger::mask_level_and_above(level lvl)
 {
@@ -145,8 +144,8 @@ void Logger::log_banner(RunMode mode,
 
 Logger& Logger::instance()
 {
-  static Logger __instance;
-  return __instance;
+  static Logger static_instance;
+  return static_instance;
 }
 
 
@@ -177,6 +176,14 @@ Logger::level Logger::string_to_level(const std::string& s)
     return level::error;
 
   throw std::runtime_error("log level not recognised");
+}
+
+
+void Logger::configure(level level, bool want_detail)
+{
+  apex::Logger::instance().set_level(level);
+  apex::Logger::instance().set_detail(want_detail);
+  apex::Logger::instance().set_is_configured(true); // mark as ready
 }
 
 
@@ -302,11 +309,8 @@ void Logger::write_to_stream(std::ostream& os,
                              const char* abs_filename,
                              int lineno)
 {
-
-  auto parts = split(abs_filename, '/');    // TODO: keep empty tokens?
+  auto parts = split(abs_filename, '/');
   auto filename = *parts.rbegin();
-
-  _detailed_logging = true;  // TODO: delete me
 
   /* build the timestamp section of the log entry */
 
@@ -349,7 +353,7 @@ void Logger::write_to_stream(std::ostream& os,
 }
 
 
-std::string generate_auto_log_file_name(LogOpts &opts)
+std::string generate_auto_log_file_name(const LogOpts &opts)
 {
   Time t = Time::realtime_now();
   auto base_path = apex_home() / "log";
@@ -372,7 +376,7 @@ std::string generate_auto_log_file_name(LogOpts &opts)
 }
 
 
-void Logger::set_opts(LogOpts opts)
+void Logger::set_opts(const LogOpts & opts)
 {
   set_level(opts.level);
   set_detail(opts.detail);

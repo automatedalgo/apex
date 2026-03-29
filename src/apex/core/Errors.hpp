@@ -17,6 +17,8 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include <string_view>
+
 namespace apex::error
 {
 
@@ -24,16 +26,19 @@ namespace apex::error
 inline const char* const e0001 = "e0001";
 
 // internal reject, exchange link down
-inline const char* const e0002 = "e0002";
+inline constexpr std::string_view venue_link_down = "e0002";
 
 // internal reject, GX connection not up
-inline const char* const e0003 = "e0003";
+inline constexpr std::string_view gateway_down = "e0003";
 
-// exchange new order reject
-inline const char* const e0102 = "e0102";
+// internal reject, unknown cause (e.g. caught exception)
+inline constexpr std::string_view caught_exception = "e0004";
 
-// exchange cancel order reject
-inline const char* const e0103 = "e0103";
+inline constexpr std::string_view order_not_found = "e0103";
+
+inline constexpr std::string_view duplicate_id = "e0104";
+
+inline constexpr std::string_view bad_order_state = "e0105";
 
 // GX new order reject
 inline const char* const e0200 = "e0200";
@@ -42,4 +47,3 @@ inline const char* const e0200 = "e0200";
 inline const char* const e0201 = "e0201";
 
 } // namespace apex::error
-

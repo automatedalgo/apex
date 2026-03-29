@@ -1,4 +1,4 @@
-/* Copyright 2024 Automated Algo (www.automatedalgo.com)
+/* Copyright 2026 Automated Algo (www.automatedalgo.com)
 
 This file is part of Automated Algo's "Apex" project.
 
@@ -14,16 +14,41 @@ PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License along
 with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
+#pragma once
 
-#include <apex/net/WebsocketClient.hpp>
-#include <apex/util/EventLoop.hpp>
-#include <apex/venues/venues_common.hpp>
+#include <string_view>
 
-namespace apex {
-
-bool websock_is_open(const std::shared_ptr<WebsocketClient>& ws)
+namespace apex
 {
-  return ws && ws->is_open();
-}
 
-} // namespace
+/* Model the immediate result status of an asynchronous order request. */
+class SendStatus {
+public:
+
+  SendStatus()
+    : _success(true) {
+  }
+
+  explicit SendStatus(std::string_view err_msg)
+    : _success(false),
+      _err_msg(err_msg)
+  {
+  }
+
+  explicit operator bool() const {
+    return _success;
+  }
+
+  std::string_view err_msg() const {
+    return _err_msg;
+  }
+
+  static const SendStatus success;
+
+private:
+  bool _success;
+  std::string_view _err_msg;
+
+};
+
+}
