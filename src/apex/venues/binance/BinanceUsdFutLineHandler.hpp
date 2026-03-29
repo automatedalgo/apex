@@ -20,6 +20,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/core/OrderRouterService.hpp>
 #include <apex/model/Order.hpp>
 #include <apex/util/json.hpp>
+#include <apex/util/Ed25519Signer.hpp>
 #include <apex/venues/venues_common.hpp>
 
 namespace apex {
@@ -51,8 +52,8 @@ public:
 
   // TODO: build out the order management API - I want callbacks.  How to we
   // receive a fill?  Think in terms of both embeddecd and via a GX server.
-  void submit_order(OrderParams);
-  void cancel_order(const MxCancelOrder&);
+  SendStatus submit_order(OrderParams);
+  SendStatus cancel_order(const MxCancelOrder&);
 
   void subscribe_user_stream(std::string listenkey);
 
@@ -91,7 +92,7 @@ public:
   std::string _feed_url;
 
   std::string _apikey;
-  std::string _seedhex;
+  Ed25519Signer _ed25519_signer;
 
   // used to generate exchange client order Id
   size_t _msg_seq_num = 0;

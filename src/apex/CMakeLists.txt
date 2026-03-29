@@ -105,6 +105,8 @@ list(APPEND LIB_APEX_SRC_FILES
   "util/BufferedFileReader.hpp"
   "util/Config.cpp"
   "util/Config.hpp"
+  "util/Ed25519Signer.hpp"
+  "util/Ed25519Signer.cpp"
   "util/Error.hpp"
   "util/EventLoop.cpp"
   "util/EventLoop.hpp"

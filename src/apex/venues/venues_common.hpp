@@ -21,7 +21,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/model/Order.hpp>
 #include <apex/core/RunMode.hpp>
 #include <apex/core/OrderRouter.hpp>
-
+#include <apex/core/Errors.hpp>
 
 #include <cassert>
 #include <functional>
@@ -30,12 +30,12 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 namespace apex {
 
-class MxCancelOrderAck;
-class MxCancelOrderRej;
-class MxOrderExecution;
-class MxOrderExpired;
-class MxSubmitOrderAck;
-class MxSubmitOrderRej;
+struct MxCancelOrderAck;
+struct MxCancelOrderRej;
+struct MxOrderExecution;
+struct MxOrderExpired;
+struct MxSubmitOrderAck;
+struct MxSubmitOrderRej;
 
 class Reactor;
 class RealtimeEventLoop;
@@ -75,8 +75,10 @@ public:
       _run_mode(run_mode)
   {
     if (_run_mode == RunMode::backtest)
-      throw std::runtime_error("FeedHandler cannot be created in backtest runmode");
+      throw std::runtime_error("FeedHandler cannot be created in backtest run-mode");
   }
+
+  virtual ~FeedHandler() = default;
 
   virtual void start() = 0;
 
@@ -84,7 +86,7 @@ public:
 
   virtual void subscribe_top(std::string) = 0;
 
-  bool is_paper_trading() const { return _run_mode == RunMode::paper; }
+  [[nodiscard]] bool is_paper_trading() const { return _run_mode == RunMode::paper; }
 
 protected:
   ExchangeId _exchange_id;
@@ -136,8 +138,6 @@ public:
     :  _core(core) {
   }
 
-  void check_is_up(Order& order);
-
 protected:
   Core* _core;
 };
@@ -154,12 +154,11 @@ public:
   {
   }
 
-  void send_order(Order& order) override
+  SendStatus send_order(Order& order) override
   {
-    // TODO: review how we are handling immediate rejects - should we return
-    // error, throw, or, put a reject on the event loop?
-
-    check_is_up(order);
+    if (!is_up()) {
+      return SendStatus(error::venue_link_down);
+    }
 
     OrderParams new_order;
     new_order.symbol = order.symbol();
@@ -170,15 +169,13 @@ public:
     new_order.price = order.price();
     new_order.order_id = order.order_id();
 
-    // TODO: add the callbacks here.
-    _lh->submit_order(new_order);
+    return _lh->submit_order(new_order);
   }
 
-  void cancel_order(Order& order) override
+  SendStatus cancel_order(Order& order) override
   {
-    if (!_lh->is_open()) {
-      // TODO: handle this here
-      return;
+    if (!is_up()) {
+      return SendStatus(error::venue_link_down);
     }
 
     MxCancelOrder cancel;
@@ -186,10 +183,11 @@ public:
     cancel.exchange = ExchangeId::binance_usdfut;
     cancel.order_id = order.order_id();
     cancel.exch_order_id = order.exch_order_id();
-    _lh->cancel_order(cancel);
+
+    return _lh->cancel_order(cancel);
   }
 
-  bool is_up() const override
+  [[nodiscard]] bool is_up() const override
   {
     return _lh->is_open();
   }

@@ -16,10 +16,12 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <apex/core/Core.hpp>
+#include <apex/core/Errors.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/core/OrderRouter.hpp>
 #include <apex/model/Order.hpp>
 #include <apex/util/Error.hpp>
+#include <apex/util/EventLoop.hpp>
 
 #include <utility>
 
@@ -114,21 +116,8 @@ Order::~Order()
 }
 
 
-bool Order::cancel()
-{
-  _cancel_state = OrderCancelState::canceling;
-  try {
-    _router->cancel_order(*this);
-    return true;
-  }
-  catch (const std::runtime_error& e) {
-    LOG_ERROR("error when attempting cancel: " << e.what());
-    _cancel_state = OrderCancelState::error;
-    return false;
-  }
-}
-
 const std::string& Order::ticker() const { return _instrument.native_symbol(); }
+
 
 std::chrono::microseconds Order::duration_since_sent() const
 {
@@ -136,6 +125,7 @@ std::chrono::microseconds Order::duration_since_sent() const
     return {};
   return _core->now() - _sent_time;
 }
+
 
 std::chrono::microseconds Order::duration_live() const
 {
@@ -145,16 +135,41 @@ std::chrono::microseconds Order::duration_live() const
 }
 
 
-void Order::send()
+SendStatus Order::send()
 {
   if (_order_state != OrderState::init) {
-    THROW("cannot send order, must be in 'init' state");
+    LOG_ERROR("cannot send order, must be in 'init' state");
+    return SendStatus(error::bad_order_state);
   }
 
-  _router->send_order(*this);
+  SendStatus send_status = _router->send_order(*this);
 
-  _sent_time = _core->now();
-  set_state_impl(_core->now(), OrderState::sent);
+  if (send_status) {
+    _sent_time = _core->now();
+    set_state_impl(_core->now(), OrderState::sent);
+  }
+  else {
+    std::weak_ptr<Order> wp = this->weak_from_this();
+    _core->evloop()->dispatch([wp]() {
+      if (auto sp = wp.lock())
+        sp->set_is_rejected(error::venue_link_down, "venue link down");
+    });
+  }
+
+  return send_status;
+}
+
+
+SendStatus Order::cancel()
+{
+  auto send_status = _router->cancel_order(*this);
+
+  if (send_status) {
+    _cancel_state = OrderCancelState::canceling;
+  }
+
+  return send_status;
+
 }
 
 
@@ -164,19 +179,20 @@ void Order::set_is_closed(Time time, OrderCloseReason reason)
   set_state_impl(time, OrderState::closed, false, reason);
 }
 
-void Order::set_is_rejected(std::string code, std::string text)
+
+void Order::set_is_rejected(std::string_view code, std::string text)
 {
   Time t;
   _error_code = std::move(code);
   _error_text = std::move(text);
-  this->set_is_closed(t, OrderCloseReason::rejected);
+  set_is_closed(t, OrderCloseReason::rejected);
 }
 
 
 void Order::set_state_impl(Time time, OrderState new_state, bool with_fill,
                            OrderCloseReason close_reason)
 {
-  const auto old_state = this->_order_state;
+  const auto old_state = _order_state;
 
   if (old_state != new_state) {
     if ((new_state == OrderState::live) && (old_state != OrderState::sent)) {
@@ -200,7 +216,7 @@ void Order::set_state_impl(Time time, OrderState new_state, bool with_fill,
   int flags = 0;
   if (with_fill)
     flags = flags bitor OrderEvent::Flags::fill;
-  if (this->_order_state != old_state)
+  if (_order_state != old_state)
     flags = flags | OrderEvent::Flags::state_change;
 
   OrderEvent ev(shared_from_this(), flags, time, old_state, new_state);
@@ -215,12 +231,18 @@ void Order::apply(const MxSubmitOrderAck& ack)
   if (!ack.exch_order_id.empty())
     _exch_order_id = ack.exch_order_id;
 
-  set_state_impl(_core->now(), OrderState::live,
-                 false, OrderCloseReason::none);
+  set_state_impl(_core->now(),
+                 OrderState::live,
+                 false,
+                 OrderCloseReason::none);
 }
 
 
-void Order::apply_order_rej() {
+void Order::apply_order_reject(std::string code, std::string text)
+{
+  _error_code = std::move(code);
+  _error_text = std::move(text);
+
   set_state_impl(_core->now(),
                  OrderState::closed,
                  false,
@@ -285,5 +307,13 @@ void Order::apply_cancel_reject(std::string code, std::string text)
            << ": order " << _order_id << " RCAN reject-code: " << _error_code
            << ", reject-text: " << _error_text);
 }
+
+
+void Order::apply_cancel_reject(std::string_view code, std::string_view text)
+{
+  return apply_cancel_reject(std::string(code),
+                             std::string(text));
+}
+
 
 } // namespace apex

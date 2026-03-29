@@ -17,6 +17,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/core/Core.hpp>
 #include <apex/core/Logger.hpp>
+#include <apex/core/Errors.hpp>
 #include <apex/net/WebsocketClient.hpp>
 #include <apex/util/JsonWriter.hpp>
 #include <apex/util/RealtimeEventLoop.hpp>
@@ -28,46 +29,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 
 namespace apex {
-
-
-
-static std::string sign_message(const std::string& payload,
-                                const std::string& seed_hex) {
-
-  // convert seed hex string to bytes
-  unsigned char seed[crypto_sign_SEEDBYTES];
-  sodium_hex2bin(seed, sizeof(seed), seed_hex.c_str(), seed_hex.size(),
-                 NULL, NULL, NULL);
-
-  // generate Ed25519 keypair from seed
-  unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
-  unsigned char secret_key[crypto_sign_SECRETKEYBYTES];
-  crypto_sign_seed_keypair(public_key, secret_key, seed);
-
-  // create signature (in raw bytes)
-  unsigned char signature[crypto_sign_BYTES];
-  unsigned long long sig_len;
-
-  crypto_sign_detached(
-    signature,
-    &sig_len,
-    reinterpret_cast<const unsigned char*>(payload.c_str()),
-    payload.size(),
-    secret_key
-    );
-
-  auto temp_len = ::ceil((sig_len * 8) / 24) * 4;
-
-  // convert signature to base64
-  char tmp[150] = {0};   // assert is >= 88
-
-  assert(sizeof(tmp) > temp_len);
-  ap_base64encode(tmp, reinterpret_cast<char*>(signature), sig_len);
-
-  return tmp;
-}
-
-
 
 BinanceUsdFutLineHandler::BinanceUsdFutLineHandler(
   Core* core,
@@ -95,7 +56,7 @@ BinanceUsdFutLineHandler::BinanceUsdFutLineHandler(
   auto obj = json::parse(slurp(secrets_file.native().c_str()));
 
   _apikey = obj["key"].get<std::string>();
-  _seedhex = obj["seed"].get<std::string>(); // TODO: allow other form, eg PEM
+  _ed25519_signer.set_private_key_hex(obj["secret"].get<std::string>());
 
   int uat_mode = 0;
   if (uat_mode) {
@@ -426,7 +387,7 @@ void BinanceUsdFutLineHandler::manage_connection()
 
       auto timestamp = Time::realtime_now().as_epoch_ms().count();
       auto payload = concat("apiKey=", _apikey, "&timestamp=", timestamp);
-      auto signature = sign_message(payload, _seedhex);
+      auto signature = _ed25519_signer.sign_detached(payload).to_base64();
       auto msg = concat(R"({"id":")",
                         req_id,
                         R"(","method":"session.logon","params":{"apiKey":")",
@@ -450,8 +411,7 @@ void BinanceUsdFutLineHandler::manage_connection()
 }
 
 
-// TODO: what about cancel?  We will get order_id & exch_order_id
-void BinanceUsdFutLineHandler::submit_order(OrderParams order)
+SendStatus BinanceUsdFutLineHandler::submit_order(OrderParams order)
 {
 
   // TODO: concern: how to make these IDs unique if we have 2 engines?
@@ -500,13 +460,14 @@ void BinanceUsdFutLineHandler::submit_order(OrderParams order)
       mcap->push_event(_ws_line_msgcap_id_out, sv);
     _ws_line->send(sv);
   } else {
-    LOG_WARN("*** NOT OPEN ***");
-    // TODO: how to return with a reject here?
+    return SendStatus{error::venue_link_down};
   }
+
+  return SendStatus::success;
 }
 
 
-void BinanceUsdFutLineHandler::cancel_order(const MxCancelOrder& msg)
+SendStatus BinanceUsdFutLineHandler::cancel_order(const MxCancelOrder& msg)
 {
   // create request ID
   char req_id[16] = {};
@@ -533,6 +494,11 @@ void BinanceUsdFutLineHandler::cancel_order(const MxCancelOrder& msg)
       mcap->push_event(_ws_line_msgcap_id_out, msg);
     _ws_line->send(msg);
   }
+  else {
+    return SendStatus{error::venue_link_down};
+  }
+
+  return SendStatus::success;
 }
 
 
@@ -557,7 +523,7 @@ void BinanceUsdFutLineHandler::initiate_user_stream()
   }
 
   auto payload = "apiKey=" + _apikey;
-  auto signature = sign_message(payload, _seedhex);
+  auto signature = _ed25519_signer.sign_detached(payload).to_base64();
 
   std::ostringstream oss;
   oss << R"({"id":")" << req_id

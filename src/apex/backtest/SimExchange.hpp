@@ -46,8 +46,8 @@ public:
 
   ~SimExchange() override;
 
-  void send_order(Order&) override;
-  void cancel_order(Order&) override;
+  SendStatus send_order(Order&) override;
+  SendStatus cancel_order(Order&) override;
   bool is_up() const override;
 
   void add_instrument(const Instrument&);

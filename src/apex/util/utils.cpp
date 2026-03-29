@@ -196,8 +196,7 @@ On success, zero is returned.  On error, -1 is returned.
 std::string HMACSHA256_base4(const char* key, int keylen, const char* msg,
                              int msglen)
 {
-  unsigned char md[EVP_MAX_MD_SIZE + 1]; // EVP_MAX_MD_SIZE=64
-  memset(md, 0, sizeof(md));
+  unsigned char md[EVP_MAX_MD_SIZE + 1] = {}; // EVP_MAX_MD_SIZE=64
   unsigned int mdlen;
 
   HMAC(EVP_sha256(), key, keylen, (const unsigned char*)msg, msglen, md,
@@ -375,7 +374,7 @@ void create_dir(const std::filesystem::path& dir)
 
 std::string int32_to_base16(uint32_t i, bool trim_leading_zeros)
 {
-  static const char alphabet[] = "0123456789abcdef";
+  static constexpr  char alphabet[] = "0123456789abcdef";
   char buf[8 + 1] = {0};
 
   buf[0] = alphabet[(i & 0xF0000000) >> 28];

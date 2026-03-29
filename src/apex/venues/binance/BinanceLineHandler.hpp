@@ -20,6 +20,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/core/OrderRouterService.hpp>
 #include <apex/model/Order.hpp>
 #include <apex/util/json.hpp>
+#include <apex/util/Ed25519Signer.hpp>
 #include <apex/venues/venues_common.hpp>
 
 namespace apex {
@@ -47,11 +48,8 @@ public:
   std::shared_ptr<WebsocketClient> connect_user_data_stream();
   void manage_connection();
 
-
-  // TODO: build out the order management API - I want callbacks.  How to we
-  // receive a fill?  Think in terms of both embeddecd and via a GX server.
-  void submit_order(OrderParams);
-  void cancel_order(const MxCancelOrder&);
+  SendStatus submit_order(OrderParams);
+  SendStatus cancel_order(const MxCancelOrder&);
 
   void user_stream_keepalive();
 
@@ -83,7 +81,7 @@ private:
   std::string _line_url;
 
   std::string _apikey;
-  std::string _seedhex;
+  Ed25519Signer _ed25519_signer;
 
   // used to generate exchange request IDs
   size_t _msg_seq_num = 0;

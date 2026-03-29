@@ -66,28 +66,32 @@ std::shared_ptr<GxClientSession>& RealtimeOrderRouter::gx_session()
 }
 
 
-void RealtimeOrderRouter::send_order(Order& order)
+SendStatus RealtimeOrderRouter::send_order(Order& order)
 {
   if (!is_up()) {
     std::weak_ptr<Order> wp = order.weak_from_this();
     _core->evloop()->dispatch([wp]() {
       if (auto sp = wp.lock())
-        sp->set_is_rejected(error::e0003, "gx not connected");
+        sp->set_is_rejected(error::gateway_down, "gx not connected");
     });
   } else {
     _gx_session->new_order(order);
   }
+
+  return SendStatus::success;
 }
 
-void RealtimeOrderRouter::cancel_order(Order& order)
+SendStatus RealtimeOrderRouter::cancel_order(Order& order)
 {
   if (_gx_session->is_connected()) {
     _gx_session->cancel_order(order);
   }
   else {
     LOG_ERROR("cannot cancel order " << order.order_id() << " for " << order.ticker() <<"; GX connection down");
-    throw std::runtime_error("cannot cancel order");
+
+    return SendStatus(error::gateway_down);
   }
+  return SendStatus::success;
 }
 
 bool RealtimeOrderRouter::is_up() const { return _is_up; }

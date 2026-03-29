@@ -212,6 +212,9 @@ private:
 
 std::string demangle(const char* name);
 
+/* Calculate number of base64 chars required to encoded n bytes (padded) */
+constexpr size_t base64_encoded_size(size_t n) { return 4 * ((n + 2) / 3); }
+
 std::string to_hex(const unsigned char* p, size_t size);
 
 std::string to_hex(const char* p, size_t size);

@@ -357,9 +357,7 @@ void SimOrderBook::remove_order(std::shared_ptr<SimLimitOrder>& order) {
       latency,
       [order_wp](){
         if (auto order_sp = order_wp.lock()) {
-          auto text = "order not found";
-          auto code = error::e0102;
-          order_sp->apply_cancel_reject(code, text);
+          order_sp->apply_cancel_reject(error::order_not_found);
         }
         return 0ms;
       });
@@ -375,7 +373,7 @@ SimExchange::SimExchange(Core* core)
 
 SimExchange::~SimExchange() = default;
 
-void SimExchange::send_order(Order& order) {
+SendStatus SimExchange::send_order(Order& order) {
 
   using namespace std::chrono_literals;
   auto latency = 100ms;
@@ -388,9 +386,8 @@ void SimExchange::send_order(Order& order) {
       latency,
       [order_wp=order.weak_from_this()](){
         if (auto order_sp = order_wp.lock()) {
-          auto reject_code = error::e0102;
-          auto reject_text = "duplicate external order ID";
-          order_sp->set_is_rejected(reject_code, reject_text);
+          order_sp->set_is_rejected(error::duplicate_id,
+                                    "duplicate external order ID");
         }
         return 0ms;
       });
@@ -405,10 +402,12 @@ void SimExchange::send_order(Order& order) {
   else {
     THROW("no limit-order-book for " << order.instrument());
   }
+
+  return SendStatus::success;
 }
 
 
-void SimExchange::cancel_order(Order& order) {
+SendStatus SimExchange::cancel_order(Order& order) {
   using namespace std::chrono_literals;
   auto latency = 100ms;
 
@@ -419,14 +418,12 @@ void SimExchange::cancel_order(Order& order) {
       latency,
       [order_wp=order.weak_from_this()]() {
         if (auto order_sp = order_wp.lock()) {
-          auto err_code = error::e0103;
-          auto err_text = "order not found";
-          order_sp->apply_cancel_reject(err_code, err_text);
+          order_sp->apply_cancel_reject(error::order_not_found);
         }
         return 0ms;
       });
 
-    return;
+    return SendStatus(error::order_not_found);
   }
 
   auto book_iter = _books.find(order.instrument());
@@ -437,6 +434,7 @@ void SimExchange::cancel_order(Order& order) {
   else {
     THROW("no limit-order-book for " << order.instrument());
   }
+  return SendStatus::success;
 }
 
 
