@@ -61,8 +61,10 @@ public:
     dump_market_data();
   }
 
-  void on_tick_trade(apex::MarketData::EventType) override {
-    LOG_INFO(ticker() << ": trade " << last_price());
+  void on_market_data(apex::MarketData::EventType event) override {
+    if (event.is_trade()) {
+      LOG_INFO(ticker() << ": trade " << last_price());
+    }
   }
 };
 

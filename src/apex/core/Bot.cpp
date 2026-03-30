@@ -77,13 +77,7 @@ void Bot::init(double initial_position)
 
   _mkt->subscribe_events([this](MarketData::EventType event_type) {
     if (!is_stopping()) {
-      if (event_type.is_trade()) {
-        this->on_tick_trade(event_type);
-      }
-
-      if (event_type.is_top()) {
-        this->on_tick_book(event_type);
-      }
+      this->on_market_data(event_type);
     }
   });
 
