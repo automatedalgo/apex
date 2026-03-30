@@ -50,15 +50,13 @@ public:
 
 
 public:
-  void on_tick_trade(apex::MarketData::EventType) override
+  void on_market_data(apex::MarketData::EventType event) override
   {
-    /* handle a public trade */
-    LOG_INFO(this->ticker() << ": " << this->market().last());
-  }
+    /* handle a trade or book update */
 
-  virtual void on_tick_book(apex::MarketData::EventType) override
-  {
-    /* handle order book update */
+    if (event.is_trade()) {
+      LOG_INFO(this->ticker() << ": " << this->market().last());
+    }
   }
 
   void on_order_closed(apex::Order&) override

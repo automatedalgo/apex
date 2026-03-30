@@ -63,7 +63,7 @@ public:
       manage_existing_order();
   }
 
-  void on_tick_trade(apex::MarketData::EventType) override {
+  void on_market_data(apex::MarketData::EventType) override {
   }
 
   void create_and_send_order()

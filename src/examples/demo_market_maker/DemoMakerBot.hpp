@@ -38,7 +38,7 @@ public:
 
   void on_order_closed(apex::Order& order) override;
 
-  void on_tick_trade(apex::MarketData::EventType) override;
+  void on_market_data(apex::MarketData::EventType) override;
 
 
 private:

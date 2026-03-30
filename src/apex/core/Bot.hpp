@@ -131,8 +131,7 @@ public:
 
   /* Bot event callback handlers */
 
-  virtual void on_tick_trade(MarketData::EventType) {}
-  virtual void on_tick_book(MarketData::EventType) {}
+  virtual void on_market_data(MarketData::EventType) {}
   virtual void on_timer() {}
   virtual void on_order_submitted(Order&) {}
   virtual void on_order_live(Order&) {}

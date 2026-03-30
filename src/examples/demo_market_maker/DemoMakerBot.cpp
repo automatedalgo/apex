@@ -23,12 +23,8 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 class MyBot : public apex::Bot {
 public:
-  void on_tick_trade(apex::MarketData::EventType) override {
-    /* handle a public trade */
-  }
-
-  void on_tick_book(apex::MarketData::EventType) override {
-    /* handle an order book update */
+  void on_market_data(apex::MarketData::EventType) override {
+    /* handle a market date (book update, or trade) */
   }
 
   void on_order_closed(apex::Order&) override {
@@ -47,7 +43,6 @@ public:
     /* handle regular or one-off timer */
   }
 };
-
 
 
 namespace apex
@@ -69,9 +64,11 @@ void DemoMakerBot::on_order_closed(apex::Order& order)
 }
 
 
-void DemoMakerBot::on_tick_trade(apex::MarketData::EventType)
+void DemoMakerBot::on_market_data(apex::MarketData::EventType event)
 {
-  LOG_INFO("TRADE: " << this->market().last());
+  if (event.is_trade()) {
+    LOG_INFO("TRADE: " << this->market().last());
+  }
 }
 
 void DemoMakerBot::manage_pending_orders()
