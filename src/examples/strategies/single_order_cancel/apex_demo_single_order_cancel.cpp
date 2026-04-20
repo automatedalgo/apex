@@ -28,13 +28,13 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
    order is cancelled. This example shows how orders are priced, sized, created,
    sent and then later managed.
 */
-class OrderCancelDemoBot : public apex::Bot
+class SingleOrderCancelDemoBot : public apex::Bot
 {
 public:
 
-  OrderCancelDemoBot(apex::Strategy* strategy,
+  SingleOrderCancelDemoBot(apex::Strategy* strategy,
                      const apex::Instrument& instrument)
-    : apex::Bot("OrderCancelDemoBot", strategy, instrument) {}
+    : apex::Bot("SingleOrderCancel", strategy, instrument) {}
 
 
   void on_order_live(apex::Order& order) override {
@@ -50,7 +50,7 @@ public:
 
   /* Bot's on-timer callback, called periodically by the core engine. We always
    * use this to manage live orders, and also in this current Bot to initiate
-   * and order send. eriodically the Bot's on_timer method is called.  This is
+   * and order send. Periodically the Bot's on_timer method is called.  This is
    * where we implement the logic of the Bot.  Which is to check if we have sent
    * or order yet.  And if an order is sent, we then manage its life-time. If
    * the order gets rejected we don't attempt to send another. */
@@ -148,14 +148,14 @@ int main()
 {
   try {
     // create core engine, configured for paper or live trading
-    apex::Logger::configure(apex::Logger::info, true);
+    apex::Logger::configure(apex::Logger::info);
     auto core = apex::Core::create(apex::RunMode::live);
 
     // ----------------------------------------------------------------------
     // CONFIGURE CORE SERVICES
     // ----------------------------------------------------------------------
 
-    // Add route to Binance Spot exchange
+    // Add route to Binance exchange
     apex::OrderRouterConfig binance_config;
     binance_config.api_key_file = apex::user_home_dir() / ".secrets/binance_spot.json";
     core->order_router_service()->add_binance_spot(binance_config);
@@ -174,9 +174,8 @@ int main()
 
     // add a single bot - first we query the instrument, then create a bot for
     // it
-    //auto instrument = apex::InstrumentQuery("ETHBTC", apex::ExchangeId::binance);
-    auto instrument = apex::InstrumentQuery("BTCUSDT", apex::ExchangeId::binance);
-    strategy.create_bot<OrderCancelDemoBot>(instrument);
+    auto instrument = apex::InstrumentQuery("ETHBTC", apex::ExchangeId::binance);
+    strategy.create_bot<SingleOrderCancelDemoBot>(instrument);
 
     // initialise all bots, so they can begin trading
     strategy.init_bots();
