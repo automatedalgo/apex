@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU Lesser General Public License along
 # with Apex. If not, see <https://www.gnu.org/licenses/>.
 
+import argparse
+from pathlib import Path
 import json
 import logging
 import sys
@@ -241,23 +243,31 @@ def write_csv_file(fn, rows, index_field, delim=','):
             f.write(delim.join([str(x) for x in lines[key]]))
             f.write("\n")
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Program with temp directory option")
+    parser.add_argument(
+        "--tmp",
+        type=Path,
+        default=Path("default-tmp"),
+        help="Path to temporary directory"
+    )
+    return parser.parse_args()
 
 def main():
     apex.logging.init_logging()
 
-    fn = "tmp/binance_exchange-info.json"
+    args = parse_args()
+    tmp_dir = args.tmp
+
+    fn = f"{tmp_dir}/binance_exchange-info.json"
     coin_rows = parse_binance_spot_exchange_info(fn,
                                                  venue="binance")
 
-    fn = "tmp/binance_usdfut_exchange-info.json"
+    fn = f"{tmp_dir}/binance_usdfut_exchange-info.json"
     futures_rows = parse_binance_usdfut_exchange_info(fn,
                                                       venue="binance_usdfut" )
 
-    # fn = "tmp/binance_coinfut_exchange-info.json"
-    # coinfut_rows = parse_binance_usdfut_exchange_info(fn,
-    #                                                   venue="binance_coinfut")
-
-    outfn = "tmp/binance_assets.csv"
+    outfn = f"{tmp_dir}/binance_assets.csv"
     all_rows = [*coin_rows, *futures_rows]
     #all_rows = [*coin_rows, *futures_rows, *coinfut_rows]
     write_csv_file(outfn, all_rows, "instId")

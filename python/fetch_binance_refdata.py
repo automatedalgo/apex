@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU Lesser General Public License along
 # with Apex. If not, see <https://www.gnu.org/licenses/>.
 
+import argparse
+from pathlib import Path
 import requests
 import json
 import logging
@@ -42,24 +44,36 @@ def perform_http_request(api, path):
         raise Exception("http request failed: {}".format(reply.status_code))
     return reply.text
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Program with temp directory option")
+    parser.add_argument(
+        "--tmp",
+        type=Path,
+        default=Path("default-tmp"),
+        help="Path to temporary directory"
+    )
+    return parser.parse_args()
 
 def main():
     apex.logging.init_logging()
 
+    args = parse_args()
+    tmp_dir = args.tmp
+
     reply = perform_http_request(usdfut_api, usdfut_path)
-    fn = "tmp/binance_usdfut_exchange-info.json"
+    fn = f"{tmp_dir}/binance_usdfut_exchange-info.json"
     logging.info("writing to file '{}'".format(fn))
     with open(fn, "w") as f:
         f.write(reply)
 
     reply = perform_http_request(coinfut_api, coinfut_path)
-    fn = "tmp/binance_coinfut_exchange-info.json"
+    fn = f"{tmp_dir}/binance_coinfut_exchange-info.json"
     logging.info("writing to file '{}'".format(fn))
     with open(fn, "w") as f:
         f.write(reply)
 
     reply = perform_http_request(spot_api, spot_path)
-    fn = "tmp/binance_exchange-info.json"
+    fn = f"{tmp_dir}/binance_exchange-info.json"
     logging.info("writing to file '{}'".format(fn))
     with open(fn, "w") as f:
         f.write(reply)

@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU Lesser General Public License along
 # with Apex. If not, see <https://www.gnu.org/licenses/>.
 
+import argparse
+from pathlib import Path
 import json
 import logging
 import sys
@@ -28,17 +30,6 @@ today_str = dt.today().strftime('%Y-%m-%d')
 currency_map = dict() # will store map of all currencies
 
 DEFAULT_PRECISION = 9
-
-# alias_map = {"XBT": "BTC"}
-
-# def get_normalised_currency(native_ccy):
-#     if native_ccy in currency_map:
-#         return native_ccy
-#     else:
-#         if native_ccy in alias_map:
-#             return alias_map[native_ccy]
-#         else:
-#             return None # indicates this ccy was not native nor an alias
 
 
 @dataclass
@@ -170,39 +161,30 @@ def load_json(filename):
         return json.load(f)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Program with temp directory option")
+    parser.add_argument(
+        "--tmp",
+        type=Path,
+        default=Path("default-tmp"),
+        help="Path to temporary directory"
+    )
+    return parser.parse_args()
+
+
 def main():
     apex.logging.init_logging()
 
-    tmp_dir = "tmp"
-
-    # # load kucoin currencies - need this to help identify when to use alias
-    # currencies = load_json(f"{tmp_dir}/kucoin_spot_currencies.json")
-    # for item in currencies["data"]:
-    #     currency = item["currency"]
-    #     if currency in currency_map:
-    #         raise Exception(f"cannot add duplicate currency '{currency}'")
-    #     currency_map[currency] = item
-    # logging.info(f"currency count: {len(currency_map)}")
-
+    args = parse_args()
+    tmp_dir = args.tmp
 
     # load the futures trading symbols and parse
     fut_symbols = load_json(f"{tmp_dir}/bybit_linear_currencies.json")
 
     futures = parse_fut_symbols(fut_symbols, venue="bybit")
 
-    #import ipdb; ipdb.set_trace(); # TODO: DELETE ME
 
-    #fn = "tmp/kucoin_fut_exchange-info.json"
-
-
-
-    #import ipdb; ipdb.set_trace(); # TODO: DELETE ME
-
-    # fn = "tmp/binance_coinfut_exchange-info.json"
-    # coinfut_rows = parse_binance_usdfut_exchange_info(fn,
-                                                     # venue="binance_coinfut")
-
-    outfn = "tmp/bybit_assets.csv"
+    outfn = f"{tmp_dir}/bybit_assets.csv"
     all_rows = [*futures]
     write_csv_file(outfn, all_rows, "instId")
 

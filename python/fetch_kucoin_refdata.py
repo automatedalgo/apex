@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU Lesser General Public License along
 # with Apex. If not, see <https://www.gnu.org/licenses/>.
 
+import argparse
+from pathlib import Path
 import requests
 import json
 import logging
@@ -65,11 +67,21 @@ def fetch_and_save(api, path, filename):
         as_json = json.loads(reply)
         f.write(json.dumps(as_json, indent=True))
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Program with temp directory option")
+    parser.add_argument(
+        "--tmp",
+        type=Path,
+        default=Path("default-tmp"),
+        help="Path to temporary directory"
+    )
+    return parser.parse_args()
 
 def main():
     apex.logging.init_logging()
 
-    tmp_dir = "tmp"
+    args = parse_args()
+    tmp_dir = args.tmp
 
     # currencies
     fetch_and_save(kucoin_url,
@@ -85,22 +97,6 @@ def main():
     fetch_and_save(kucoin_fut_url,
                    "/api/v1/contracts/active",
                    f"{tmp_dir}/kucoin_fut_symbols.json")
-
-
-
-    # reply = perform_http_request(fut_url, fut_path)
-    # fn = f"tmp/{fut_exchid}_exchange-info.json"
-    # logging.info("writing to file '{}'".format(fn))
-    # with open(fn, "w") as f:
-    #     f.write(reply)
-
-    # reply = perform_http_request(spot_url, spot_path)
-    # fn = f"tmp/{spot_exchid}_exchange-info.json"
-    # logging.info("writing to file '{}'".format(fn))
-    # with open(fn, "w") as f:
-    #     f.write(reply)
-
-
 
 if __name__ == "__main__":
     main()

@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU Lesser General Public License along
 # with Apex. If not, see <https://www.gnu.org/licenses/>.
 
+import argparse
+from pathlib import Path
 import json
 import logging
 import sys
@@ -39,7 +41,6 @@ def get_normalised_currency(native_ccy):
             return alias_map[native_ccy]
         else:
             return None # indicates this ccy was not native nor an alias
-
 
 
 @dataclass
@@ -67,7 +68,6 @@ def log_warn_once(msg):
     if msg not in log_warn_once_msgs:
         log_warn_once_msgs.add(msg)
         logging.warning(msg)
-
 
 
 def parse_fut_symbols(fut_symbols_raw, venue):
@@ -171,10 +171,22 @@ def load_json(filename):
         return json.load(f)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Program with temp directory option")
+    parser.add_argument(
+        "--tmp",
+        type=Path,
+        default=Path("default-tmp"),
+        help="Path to temporary directory"
+    )
+    return parser.parse_args()
+
+
 def main():
     apex.logging.init_logging()
 
-    tmp_dir = "tmp"
+    args = parse_args()
+    tmp_dir = args.tmp
 
     # load kucoin currencies - need this to help identify when to use alias
     currencies = load_json(f"{tmp_dir}/kucoin_spot_currencies.json")
@@ -191,19 +203,7 @@ def main():
 
     futures = parse_fut_symbols(fut_symbols, venue="kucoin_fut")
 
-    #import ipdb; ipdb.set_trace(); # TODO: DELETE ME
-
-    #fn = "tmp/kucoin_fut_exchange-info.json"
-
-
-
-    #import ipdb; ipdb.set_trace(); # TODO: DELETE ME
-
-    # fn = "tmp/binance_coinfut_exchange-info.json"
-    # coinfut_rows = parse_binance_usdfut_exchange_info(fn,
-                                                     # venue="binance_coinfut")
-
-    outfn = "tmp/kucoin_assets.csv"
+    outfn = f"{tmp_dir}/kucoin_assets.csv"
     all_rows = [*futures]
     write_csv_file(outfn, all_rows, "instId")
 
