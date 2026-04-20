@@ -24,7 +24,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <apex/venues/binance/BinanceLineHandler.hpp>
 #include <apex/venues/binance/binance_common.hpp>
 
-#include <apache/base64.h> // from 3rdparty
 #include <sodium.h>
 
 namespace apex {
@@ -65,14 +64,17 @@ BinanceLineHandler::BinanceLineHandler(Core* core,
 
   // load exchange secrets
   std::filesystem::path secrets_file = config.api_key_file;
-  if (secrets_file.empty()) {
-    throw ConfigError("binance API-key filename not provided", __FILE__, __LINE__);
+
+  if (core->run_mode() == RunMode::live) {
+    if (secrets_file.empty()) {
+      throw ConfigError("binance API-key filename not provided", __FILE__, __LINE__);
+    }
+
+    auto obj = json::parse(slurp(secrets_file.native().c_str()));
+
+    _apikey = obj["key"].get<std::string>();
+    _ed25519_signer.set_private_key_hex(obj["secret"].get<std::string>());
   }
-
-  auto obj = json::parse(slurp(secrets_file.native().c_str()));
-
-  _apikey = obj["key"].get<std::string>();
-  _ed25519_signer.set_private_key_hex(obj["secret"].get<std::string>());
 
   int uat_mode = 0;
   if (uat_mode) {
@@ -213,7 +215,7 @@ void BinanceLineHandler::process_execution_report(json& event)
 
   if (exec_type == "NEW" && ord_state == "NEW") {
     // Binance can send execution reports for fills, ahead of the initial order
-    // ack reponse, so, here we need to also generate an order ack for the
+    // ack response, so, here we need to also generate an order ack for the
     // initial execution response
     MxSubmitOrderAck ack;
     ack.flags = MxSubmitOrderAck::possible_duplicated;
@@ -241,11 +243,11 @@ void BinanceLineHandler::process_raw_message(const char* buf, size_t len)
   try {
     json msg = json::parse(buf, buf + len);
 
-    // handle solicated reponses arising from prior requests
+    // handle solicited reposes arising from prior requests
     if (auto id = msg.find("id"); id != msg.end()) {
       const std::string & id_value = id->get_ref<const std::string&>();
       if (id_value == "udssub") {
-        /*  Note: is status is not 200, we should close the connect, and reopen
+        /*  Note: is status is not 200, we should close connection, and reopen
 {
   "id": "udssub",
   "result": {},
@@ -376,7 +378,7 @@ SendStatus BinanceLineHandler::submit_order(OrderParams order)
 
   if (apex::websock_is_open(_ws_line)) {
 
-    // TOOD: add time window for order eligibility (say now + 5 sec)
+    // TODO: add time window for order eligibility (say now + 5 sec)
 
     // Using JsonWriter to have better control of number formatting
     JsonWriter jw;
