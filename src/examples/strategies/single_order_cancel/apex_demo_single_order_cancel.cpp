@@ -149,7 +149,7 @@ int main()
   try {
     // create core engine, configured for paper or live trading
     apex::Logger::configure(apex::Logger::info);
-    auto core = apex::Core::create(apex::RunMode::live);
+    auto core = apex::Core::create(apex::RunMode::paper);
 
     // ----------------------------------------------------------------------
     // CONFIGURE CORE SERVICES
@@ -172,8 +172,7 @@ int main()
     // create a Strategy object, which is a container for individual bots
     apex::Strategy strategy(core.get(), "DEM01");
 
-    // add a single bot - first we query the instrument, then create a bot for
-    // it
+    // add a single bot - first query an instrument, then create a bot for it
     auto instrument = apex::InstrumentQuery("ETHBTC", apex::ExchangeId::binance);
     strategy.create_bot<SingleOrderCancelDemoBot>(instrument);
 

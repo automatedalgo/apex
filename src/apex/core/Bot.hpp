@@ -87,12 +87,16 @@ private:
   std::set<std::shared_ptr<apex::Order>> _live_orders;
 };
 
+struct BotOptions {
+  bool name_includes_typename = false;
+};
 
 /* This class is responsible for trading activities on a single name. */
 class Bot
 {
 public:
-  Bot(const std::string& bot_typename, Strategy*, Instrument instrument);
+  Bot(const std::string& bot_typename, Strategy*, Instrument instrument,
+      BotOptions options = {});
 
   virtual ~Bot();
 

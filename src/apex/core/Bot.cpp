@@ -40,18 +40,19 @@ namespace apex
 
 Bot::Bot(const std::string& bot_typename,
          Strategy* strategy,
-         Instrument instrument)
+         Instrument instrument,
+         BotOptions options)
   : _core(strategy->core()),
     _strategy(strategy),
     _bot_typename(bot_typename),
     _instrument(std::move(instrument))
 {
-  bool include_bot_typename = !bot_typename.empty();
+  LOG_INFO("creating bot: " << bot_typename << ", " << _instrument.id());
 
   _name = _instrument.id();
-  if (include_bot_typename)
+  if (options.name_includes_typename) {
     _name += " (" + bot_typename + ")";
-  LOG_INFO(name() << ": bot created");
+  }
 }
 
 
