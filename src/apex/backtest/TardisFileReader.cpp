@@ -41,7 +41,7 @@ namespace apex
 
 TardisFileReader::TardisFileReader(std::filesystem::path fn,
                                    MarketData* mktdata,
-                                   MdStream stream_type,
+                                   MdStream /*stream_type*/,
                                    DataType datatype)
   :_fn(fn),
    _mktdata(mktdata),
@@ -71,7 +71,7 @@ TardisFileReader::~TardisFileReader()
 
 void TardisFileReader::read_header()
 {
-  auto nread = _reader.read(); // initial read of bytes from the file
+  /* auto nread  = */ _reader.read(); // initial read of bytes from the file
 
   switch (_datatype) {
     case  DataType::book_snapshot_5:
@@ -138,7 +138,7 @@ void TardisFileReader::parse_next_event()
   // if we failed to parse, try to read in more data
   if (!parsed) {
     _reader.discard(_parser->bytes_parsed());
-    auto nread = _reader.read(); // TODO: check failure
+    /* auto nread = */ _reader.read(); // TODO: check failure
     _parser->reset_pointers(_reader.data(), _reader.avail());
     _parser->next();
   }
