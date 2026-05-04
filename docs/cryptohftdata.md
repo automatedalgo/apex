@@ -100,10 +100,13 @@ small market-making backtest, open:
 notebooks/cryptohftdata_backtest_workflow.ipynb
 ```
 
-The notebook is safe to open without side effects. To run the live workflow,
-set `APEX_CHD_RUN_REFDATA=1`, `APEX_CHD_RUN_PREPARE=1`, and
-`APEX_CHD_RUN_BACKTEST=1`. If your example binary is not under `BUILD/debug`,
-set `APEX_CHD_BUILD_DIR` to the CMake build directory that contains it.
+Running all notebook cells performs the live workflow: it installs missing Python
+converter dependencies into the active notebook kernel, generates refdata when
+missing, downloads CryptoHFTData files, converts them to `tickbin1`, and runs the
+example backtest. Set `CRYPTOHFTDATA_API_KEY` before starting Jupyter, or enter
+it when the notebook prompts. If your example binary is not under
+`BUILD/cryptohft-debug`, set `APEX_CHD_BUILD_DIR` to the CMake build directory
+that contains it.
 
 Prepare Bybit data:
 
