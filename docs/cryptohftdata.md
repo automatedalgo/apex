@@ -93,6 +93,13 @@ python3 python/prepare_cryptohftdata.py \
   --jobs 8
 ```
 
+For a notebook walkthrough that prepares data, inspects the manifest, and runs a
+small market-making backtest, open:
+
+```text
+notebooks/cryptohftdata_backtest_workflow.ipynb
+```
+
 Prepare Bybit data:
 
 ```shell
@@ -196,7 +203,11 @@ Then run Apex tests and a backtest using the generated files:
 ```shell
 cmake --build BUILD/debug
 ctest --test-dir BUILD/debug
-./BUILD/debug/src/examples/standalone/standalone_algo_backtest
+APEX_CHD_VENUE=binance_usdfut \
+APEX_CHD_SYMBOL=BTCUSDT \
+APEX_CHD_FROM=2025-08-01T00:00:00 \
+APEX_CHD_UPTO=2025-08-01T01:00:00 \
+./BUILD/debug/src/examples/standalone/apex-example-cryptohftdata-backtest
 ```
 
 Adjust the build directory if your local CMake preset uses a different path.
@@ -214,4 +225,3 @@ Adjust the build directory if your local CMake preset uses a different path.
   construct a valid bid/ask.
 - No market data in backtest: Confirm that the Apex instrument native symbol and
   venue match the prepared path under `tickbin1/{venue}/{stream}/...`.
-

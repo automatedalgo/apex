@@ -28,6 +28,7 @@ endmacro()
 
 Compile_Program(standalone_algo_backtest)
 Compile_Program(apex-demo-simple-market-maker)
+Compile_Program(apex-example-cryptohftdata-backtest)
 Compile_Program(apex-example-feed)
 Compile_Program(apex-example-line)
 Compile_Program(apex-example-latency)
