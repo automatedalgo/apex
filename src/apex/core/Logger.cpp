@@ -25,9 +25,6 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <functional>
 #include <iostream>
 
-// Defined by glibc to provide the program name
-extern char *program_invocation_short_name;
-
 namespace apex
 {
 
@@ -358,7 +355,7 @@ std::string generate_auto_log_file_name(const LogOpts &opts)
   Time t = Time::realtime_now();
   auto base_path = apex_home() / "log";
 
-  base_path /= std::string(program_invocation_short_name);
+  base_path /= process_short_name();
 
   switch (opts.time) {
     case LogOpts::Time::day :

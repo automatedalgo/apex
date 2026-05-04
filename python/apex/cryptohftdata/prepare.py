@@ -223,6 +223,7 @@ def _convert_outputs(
                 "input_rows": merged.input_rows,
                 "emitted": merged.emitted,
                 "skipped_outside_range": merged.skipped_outside_range,
+                "warning_count": merged.warning_count,
                 "warnings": merged.warnings,
                 "missing_hours": missing_for_output,
                 "verification": verification,

@@ -21,6 +21,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <thread>
 
 #ifndef _WIN32
+#include <cstdlib>
 #include <sys/syscall.h> /* For SYS_xxx definitions */
 #include <sys/utsname.h>
 #include <unistd.h>
@@ -121,5 +122,16 @@ int getpid() {
 #endif
 }
 
+std::string process_short_name()
+{
+#if defined(__APPLE__)
+  return ::getprogname();
+#elif defined(__GLIBC__)
+  extern char *program_invocation_short_name;
+  return program_invocation_short_name;
+#else
+  return "apex";
+#endif
+}
 
 } // namespace apex

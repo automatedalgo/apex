@@ -25,6 +25,10 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <sys/socket.h>
 #include <netdb.h>
 
+#ifndef assert_perror
+#define assert_perror(errnum) assert((errnum) == 0)
+#endif
+
 #define LOG_INFO( X ) do { std::cout << "info: " << X << "\n";} while (0);
 #define LOG_WARN( X ) do { std::cout << "warning: "<< X << "\n";} while (0);
 

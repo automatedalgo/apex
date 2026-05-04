@@ -24,8 +24,22 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <sys/socket.h>
 #include <netdb.h>
 #include <assert.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 static constexpr int BACKLOG = 50;
+
+namespace {
+
+int set_fd_non_blocking(int fd)
+{
+  int flags = ::fcntl(fd, F_GETFL, 0);
+  if (flags < 0)
+    return -1;
+  return ::fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+}
+
+}
 
 void abort_with_msg(const char* msg, const char* reason) {
   fprintf(stderr, "%s: %s\n", msg, reason);
@@ -319,7 +333,17 @@ void TcpSocket::listen_impl(const std::string& node,
     socklen_t len = sizeof(addr);
 
     // TODO: handle EINTR here?
+#ifdef SOCK_NONBLOCK
     int fd = ::accept4(stream->fd, (sockaddr*)&addr, &len, SOCK_NONBLOCK);
+#else
+    int fd = ::accept(stream->fd, (sockaddr*)&addr, &len);
+    if (fd != -1 && set_fd_non_blocking(fd) < 0) {
+      const int err = errno;
+      ::close(fd);
+      errno = err;
+      fd = -1;
+    }
+#endif
     if (fd == -1) {
       perror("Accept failed");
     }

@@ -160,7 +160,7 @@ private:
       auto rd = _buf.read_ptr();
       while (rd.avail() >= sizeof(apex::gx::Header)) {
         gx::Header* header = (gx::Header*)rd.ptr();
-        const auto msglen = ::ntohs(header->len);
+        const auto msglen = ntohs(header->len);
 
         if (rd.avail() < msglen)
           break;
@@ -168,9 +168,9 @@ private:
         // complete header & payload is available; we can now mutate header
         // byte(ntoh) because they will all be discarded after the following
         // call to parse the full message
-        header->len = ::ntohs(header->len);
-        header->flags = ::ntohs(header->flags);
-        header->id = ::ntohs(header->id);
+        header->len = ntohs(header->len);
+        header->flags = ntohs(header->flags);
+        header->id = ntohs(header->id);
         this->io_on_full_message(header, header->payload,
                                  header->len - sizeof(gx::Header));
         rd.advance(msglen); // note, use msglen, instead of header->len, just in

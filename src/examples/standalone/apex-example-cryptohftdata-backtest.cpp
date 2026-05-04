@@ -124,7 +124,7 @@ private:
       order->cancel();
   }
 
-  const double _order_usd = 25.0;
+  const double _order_usd = 250.0;
   const double _quote_offset_bps = 10.0;
   const double _replace_threshold_bps = 5.0;
   const std::chrono::seconds _max_order_lifetime{30};

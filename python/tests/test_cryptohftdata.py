@@ -7,7 +7,7 @@ from pathlib import Path
 import apex.cryptohftdata.prepare as prepare_module
 from apex.cryptohftdata.client import DownloadResult
 from apex.cryptohftdata.constants import normalize_stream, normalize_venue
-from apex.cryptohftdata.convert import L1BookBuilder, convert_orderbook_rows, convert_trade_rows
+from apex.cryptohftdata.convert import L1BookBuilder, WARNING_SAMPLE_LIMIT, convert_orderbook_rows, convert_trade_rows
 from apex.cryptohftdata.prepare import PrepareConfig, build_hour_plan
 from apex.cryptohftdata.tickbin import TickbinWriter, iter_records, read_preamble, verify_tickbin_file
 from apex.cryptohftdata.time_range import epoch_us, iter_hours_half_open, parse_apex_datetime
@@ -142,6 +142,29 @@ class TickbinConversionTests(unittest.TestCase):
         self.assertEqual(records[0].bid_price, 100)
         self.assertEqual(records[0].ask_price, 101)
         self.assertEqual(records[1].ask_price, 100.5)
+
+    def test_orderbook_warning_samples_are_capped(self) -> None:
+        start = parse_apex_datetime("2025-08-01T00:00:00")
+        from_us = epoch_us(start)
+        upto_us = epoch_us(parse_apex_datetime("2025-08-01T00:01:00"))
+        rows = [
+            {
+                "received_time": (from_us + idx) * 1000,
+                "event_time": from_us + idx,
+                "event_type": "update",
+                "side": "bid",
+                "price": "100",
+                "quantity": "1",
+            }
+            for idx in range(WARNING_SAMPLE_LIMIT + 5)
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "BTCUSDT.bin"
+            with TickbinWriter(path, {"e": "binance", "c": "l1", "s": "BTCUSDT"}) as writer:
+                stats = convert_orderbook_rows(rows, writer, L1BookBuilder(), from_us, upto_us)
+
+        self.assertEqual(stats.warning_count, WARNING_SAMPLE_LIMIT + 5)
+        self.assertEqual(len(stats.warnings), WARNING_SAMPLE_LIMIT)
 
 
 class PrepareDataTests(unittest.TestCase):

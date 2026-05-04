@@ -4,6 +4,14 @@
 #include <assert.h>
 #include <sys/types.h>
 
+#ifndef assert_perror
+#define assert_perror(errnum) assert((errnum) == 0)
+#endif
+
+#ifndef POLLRDHUP
+#define POLLRDHUP 0
+#endif
+
 namespace apex {
 
 std::string err_to_string(int e)

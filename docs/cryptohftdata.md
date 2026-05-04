@@ -100,6 +100,11 @@ small market-making backtest, open:
 notebooks/cryptohftdata_backtest_workflow.ipynb
 ```
 
+The notebook is safe to open without side effects. To run the live workflow,
+set `APEX_CHD_RUN_REFDATA=1`, `APEX_CHD_RUN_PREPARE=1`, and
+`APEX_CHD_RUN_BACKTEST=1`. If your example binary is not under `BUILD/debug`,
+set `APEX_CHD_BUILD_DIR` to the CMake build directory that contains it.
+
 Prepare Bybit data:
 
 ```shell
@@ -175,7 +180,7 @@ The manifest includes:
 - each CryptoHFTData object path and download status
 - each Apex output file path
 - input row counts and emitted record counts
-- missing hours and conversion warnings
+- missing hours, total conversion warning counts, and capped warning samples
 - tickbin verification summaries
 
 Secrets are never written to the manifest.

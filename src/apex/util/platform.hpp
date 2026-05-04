@@ -57,4 +57,7 @@ std::string hostname();
 /** Process pid */
 int getpid();
 
+/** Short process name for log file naming. */
+std::string process_short_name();
+
 } // namespace apex

@@ -12,6 +12,7 @@ from .time_range import received_time_to_epoch_us, timestamp_to_epoch_us
 
 
 Row = Mapping[str, Any]
+WARNING_SAMPLE_LIMIT = 100
 
 
 @dataclass
@@ -20,6 +21,12 @@ class ConversionStats:
     emitted: int = 0
     skipped_outside_range: int = 0
     warnings: list[str] = field(default_factory=list)
+    warning_count: int = 0
+
+    def add_warning(self, message: str) -> None:
+        self.warning_count += 1
+        if len(self.warnings) < WARNING_SAMPLE_LIMIT:
+            self.warnings.append(message)
 
 
 def _float_field(row: Row, field: str) -> float:
@@ -194,7 +201,7 @@ def convert_orderbook_rows(
         if event_type == "snapshot":
             book.clear()
         elif not book.have_snapshot:
-            stats.warnings.append(f"orderbook update before first snapshot at {capture_time_us}")
+            stats.add_warning(f"orderbook update before first snapshot at {capture_time_us}")
         for row in group:
             book.apply(row)
         if capture_time_us < from_us:
@@ -207,7 +214,7 @@ def convert_orderbook_rows(
         tick = book.maybe_tick(capture_time_us)
         if tick is not None:
             if tick.bid_price >= tick.ask_price:
-                stats.warnings.append(f"crossed l1 skipped at {capture_time_us}")
+                stats.add_warning(f"crossed l1 skipped at {capture_time_us}")
             else:
                 writer.write_l1(tick)
                 stats.emitted += 1
@@ -232,5 +239,8 @@ def merge_stats(items: Iterable[ConversionStats]) -> ConversionStats:
         merged.input_rows += item.input_rows
         merged.emitted += item.emitted
         merged.skipped_outside_range += item.skipped_outside_range
-        merged.warnings.extend(item.warnings)
+        merged.warning_count += item.warning_count
+        remaining = WARNING_SAMPLE_LIMIT - len(merged.warnings)
+        if remaining > 0:
+            merged.warnings.extend(item.warnings[:remaining])
     return merged

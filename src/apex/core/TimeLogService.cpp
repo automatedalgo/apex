@@ -17,12 +17,10 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/core/TimeLogService.hpp>
 #include <apex/util/utils.hpp>
+#include <apex/util/platform.hpp>
 #include <apex/core/Logger.hpp>
 #include <apex/util/Time.hpp>
 #include <apex/util/Error.hpp>
-
-// Defined by glibc to provide the program name
-extern char *program_invocation_short_name;
 
 namespace apex
 {
@@ -30,7 +28,7 @@ std::string generate_auto_file_name()
 {
   Time t = Time::realtime_now();
   auto base_path = apex_home() / "log";
-  base_path /= std::string(program_invocation_short_name);
+  base_path /= process_short_name();
   base_path += t.strftime(".%Y%m%d-%H%M%S");
   base_path += ".timelog";
   return base_path.string();
