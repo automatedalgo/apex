@@ -93,20 +93,12 @@ python3 python/prepare_cryptohftdata.py \
   --jobs 8
 ```
 
-For a notebook walkthrough that prepares data, inspects the manifest, and runs a
-small market-making backtest, open:
+For a full walkthrough that prepares data, inspects the manifest, and runs a
+small market-making backtest, see:
 
 ```text
-notebooks/cryptohftdata_backtest_workflow.ipynb
+docs/cryptohftdata_walkthrough.md
 ```
-
-Running all notebook cells performs the live workflow: it installs missing Python
-converter dependencies into the active notebook kernel, generates refdata when
-missing, downloads CryptoHFTData files, converts them to `tickbin1`, and runs the
-example backtest. Set `CRYPTOHFTDATA_API_KEY` before starting Jupyter, or enter
-it when the notebook prompts. If your example binary is not under
-`BUILD/cryptohft-debug`, set `APEX_CHD_BUILD_DIR` to the CMake build directory
-that contains it.
 
 Prepare Bybit data:
 
