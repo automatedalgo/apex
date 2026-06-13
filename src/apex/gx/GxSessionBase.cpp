@@ -24,9 +24,9 @@ namespace gx
 
 void Header::hton()
 {
-  this->len = ::htons(this->len);
-  this->flags = ::htons(this->flags);
-  this->id = ::htons(this->id);
+  this->len = htons(this->len);
+  this->flags = htons(this->flags);
+  this->id = htons(this->id);
 }
 
 }

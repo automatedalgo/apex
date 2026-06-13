@@ -157,7 +157,7 @@ void BinanceUsdFutLineHandler::process_trade_lite(json& msg)
   bool is_maker = get_field<bool>(msg, "m");
   exec.match_type = is_maker? MxOrderExecution::maker : MxOrderExecution::taker;
   exec.symbol = get_field<std::string>(msg, "S");
-  auto & side = get_field<std::string>(msg, "S");
+  auto side = get_field<std::string>(msg, "S");
   if (side == "BUY")
     exec.side = Side::buy;
   if (side == "SELL")
@@ -183,7 +183,7 @@ void BinanceUsdFutLineHandler::on_feed_message(const char* buf, size_t len)
       throw std::runtime_error("unknown subscribe response ID");
     }
 
-    auto & event_type = get_field<std::string>(msg, "e");
+    auto event_type = get_field<std::string>(msg, "e");
     if (event_type == "TRADE_LITE") {
       process_trade_lite(msg);
     }

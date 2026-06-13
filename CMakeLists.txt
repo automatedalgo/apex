@@ -58,7 +58,10 @@ include(CheckLibraryExists)
 if (CMAKE_HOST_UNIX)
     include(CheckCXXCompilerFlag)
     check_cxx_compiler_flag(-Wall temp)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pthread -g3 -march=westmere -mno-avx -mno-avx2 -mno-avx512f")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pthread -g3")
+    if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64)$")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=westmere -mno-avx -mno-avx2 -mno-avx512f")
+    endif ()
     set(CMAKE_CXX_FLAGS_DEBUG "-O0")
     set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
     #  if(temp)
@@ -136,6 +139,11 @@ include_directories("${PROJECT_SOURCE_DIR}/3rdparty")
 
 # add external dependencies after project includes
 include_directories(${OPENSSL_INCLUDE_DIR})
+
+if (LIBSODIUM_DIR)
+    include_directories("${LIBSODIUM_DIR}/include")
+    link_directories("${LIBSODIUM_DIR}/lib")
+endif ()
 
 enable_testing ()
 

@@ -92,10 +92,10 @@ const T* get_ptr(const json& src, std::string_view field)
 }
 
 template<typename T>
-T& get_field(json& msg, std::string_view field) {
+T get_field(const json& msg, std::string_view field) {
   try {
     if (auto iter = msg.find(field); iter != msg.end())
-      return (*iter).get_ref<T&>();
+      return (*iter).get<T>();
     else
       throw std::runtime_error("field not found");
   }

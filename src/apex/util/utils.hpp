@@ -21,6 +21,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <functional>
 #include <list>
 #include <mutex>
+#include <sstream>
 #include <string>
 #include <optional>
 #include <cmath>
