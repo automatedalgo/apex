@@ -333,9 +333,8 @@ void TcpSocket::listen_impl(const std::string& node,
     socklen_t len = sizeof(addr);
 
     // TODO: handle EINTR here?
-#ifdef SOCK_NONBLOCK
-    int fd = ::accept4(stream->fd, (sockaddr*)&addr, &len, SOCK_NONBLOCK);
-#else
+
+    // create non-blocking accept socket (avoid accept4, its less portable)
     int fd = ::accept(stream->fd, (sockaddr*)&addr, &len);
     if (fd != -1 && set_fd_non_blocking(fd) < 0) {
       const int err = errno;
@@ -343,7 +342,7 @@ void TcpSocket::listen_impl(const std::string& node,
       errno = err;
       fd = -1;
     }
-#endif
+
     if (fd == -1) {
       perror("Accept failed");
     }

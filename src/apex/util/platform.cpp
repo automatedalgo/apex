@@ -35,6 +35,9 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #endif
 #endif
 
+#if defined(__GLIBC__)
+  extern char *program_invocation_short_name;
+#endif
 
 namespace apex
 {
@@ -127,7 +130,6 @@ std::string process_short_name()
 #if defined(__APPLE__)
   return ::getprogname();
 #elif defined(__GLIBC__)
-  extern char *program_invocation_short_name;
   return program_invocation_short_name;
 #else
   return "apex";
