@@ -1,5 +1,6 @@
-#include <apex/net/Reactor.hpp>
 #include <apex/core/Logger.hpp>
+#include <apex/net/Reactor.hpp>
+#include <apex/util/utils.hpp>
 
 #include <assert.h>
 #include <sys/types.h>
@@ -465,6 +466,12 @@ void Reactor::reactor_main_loop()
 
 /* Thread entry point */
 void Reactor::thread_main() {
+
+  if (!_config.cpu_affinity.empty()) {
+    auto cpu_list = parse_cpu_list(_config.cpu_affinity);
+    set_cpu_affinity(cpu_list, 0);
+  }
+
   _thread_id = std::this_thread::get_id();
   apex::Logger::instance().register_thread_id("reactor");
   reactor_main_loop();

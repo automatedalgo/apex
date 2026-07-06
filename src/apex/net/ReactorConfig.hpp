@@ -24,10 +24,12 @@ namespace apex {
 struct ReactorConfig {
 
   bool spin = false;
+  std::string cpu_affinity;
 
   static auto schema() {
     FIELD_DEF_INIT( ReactorConfig );
     FIELD_DEF_OPTIONAL( spin, false );
+    FIELD_DEF_OPTIONAL(cpu_affinity, "");
     FIELD_DEF_RETURN();
   }
 };

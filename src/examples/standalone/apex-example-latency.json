@@ -2,10 +2,12 @@
     // core engine services
     "core": {
         "run_mode": "paper",
+        "cpu_affinity" : "",
 
         // main socket reactor
         "reactor": {
-            "spin" : false  /* spin on socket IO */
+            "cpu_affinity" : "",
+            "spin" : true  /* spin on socket IO */
         }
     },
 

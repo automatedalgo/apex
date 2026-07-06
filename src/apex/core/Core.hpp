@@ -111,12 +111,13 @@ public:
 struct CoreConfig {
 
   std::string run_mode;
-
+  std::string cpu_affinity;
   ReactorConfig reactor;
 
   static auto schema() {
     FIELD_DEF_INIT( CoreConfig );
     FIELD_DEF_REQUIRED(run_mode);
+    FIELD_DEF_OPTIONAL(cpu_affinity, "");
     FIELD_DEF_OPTIONAL(reactor, ReactorConfig{} );
     FIELD_DEF_RETURN();
   }

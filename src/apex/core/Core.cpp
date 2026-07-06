@@ -195,7 +195,7 @@ Core::Core(const CoreConfig& config)
 
 
 Core::Core(RunMode run_mode,
-                   BacktestPeriod backtest_period)
+           BacktestPeriod backtest_period)
   : _run_mode(run_mode),
     _backtest_period(backtest_period),
     _paths_config{default_paths_config()},
@@ -231,6 +231,13 @@ std::unique_ptr<Core> Core::create(apex::RunMode run_mode,
 
 std::unique_ptr<Core> Core::create(const CoreConfig& config) {
   apex::Logger::instance().register_thread_id("main");
+
+  // set main process affinity before any other threads start
+  if (!config.cpu_affinity.empty()) {
+    auto cpu_list = parse_cpu_list(config.cpu_affinity);
+    set_cpu_affinity(cpu_list, 0);
+  }
+
   auto core = std::make_unique<Core>(config);
   core->init_services();
   return core;
@@ -255,6 +262,7 @@ void Core::init_services(Config config)
 
   LOG_NOTICE("apex run-mode: " << _run_mode);
   LOG_NOTICE("apex version: " << APEX_VERSION);
+  LOG_NOTICE("pid: " << apex::getpid());
 
   // service construction order is done in terms of those with the
   // least dependencies to those with most dependencies.

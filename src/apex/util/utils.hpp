@@ -21,6 +21,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <functional>
 #include <list>
 #include <mutex>
+#include <set>
 #include <sstream>
 #include <string>
 #include <optional>
@@ -272,5 +273,8 @@ std::string concat(Args&&... args) {
 
 /* Read entire file */
 std::string read_file(const std::string& path);
+
+/* Parse a CPU affinity list */
+std::set<int> parse_cpu_list(const std::string &);
 
 } // namespace apex

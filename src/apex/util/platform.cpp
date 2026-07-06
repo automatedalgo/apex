@@ -136,4 +136,20 @@ std::string process_short_name()
 #endif
 }
 
+void set_cpu_affinity(const std::set<int> & cpu_list, int pid)
+{
+  cpu_set_t cpus;
+  CPU_ZERO(&cpus);
+
+  for (auto cpu : cpu_list) {
+    CPU_SET(cpu, &cpus);
+  }
+
+  if (sched_setaffinity(pid, sizeof(cpus), &cpus) != 0)
+  {
+    perror("sched_setaffinity");
+    exit(1);
+  }
+}
+
 } // namespace apex

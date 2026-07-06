@@ -18,6 +18,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
 #include <string>
+#include <set>
 
 #ifndef _WIN32
 #include <sys/time.h>
@@ -59,5 +60,8 @@ int getpid();
 
 /** Short process name for log file naming. */
 std::string process_short_name();
+
+/* Set cpu affinity */
+void set_cpu_affinity(const std::set<int> & cpu_list, int pid = 0);
 
 } // namespace apex

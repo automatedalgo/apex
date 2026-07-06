@@ -522,4 +522,41 @@ std::string read_file(const std::string& path)
   return buffer;
 }
 
+
+std::set<int> parse_cpu_list(const std::string & str)
+{
+  std::set<int> cpus;
+  std::stringstream ss(str);
+  std::string token;
+
+  while (std::getline(ss, token, ','))
+  {
+    if (token.empty())
+      throw std::runtime_error("empty CPU value");
+
+    auto dash = token.find('-');
+
+    if (dash == std::string::npos)
+    {
+      // single CPU
+      cpus.insert(std::stoi(token));
+    }
+    else
+    {
+      // range
+      int first = std::stoi(token.substr(0, dash));
+      int last  = std::stoi(token.substr(dash + 1));
+
+      if (first > last)
+        throw std::runtime_error("invalid CPU range: " + token);
+
+      for (int cpu = first; cpu <= last; ++cpu)
+        cpus.insert(cpu);
+    }
+  }
+
+  return cpus;
+}
+
+
 } // namespace apex
