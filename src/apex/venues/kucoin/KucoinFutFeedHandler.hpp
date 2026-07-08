@@ -31,6 +31,7 @@ class WebsocketClient;
 class KucoinFutFeedHandler : public FeedHandlerImpl<KucoinFutFeedHandler>
 {
 public:
+  constexpr static std::string_view feed_id = "kucoin";
 
   KucoinFutFeedHandler(Core* core,
                        RunMode run_mode,

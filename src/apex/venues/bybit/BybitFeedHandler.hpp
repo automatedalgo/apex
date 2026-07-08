@@ -31,6 +31,7 @@ class WebsocketClient;
 class ByBitFeedHandler : public FeedHandlerImpl<ByBitFeedHandler>
 {
 public:
+  constexpr static std::string_view feed_id = "bybit";
 
   ByBitFeedHandler(Core* core,
                    RunMode run_mode,

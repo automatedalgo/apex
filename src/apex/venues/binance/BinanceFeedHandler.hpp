@@ -27,6 +27,8 @@ class WebsocketClient;
 class BinanceFeedHandler : public FeedHandlerImpl<BinanceFeedHandler>
 {
 public:
+  constexpr static std::string_view feed_id = "binance";
+
   BinanceFeedHandler(Core* core,
                      RunMode run_mode,
                      Reactor* reactor,
