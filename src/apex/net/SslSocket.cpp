@@ -80,9 +80,7 @@ SslSocket::SslSocket(SslContext* ssl_context, Reactor* r, int fd,
 
 SslSocket::~SslSocket()
 {
-  // the _stream must be disposed before beginning to destroy self, otherwise io
-  // thread might try to use destroyed resources in derived object
-  _reactor->detach_stream_unique_ptr(_stream);
+  // socket clean-up handled in base class
 }
 
 

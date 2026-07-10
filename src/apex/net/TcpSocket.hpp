@@ -23,8 +23,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <iostream>
 #include <string>
 #include <vector>
-
-#include <string.h>
+#include <cstring>
 
 
 namespace apex
@@ -74,25 +73,25 @@ namespace apex
     virtual void start_read(on_read_cb_t);
 
     /* Is socket trying to connect? */
-    bool is_connecting() const;
+    [[nodiscard]] bool is_connecting() const;
 
     /* If socket was trying to connect, but connect failed, return the errno. */
-    int connect_errno() const;
+    [[nodiscard]] int connect_errno() const;
 
     /* Is this socket currently associated with an open file descriptor? */
-    bool is_open() const;
+    [[nodiscard]] bool is_open() const;
 
     /* Close socket */
     void close();
 
     /* Return the file descriptor of this socket, or -1 if not available */
-    int fd() const;
+    [[nodiscard]] int fd() const;
 
     /* Get local port */
-    int local_port() const;
+    [[nodiscard]] int local_port() const;
 
-    std::string node() const { return _node; }
-    std::string service() const { return _service; }
+    [[nodiscard]] std::string node() const { return _node; }
+    [[nodiscard]] std::string service() const { return _service; }
 
     /* Set the initial value for the socket receive buffer size.  Must be called
      * before a connection is established. */

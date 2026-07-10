@@ -130,14 +130,17 @@ void Reactor::add_stream(Stream* stream)
 
 void Reactor::detach_stream(Stream* stream)
 {
+  if (stream->disposing)
+    return;
+
   if (is_reactor_thread())
   {
-    // printf("immediate IO detach for stream %d\n", stream->fd);
+    // printf("immediate IO detach for stream %d\n", fd);
     stream->disposing = true;
     push_command({Command::Type::dispose, stream});
   }
   else {
-    // printf("synchronous IO detach for stream %d\n", stream->fd);
+    // printf("synchronous IO detach for stream %d\n", fd);
     auto promise = std::make_shared<std::promise<void>>();
     auto cb = [&promise]() {
       promise->set_value();
@@ -145,6 +148,9 @@ void Reactor::detach_stream(Stream* stream)
     stream->on_dispose_cb = cb;
     push_command({Command::Type::dispose, stream});
     promise->get_future().wait();
+
+    // set the disposing flag, to prevent repeated use of this function
+    stream->disposing = true;
   }
 }
 

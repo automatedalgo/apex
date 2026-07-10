@@ -23,7 +23,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include <assert.h>
+#include <cassert>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -51,6 +51,7 @@ namespace apex
 
 TcpSocket::TcpSocket(Reactor* r)
   : _reactor(r),
+    _outbuf{},
     _outbuf_n(0),
     _init_read_buf_len(DEFAULT_RECV_BUF_LEN)
 {
@@ -58,12 +59,13 @@ TcpSocket::TcpSocket(Reactor* r)
 
 
 /* This constructor is called when we are want to create a TcpSocket from an
- * existing file descriptor.  Currently this situation is when we have accepted
+ * existing file descriptor.  Currently, this situation is when we have accepted
  * a new connection from a listen socket.
  */
 TcpSocket::TcpSocket(Reactor* r, int fd, size_t read_buf_len)
   : _reactor(r),
     _stream(std::make_unique<TcpStream>(fd, read_buf_len)),
+    _outbuf{},
     _outbuf_n(0),
     _init_read_buf_len(read_buf_len)
 {
@@ -79,7 +81,7 @@ TcpSocket::TcpSocket(Reactor* r, int fd, size_t read_buf_len)
 
 
 TcpSocket::~TcpSocket() {
-  _reactor->detach_stream_unique_ptr(_stream);
+  this->close();
 }
 
 
@@ -94,7 +96,7 @@ void TcpSocket::start_read(on_read_cb_t cb) {
   assert (cb);
   assert (!_stream->on_read_cb);
 
-  _stream->on_read_cb = cb;
+  _stream->on_read_cb = std::move(cb);
   _reactor->start_read(_stream.get());
 }
 
@@ -143,7 +145,7 @@ ssize_t TcpSocket::do_write()
 
   std::lock_guard<std::mutex> guard(_outbuf_mtx);
   char * p = _outbuf.data();
-  int n;
+  ssize_t n;
 
   while (_outbuf_n > 0) {
     do {
@@ -172,7 +174,12 @@ ssize_t TcpSocket::do_write()
 
 void TcpSocket::close()
 {
-  _reactor->close_stream(_stream.get());
+  if (_stream) {
+    if (_stream->has_fd()) {
+      _reactor->close_stream(_stream.get());
+    }
+    _reactor->detach_stream_unique_ptr(_stream);
+  }
 }
 
 int TcpSocket::fd() const {
@@ -182,7 +189,7 @@ int TcpSocket::fd() const {
 
 int TcpSocket::local_port() const
 {
-  sockaddr_storage ss; // is at least as large as any other sockaddr_*
+  sockaddr_storage ss{}; // is at least as large as any other sockaddr_*
   socklen_t ss_len = sizeof ss;
 
   if (_stream && _stream->has_fd()) {
@@ -216,7 +223,7 @@ int TcpSocket::connect_errno() const {
 
 /* This method transplants an external file descriptor into this TcpSocket.  The
  * situation when this happens is when a connection attempt has been
- * estabilshed, resulting in a useable file decriptor. */
+ * established, resulting in a usable file descriptor. */
 void TcpSocket::set_connected_fd(int fd, on_write_cb_t on_write_cb) {
   /* io-thread */
   assert(fd>=0);
@@ -236,7 +243,7 @@ void TcpSocket::connect(std::string addr,
 {
   assert (!_connector);
 
-  this->_node = addr;
+  this->_node = std::move(addr);
   this->_service = std::to_string(port);
 
   auto on_connected = [this, user_cb](int fd, int err) {
@@ -328,8 +335,7 @@ void TcpSocket::listen_impl(const std::string& node,
 
   auto cb = [create_sock_cb](Stream* stream, int /* unused */){
     /* io-thread */
-    sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
+    sockaddr_in addr{};
     socklen_t len = sizeof(addr);
 
     // TODO: handle EINTR here?
@@ -351,7 +357,7 @@ void TcpSocket::listen_impl(const std::string& node,
   };
 
   // create TcpStream for accepting connections (not data transfer) - the
-  // receive buffer len doesn't have to be large becuase this is not used for
+  // receive buffer len doesn't have to be large because this is not used for
   // data transfer
   _stream = std::make_unique<TcpStream>(sfd, 1024);
   _stream->user = this;
