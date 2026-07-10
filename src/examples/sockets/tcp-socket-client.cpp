@@ -17,6 +17,7 @@ with Apex. If not, see <https://www.gnu.org/licenses/>.
 
 #include <apex/net/Reactor.hpp>
 #include <apex/net/TcpSocket.hpp>
+#include <apex/util/utils.hpp>
 
 using namespace apex;
 using namespace std;
@@ -47,10 +48,15 @@ int main()
     // wait for completion
     auto fut = promise->get_future();
 
-    if (!sock->is_open()) {
-      cout << "failed to open" << endl;
-      return 1;
-    }
+    if (fut.wait_for(std::chrono::seconds(5)) != std::future_status::ready)
+      throw std::runtime_error("timeout during connect");
+
+    int err = fut.get();
+    if (err)
+      throw std::runtime_error(concat("connect failed: ", err));
+
+    if (!sock->is_open())
+      throw std::runtime_error(concat("socket is not open"));
 
     cout << "connected" << endl;
 
@@ -82,7 +88,7 @@ int main()
         continue; // timeout
       if (nready == 1 && fds[0].revents & POLLIN) {
         char buf[128] = {0};
-        int n = read(STDIN_FILENO, buf, sizeof(buf));
+        auto n = read(STDIN_FILENO, buf, sizeof(buf));
         if (strncmp(buf, "BYE", 3) == 0)
           continue_loop = false;
         if (n>0)
