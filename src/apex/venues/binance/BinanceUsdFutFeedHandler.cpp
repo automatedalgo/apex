@@ -168,7 +168,8 @@ void BinanceUsdFutFeedHandler::manage_connection()
     return;
   }
 
-  _ws_feed = connect_websocket(
+  connect_websocket(
+    _ws_feed,
     _feed_url,
     "binance-ufut-mktdata",
     _reactor,

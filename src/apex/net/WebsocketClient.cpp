@@ -25,7 +25,8 @@ namespace apex
 {
 
 /* Utility function to synchronously establish a websocket */
-std::shared_ptr<WebsocketClient> connect_websocket(
+void connect_websocket(
+  std::shared_ptr<WebsocketClient> & ws,
   const std::string& addr,
   std::string_view label,
   Reactor * reactor,
@@ -36,6 +37,8 @@ std::shared_ptr<WebsocketClient> connect_websocket(
   size_t recv_buf_len
   )
 {
+  ws.reset();
+
   auto url_parts = parse_websocket_url(addr);
   if (!url_parts)
     throw std::runtime_error(concat("bad websocket url: '",addr,"'"));
@@ -64,21 +67,23 @@ std::shared_ptr<WebsocketClient> connect_websocket(
   }
   else if (url_parts.is_wss()) {
     SslSocket::Options ssl_options;
-    options.sni_policy =  SslSocket::Options::use_addr;
+    options.sni_policy = SslSocket::Options::use_addr;
     sock = std::make_unique<SslSocket>(ssl, reactor, ssl_options);
   }
   sock->set_recv_buf_len(recv_buf_len);
 
   sock->connect(host, port, timeout_secs, connected_cb);
 
-  auto conn_fut = conn_promise->get_future();
+  {
+    auto fut = conn_promise->get_future();
 
-  if (conn_fut.wait_for(std::chrono::seconds(timeout_secs)) != std::future_status::ready)
-    throw std::runtime_error("timeout during connect");
+    if (fut.wait_for(std::chrono::seconds(timeout_secs)) != std::future_status::ready)
+      throw std::runtime_error("timeout during connect");
 
-  int conn_err = conn_fut.get();
-  if (conn_err)
-    throw std::runtime_error("connect failed");
+    int err = fut.get();
+    if (err)
+      throw std::runtime_error(concat("connect failed: ", err));
+  }
 
   /* ----- websocket initialisation ----- */
 
@@ -89,18 +94,25 @@ std::shared_ptr<WebsocketClient> connect_websocket(
 
   std::function<void()> on_down = [](){};
 
-  std::shared_ptr<WebsocketClient> ws = std::make_shared<WebsocketClient>(
-    *timer_thread, std::move(sock), url_parts.path, on_data, on_open, on_down);
+  ws = std::make_shared<WebsocketClient>(
+    *timer_thread, std::move(sock), url_parts.path, std::move(on_data), on_open, on_down);
+
+  // once called, the IO thread can deliver callbacks into the websocket
+  // protocol and into the on_data callback - this is why in this function we
+  // modify the WebsocketClient of the caller, because it might be used during
+  // data callback
+  ws->initiate();
 
   {
     // wait for the websocket to become open
-    auto fut = completion_promise ->get_future();
-    if (fut.wait_for(std::chrono::seconds(timeout_secs)) != std::future_status::ready)
+    auto fut = completion_promise->get_future();
+    if (fut.wait_for(std::chrono::seconds(timeout_secs)) != std::future_status::ready) {
+      ws.reset();
       throw std::runtime_error("timeout during websocket initiation");
+    }
   }
 
   LOG_INFO(label << ": websocket established, fd: " << ws->fd(););
-  return ws;
 }
 
 
@@ -112,29 +124,29 @@ WebsocketClient::WebsocketClient(RealtimeEventLoop& evloop,
                                  OnCloseCallback on_close)
   : _event_loop(evloop),
     _socket(std::move(sock)),
-    _path(path),
+    _path(std::move(path)),
+    _on_open(std::move(on_open)),
     _on_close(std::move(on_close)),
     _is_open(false)
 {
   assert(_on_close);
-  assert(on_open);
 
   auto request_timer_cb = [this](std::chrono::milliseconds interval) {
     /* If protocol has requested a timer, register a reoccurring event to call
      * the protocol's on_timer function. Called during construction of
      * protocol. */
     if (interval.count() > 0) {
-      auto timerfn = [wp{this->weak_from_this()},
+      auto timer_fn = [wp{this->weak_from_this()},
                       interval]() -> std::chrono::milliseconds {
         if (auto sp = wp.lock()) {
           sp->_proto->on_timer();
           return interval;
         } else {
           /* shared_ptr invalid, so cancel timer */
-          return std::chrono::milliseconds();
+          return {};
         }
       };
-      this->_event_loop.dispatch(interval, std::move(timerfn));
+      this->_event_loop.dispatch(interval, std::move(timer_fn));
     }
   };
 
@@ -147,7 +159,7 @@ WebsocketClient::WebsocketClient(RealtimeEventLoop& evloop,
 
   // build the wire level protocol handler
   WebsocketProtocol::options protocol_options;
-  protocol_options.request_uri = path;
+  protocol_options.request_uri = _path;
 
   _proto = new WebsocketProtocol(
     this->_socket.get(),
@@ -159,35 +171,17 @@ WebsocketClient::WebsocketClient(RealtimeEventLoop& evloop,
     protocol_options
     );
 
-  // start socket read
-  this->_socket->start_read([this](char* s, ssize_t n) {
-    if (n > 0) {
-      _proto->on_read(s, (size_t)n);
-    }
-    else {
-      _is_open = false;
-      if (n == 0) {
-        LOG_INFO("websocket closed by peer");
-      } else {
-        LOG_WARN("lost websocket connection, error " << -n);
-      }
-      if (_on_close)
-        _on_close();
-    }
-  });
-
-  _proto->initiate([this, on_open]() {
-    this->_is_open = true;
-    if (on_open) {
-      on_open();
-    }
-  });
 }
 
 WebsocketClient::~WebsocketClient() {
+  // close the socket before deleting the protocol (because sock can call protocol)
+  _socket->close();
   delete _proto;
 }
 
+void WebsocketClient::close() {
+  _socket->close();
+}
 
 void WebsocketClient::send(std::string_view sv)
 {
@@ -214,6 +208,32 @@ void WebsocketClient::send_ping() {
 
 void WebsocketClient::send_pong() {
   _proto->send_pong();
+}
+
+void WebsocketClient::initiate() {
+  // start socket read
+  _socket->start_read([this](char* s, ssize_t n) {
+    if (n > 0) {
+      _proto->on_read(s, (size_t)n);
+    }
+    else {
+      _is_open = false;
+      if (n == 0) {
+        LOG_INFO("websocket closed by peer");
+      } else {
+        LOG_WARN("lost websocket connection, error " << -n);
+      }
+      if (_on_close)
+        _on_close();
+    }
+  });
+
+  _proto->initiate([this]() {
+    this->_is_open = true;
+    if (_on_open) {
+      _on_open();
+    }
+  });
 }
 
 } // namespace apex

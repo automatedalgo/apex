@@ -127,14 +127,16 @@ void KucoinFutFeedHandler::manage_connection()
   options.sni_policy = SslSocket::Options::use_addr;
 
   try {
-    _ws_feed = connect_websocket(url, "kcnfutfeed",
-                                 _core->reactor(),
-                                 _core->ssl(),
-                                 _event_loop,
-                                 [this](const char* buf, size_t n){
-                                   this->process_raw_message(buf, n);
-                                 },
-                                 options);
+    connect_websocket(
+      _ws_feed,
+      url, "kcnfutfeed",
+      _core->reactor(),
+      _core->ssl(),
+      _event_loop,
+      [this](const char* buf, size_t n){
+        this->process_raw_message(buf, n);
+      },
+      options);
 
     // schedule a redo of subscriptions now that we have reconnected
     auto wp = this->weak_from_this();

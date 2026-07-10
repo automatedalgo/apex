@@ -362,7 +362,8 @@ void BinanceUsdFutLineHandler::manage_connection()
       _ws_feed.reset();
       _ws_line.reset();
 
-      _ws_line = connect_websocket(
+      connect_websocket(
+        _ws_line,
         _line_url,
         "binance-ufut-line",
         _reactor,
@@ -371,7 +372,7 @@ void BinanceUsdFutLineHandler::manage_connection()
         [this](const char* buf, size_t n){ this->on_line_message(buf, n); },
         SslSocket::Options{},
         1024*1024  // 1MB
-       );
+        );
 
       if (!apex::websock_is_open(_ws_line))
         return;
@@ -506,7 +507,8 @@ void BinanceUsdFutLineHandler::initiate_user_stream()
 {
   /* line management thread */
 
-  _ws_feed = connect_websocket(
+  connect_websocket(
+    _ws_feed,
     _feed_url,
     "binance-ufut-user",
     _reactor,

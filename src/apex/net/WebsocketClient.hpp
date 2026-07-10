@@ -34,14 +34,14 @@ class RealtimeEventLoop;
 class WebsocketClient;
 
 /* Utility function to synchronously establish a websocket */
-
-std::shared_ptr<WebsocketClient> connect_websocket(
-  const std::string& addr, // eg, "wss://cryptoexchange.com/api"
+void connect_websocket(
+  std::shared_ptr<WebsocketClient> & ws,
+  const std::string& addr, // eg, "wss://crypto_exchange.com/api"
   std::string_view label,
   Reactor * reactor,
   SslContext* ssl,
   RealtimeEventLoop* timer_thread,
-  std::function<void(const char* buf, size_t n)> on_message,
+  std::function<void(const char* buf, size_t n)> on_data,
   SslSocket::Options = SslSocket::Options(),
   size_t recv_buf_len = 65536
   );
@@ -67,6 +67,9 @@ public:
 
   ~WebsocketClient();
 
+  /* Start socket read and initiate the websocket protocol. */
+  void initiate();
+
   void send(std::string_view);
   void send(const char*, size_t);
   void send(const char*);
@@ -82,12 +85,15 @@ public:
 
   TimeLog& timelog() { return _socket->timelog(); }
 
+  void close();
+
 private:
 
   RealtimeEventLoop& _event_loop;
   std::unique_ptr<TcpSocket> _socket;
   WebsocketProtocol* _proto{};
   std::string _path;
+  OnOpenCallback _on_open;
   OnCloseCallback _on_close;
   bool _is_open;
 };

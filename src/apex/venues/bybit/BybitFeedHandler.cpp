@@ -80,15 +80,17 @@ void ByBitFeedHandler::manage_connection()
   SslContext ssl_context(ssl_config);
   SslSocket::Options ssl_options;
   try {
-    _ws_feed = connect_websocket(usdfut_url, "bybitfeed",
-                                 _core->reactor(),
-                                 &ssl_context,
-                                 _event_loop,
-                                 [this](const char* buf, size_t n){
-                                   this->process_raw_message(buf, n);
-                                 },
-                                 ssl_options,
-                                 1024*1024  // 1MB
+    connect_websocket(
+      _ws_feed,
+      usdfut_url, "bybitfeed",
+      _core->reactor(),
+      &ssl_context,
+      _event_loop,
+      [this](const char* buf, size_t n){
+        this->process_raw_message(buf, n);
+      },
+      ssl_options,
+      1024*1024  // 1MB
       );
 
     // schedule a redo of subscriptions now that we have reconnected

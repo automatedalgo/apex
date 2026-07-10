@@ -312,7 +312,8 @@ void BinanceLineHandler::manage_connection()
       LOG_INFO("binance line is down, attempting reconnect");
       _ws_line.reset();
 
-      _ws_line = connect_websocket(
+      connect_websocket(
+        _ws_line,
         _line_url,
         "binance-line",
         _reactor,

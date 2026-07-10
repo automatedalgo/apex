@@ -160,14 +160,15 @@ void BinanceFeedHandler::manage_connection()
   if (websock_is_open(_ws_feed))
     return;
 
-  _ws_feed = connect_websocket(
+  connect_websocket(
+    _ws_feed,
     _feed_url,
     "binance-mktdata",
     _reactor,
     _core->ssl(),
-    _event_loop,  // TODO: why is this needed?
-    [this](const char* buf, size_t n){ this->process_raw_message(buf, n); });
-
+    _event_loop,
+    [this](const char* buf, size_t n){ this->process_raw_message(buf, n); }
+    );
 
   // clear the subscription states
   {

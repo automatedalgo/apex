@@ -134,7 +134,7 @@ class OrderRouterAdapterImpl : public OrderRouter
 {
 public:
 
-  OrderRouterAdapterImpl(Core* core)
+  explicit OrderRouterAdapterImpl(Core* core)
     :  _core(core) {
   }
 
