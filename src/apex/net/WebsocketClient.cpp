@@ -33,7 +33,7 @@ void connect_websocket(
   SslContext* ssl,
   RealtimeEventLoop* timer_thread,
   std::function<void(const char* buf, size_t n)> on_data,
-  SslSocket::Options options,
+  SslSocket::Options ssl_options,
   size_t recv_buf_len
   )
 {
@@ -66,8 +66,7 @@ void connect_websocket(
     sock = std::make_unique<TcpSocket>(reactor);
   }
   else if (url_parts.is_wss()) {
-    SslSocket::Options ssl_options;
-    options.sni_policy = SslSocket::Options::use_addr;
+    ssl_options.sni_policy = SslSocket::Options::use_addr;
     sock = std::make_unique<SslSocket>(ssl, reactor, ssl_options);
   }
   sock->set_recv_buf_len(recv_buf_len);
