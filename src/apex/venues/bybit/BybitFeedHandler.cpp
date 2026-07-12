@@ -102,7 +102,7 @@ void ByBitFeedHandler::manage_connection()
       return std::chrono::seconds{0};
     });
 
-    // Note: we set up a reocurring ping callback, that stores the weak pointer
+    // Note: we set up a reoccurring ping callback, that stores the weak pointer
     // actual websocket just created, so that we only actual if that websocket
     // is still active.
     auto ws_weak_ptr = _ws_feed->weak_from_this();
@@ -235,13 +235,13 @@ void ByBitFeedHandler::process_trade(std::string_view symbol,
 
     // can disable this after testing.
     if (symbol != get_string_field(*it, "s")) {
-      LOG_ERROR("program error: individual trade symbols don't match subscription");
+      LOG_ERROR("individual trade symbol doesn't match subscription");
     }
 
     /* --- trade aggregation --- */
 
     if (aggr.price == 0 && aggr.side == Side::none) {
-      // our aggragation is empty, so seed from current tick
+      // our aggregation is empty, so seed from current tick
       aggr = tick;
     }
     else {
@@ -297,8 +297,6 @@ void ByBitFeedHandler::subscribe_top(std::string)
 }
 
 
-
-
 void ByBitFeedHandler::do_subscriptions()
 {
   /* management thread */
@@ -338,4 +336,4 @@ void ByBitFeedHandler::start()
   });
 }
 
-} // namepace
+} // namespace

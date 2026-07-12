@@ -47,7 +47,7 @@ public:
    * MarketData cannot be created (eg due to no suitable session). */
   MarketData* find_market_data(const Instrument&);
 
-  void add_feed(FeedConfig config, std::list<std::string> venues);
+  void add_feed(const FeedConfig& config, const std::list<std::string>& venues);
 
 
 private:
