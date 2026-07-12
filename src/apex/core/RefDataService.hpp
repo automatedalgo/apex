@@ -27,10 +27,6 @@ namespace apex
 class Core;
 class Config;
 
-
-std::ostream& operator<<(std::ostream& os, const Asset& asset);
-std::ostream& operator<<(std::ostream&, const Instrument&);
-
 struct InstrumentQuery {
   std::string symbol;
   std::string exchange;
@@ -64,7 +60,7 @@ struct InstrumentQuery {
   {
   }
 
-  std::string to_string() const;
+  [[nodiscard]] std::string to_string() const;
 };
 
 class RefDataService
@@ -83,7 +79,7 @@ public:
     const std::string& symbol, const std::string& exchange = {},
     InstrumentType type = InstrumentType::none);
 
-  Instrument& get_instrument(struct InstrumentQuery);
+  Instrument& get_instrument(const struct InstrumentQuery&);
 
   Instrument& lookup(const std::string& symbol);
 

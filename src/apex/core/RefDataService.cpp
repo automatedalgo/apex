@@ -51,7 +51,7 @@ RefDataService::RefDataService(Core* core, Config config)
     load_assets(filename);
   }
   catch (std::exception& e) {
-    LOG_ERROR("failed to initialse instrument ref-data: " << e.what());
+    LOG_ERROR("failed to initialise instrument ref-data: " << e.what());
     throw;
   }
 }
@@ -85,7 +85,7 @@ Instrument& RefDataService::get_instrument(const std::string& symbol,
 }
 
 
-Instrument& RefDataService::get_instrument(InstrumentQuery q) {
+Instrument& RefDataService::get_instrument(const InstrumentQuery& q) {
   std::vector<std::string> matches;
 
   for (auto& pair : _instruments) {
@@ -104,7 +104,6 @@ Instrument& RefDataService::get_instrument(InstrumentQuery q) {
   } else {
     THROW("instrument not found for query " << q.to_string());
   }
-
 }
 
 
@@ -202,7 +201,7 @@ void RefDataService::load_assets(const std::string& filename)
   LOG_INFO("refdata loaded, " << _assets.size() << " assets, "
                               << _instruments.size() << " instruments");
 
-  // Define the notionl ccy and assets that are proxies
+  // Define the notional ccy and assets that are proxies
   std::string notional_ccy = "USD";
   std::string ccy_proxies[] = {"USDT", "BUSD", "USD"};
 

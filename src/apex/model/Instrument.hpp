@@ -63,6 +63,8 @@ private:
   int _precision;
 };
 
+std::ostream& operator<<(std::ostream& os, const Asset& asset);
+
 
 /* Represent a financial product on an exchange that can be bought & sold.  The
  * instrument will be priced in the quote Asset currency. */
